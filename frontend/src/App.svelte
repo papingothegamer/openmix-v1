@@ -179,6 +179,23 @@
     requiresSetup = false;
   }
 
+  function handleExportScene() {
+    if (!$mixerState || !Object.keys($mixerState).length || !$mixerState.flatOscCache) {
+      alert('No mixer state available to export yet. Please connect first.');
+      return;
+    }
+    const sceneData = JSON.stringify($mixerState.flatOscCache, null, 2);
+    const blob = new Blob([sceneData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `openmix-scene-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -247,7 +264,7 @@
 </script>
 
 <main class="app-container" class:scribble-mode={scribbleEditMode}>
-      <Navbar {activeRole} onExitRole={() => activeRole = null} onFileLoad={handleFileUpload} onScribbleEdit={() => scribbleEditMode = !scribbleEditMode} />
+      <Navbar {activeRole} onExitRole={() => activeRole = null} onExportScene={handleExportScene} onFileLoad={handleFileUpload} onScribbleEdit={() => scribbleEditMode = !scribbleEditMode} />
 
   <div class="content-wrapper" class:is-mixing={activeRole}>
     {#if requiresSetup}

@@ -1,10 +1,11 @@
 <script>
   import { isConnected } from '../socket';
-  import { UploadCloud, Maximize, Edit3 } from 'lucide-svelte';
+  import { UploadCloud, DownloadCloud, Maximize, Edit3 } from 'lucide-svelte';
 
   export let activeRole = null;
   export let onExitRole = () => {};
   export let onFileLoad = () => {};
+  export let onExportScene = () => {};
   export let onScribbleEdit = () => {};
   
   function toggleFullscreen() {
@@ -24,6 +25,9 @@
     {#if activeRole === 'foh'}
       <button class="btn-sm scribble-btn" on:click={onScribbleEdit}>
         <Edit3 size={14} /> Scribble Strips
+      </button>
+      <button class="btn-sm export-btn" on:click={onExportScene}>
+        <DownloadCloud size={14} /> Export Scene
       </button>
       <label class="btn-sm upload-btn">
         <UploadCloud size={14} /> Load JSON
@@ -58,6 +62,8 @@
   .btn-sm:hover { background: rgba(255,255,255,0.2); }
   .upload-btn { background: #3b82f6; border-color: #3b82f6; color: white; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
   .upload-btn:hover { background: #2563eb; }
+  .export-btn { background: #8b5cf6; border-color: #8b5cf6; color: white; box-shadow: 0 2px 8px rgba(139,92,246,0.3); }
+  .export-btn:hover { background: #7c3aed; }
   .scribble-btn { background: #10b981; border-color: #10b981; color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
   .scribble-btn:hover { background: #059669; }
   .exit-btn { border-color: #ef4444; color: #fca5a5; }
