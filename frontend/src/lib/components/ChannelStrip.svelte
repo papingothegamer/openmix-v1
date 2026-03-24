@@ -80,39 +80,28 @@
     <div class="gain-fill" style="width: {Math.max(0, (peakLevel + 60) / 60 * 100)}%;"></div>
   </div>
 
-  <!-- FOH Exclusive: Preamp & Dynamics Charts -->
-  {#if role === 'foh' && stripType !== 'dca' && stripType !== 'main'}
+  <!-- FOH Exclusive Controls -->
+  {#if role === 'foh' && stripType !== 'dca'}
     <div class="foh-controls">
-      <div class="switches-row">
-        <button class="switch-btn phantom" class:active={phantom} on:click={() => phantom = !phantom}>48V</button>
-        <button class="switch-btn link" class:active={stereoLink} on:click={() => stereoLink = !stereoLink}>LINK</button>
-      </div>
+      {#if stripType === 'input' || stripType === 'output'}
+        <div class="switches-row">
+          <button class="switch-btn phantom" class:active={phantom} on:click={() => phantom = !phantom}>48V</button>
+          <button class="switch-btn link" class:active={stereoLink} on:click={() => dispatch('toggleLink')}>LINK</button>
+        </div>
+      {/if}
 
       <div class="chart eq-chart">
         <span class="label">EQ</span>
         <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
       </div>
-      <div class="chart comp-chart">
-        <span class="label">COMP</span>
-        <div class="gr-meter"></div>
-      </div>
-    </div>
-  {/if}
 
-  <!-- Main/Output strip EQ chart (no preamp switches) -->
-  {#if role === 'foh' && (stripType === 'main' || stripType === 'output')}
-    {#if stripType === 'main'}
-      <div class="foh-controls">
-        <div class="chart eq-chart">
-          <span class="label">EQ</span>
-          <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
-        </div>
+      {#if stripType !== 'fx'}
         <div class="chart comp-chart">
           <span class="label">COMP</span>
           <div class="gr-meter"></div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
   {/if}
 
   <div class="spacer"></div>

@@ -81,6 +81,24 @@
   // Per-channel EQ state persistence (survives tab switches)
   let channelEqState = {};
 
+  // Stereo link state: key = odd channel number, value = true if linked to next even channel
+  let stereoLinks = {};  // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
+  function toggleStereoLink(ch) {
+    const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
+    stereoLinks = { ...stereoLinks, [oddCh]: !stereoLinks[oddCh] };
+  }
+  function isLinked(ch) {
+    if (typeof ch !== 'number') return false;
+    const oddCh = ch % 2 === 1 ? ch : ch - 1;
+    return !!stereoLinks[oddCh];
+  }
+
+  // Main output assignment per channel
+  let mainOutAssign = {};  // { 'in_1': true, 'in_2': true, ... }
+  function toggleMainOut(chId) {
+    mainOutAssign = { ...mainOutAssign, [chId]: !mainOutAssign[chId] };
+  }
+
   function handleBandsChange(chId, newBands) {
       channelEqState[chId] = newBands.map(b => ({...b}));
       channelEqState = {...channelEqState}; // trigger reactivity
@@ -347,6 +365,8 @@
                       color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
                       peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
                       eqCurvePath={computeMiniEqPath(sId)}
+                      stereoLink={activeView === 'inputs' ? isLinked(chIndex) : false}
+                      on:toggleLink={() => toggleStereoLink(chIndex)}
                       on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
                     />
                   </div>
@@ -362,7 +382,7 @@
                       <ChannelStrip
                         channelIndex={fxIdx}
                         role={activeRole}
-                        stripType="output"
+                        stripType="fx"
                         name={scribbles[fxSId]?.name || `FX ${fxIdx}`}
                         iconType={scribbles[fxSId]?.iconType || 'icon_01'}
                         color={scribbles[fxSId]?.color || '#f59e0b'}
@@ -465,6 +485,33 @@
                 <div class="param-row"><span>Pan</span><input type="range" min="-100" max="100" value="0" /><span>C</span></div>
                 <div class="param-row"><span>Level</span><input type="range" min="-90" max="10" value="0" /><span>0 dB</span></div>
               </div>
+              <!-- Main Out Assignment -->
+              <div class="bento-card">
+                <h3>Main Out</h3>
+                <div class="param-row">
+                  <span>Assign to LR</span>
+                  <button class="toggle-sm" class:active={mainOutAssign[selectedChannel]} on:click={() => toggleMainOut(selectedChannel)}>
+                    {mainOutAssign[selectedChannel] ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+                <p class="bento-hint">Route this channel to the Main LR output bus. Disable for talkback or monitor-only channels.</p>
+              </div>
+              <!-- Stereo Link -->
+              {#if selectedChannel.startsWith('in_')}
+                {@const chNum = parseInt(selectedChannel.replace('in_', ''))}
+                {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
+                {@const partnerCh = chNum % 2 === 1 ? chNum + 1 : chNum - 1}
+                <div class="bento-card">
+                  <h3>Stereo Link</h3>
+                  <div class="param-row">
+                    <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
+                    <button class="toggle-sm" class:active={stereoLinks[oddCh]} on:click={() => toggleStereoLink(chNum)}>
+                      {stereoLinks[oddCh] ? 'LINKED' : 'OFF'}
+                    </button>
+                  </div>
+                  <p class="bento-hint">Links odd→even channel pair. Both channels share gain, pan, EQ, and dynamics.</p>
+                </div>
+              {/if}
             </div>
           </div>
 
@@ -694,6 +741,7 @@
   .bento-eq-preview { display: flex; flex-direction: column; }
   .bento-eq-curve { width: 100%; height: 50px; background: #0b0f19; border-radius: 4px; border: 1px solid #1e293b; }
   .bento-eq-curve path { fill: none; stroke: #38bdf8; stroke-width: 1.5; }
+  .bento-hint { font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0 0; line-height: 1.4; border-top: 1px dashed #1e293b; padding-top: 0.5rem; }
 
   /* Musician Monitor Mix */
   .musician-mix { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
