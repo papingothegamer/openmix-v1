@@ -269,10 +269,12 @@
           </div>
         {/if}
 
-        <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} 
-                 onPageChange={(p) => currentPage = p} 
-                 onViewChange={(v) => activeView = v}
-                 onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
+        {#if activeTab !== 'eq'}
+          <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} 
+                   onPageChange={(p) => currentPage = p} 
+                   onViewChange={(v) => activeView = v}
+                   onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
+        {/if}
       </div>
     {/if}
 

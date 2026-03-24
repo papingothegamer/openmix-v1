@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   
   export let channelId = 'in_1'; // Targeted routing ID seamlessly piped from FOH
+  let eqBypass = false;
   
   let canvas;
   let ctx;
@@ -337,6 +338,21 @@
     <!-- Center Canvas Engine -->
     <div class="canvas-wrapper">
         <canvas bind:this={canvas} {width} {height}></canvas>
+        {#if eqBypass}
+            <div class="bypass-overlay fade-in">EQ BYPASSED</div>
+        {/if}
+    </div>
+
+    <!-- Right Wing Sidebar (EQ Controls) -->
+    <div class="wing-sidebar-right">
+        <button class="w-macro-btn" class:active={eqBypass} on:click={() => eqBypass = !eqBypass}>
+            {eqBypass ? 'EQ Bypassed' : 'Bypass EQ'}
+        </button>
+        <button class="w-macro-btn">RTA Overlay</button>
+        <button class="w-macro-btn">Copy EQ</button>
+        <button class="w-macro-btn">Paste EQ</button>
+        <div style="flex: 1;"></div>
+        <button class="w-macro-btn alert" on:click={resetFlat}>Reset Flat</button>
     </div>
 </div>
 
@@ -345,9 +361,19 @@
   .layout-wing { display: flex; flex-direction: row; width: 100%; height: 500px; max-height: 65vh; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; box-shadow: 0 12px 48px rgba(0,0,0,0.4); margin: 0 auto; }
   .canvas-wrapper { flex: 1; min-height: 0; position: relative; background: #080a0f; }
   canvas { display: block; width: 100%; height: 100%; }
+  .bypass-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; color: #ef4444; letter-spacing: 6px; pointer-events: none; z-index: 10; text-shadow: 0 4px 12px rgba(0,0,0,0.8); backdrop-filter: blur(2px); }
   
   /* Left Sidebar Split */
   .wing-sidebar { width: 340px; flex-shrink: 0; display: flex; flex-direction: row; background: #12151c; border-right: 1px solid #1e293b; }
+  
+  /* Right Sidebar Macro Split */
+  .wing-sidebar-right { width: 140px; flex-shrink: 0; display: flex; flex-direction: column; background: #12151c; border-left: 1px solid #1e293b; padding: 1.5rem 1rem; gap: 0.8rem; }
+  .w-macro-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.8rem 0.5rem; border-radius: 6px; font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-size: 0.75rem; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
+  .w-macro-btn:hover { background: #334155; transform: translateY(-2px); }
+  .w-macro-btn:active { transform: translateY(0); }
+  .w-macro-btn.active { background: #ef4444; color: white; border-color: #f87171; box-shadow: 0 0 16px rgba(239,68,68,0.3); transform: translateY(-2px); }
+  .w-macro-btn.alert { background: #7f1d1d; color: white; border-color: #b91c1c; }
+  .w-macro-btn.alert:hover { background: #991b1b; }
   
   /* Band Selection List Base */
   .wing-band-list { width: 125px; display: flex; flex-direction: column; background: #0f1115; border-right: 1px solid #1e293b; overflow-y: auto; }
