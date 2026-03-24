@@ -39,7 +39,14 @@
   }
 
   let requiresSetup = localStorage.getItem('openmix_setup') !== 'true';
-  let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM' };
+  let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM', visibleBuses: [1,2,3,4,5,6] };
+  
+  // Watch config outputs to expand visibleBuses if CUSTOM mode expands globally without setting explicit visibility
+  $: {
+      if (config.outputs > 0 && (!config.visibleBuses || config.visibleBuses.length === 0)) {
+          config.visibleBuses = Array.from({length: config.outputs}, (_, i) => i + 1);
+      }
+  }
   
   // Scribble state array tracking
   let scribbles = {}; 
@@ -86,7 +93,7 @@
   // Derived channels layout arrays depending on user config
   $: presetHardLinks = config.presetId !== 'CUSTOM' ? (MixerPresets[config.presetId]?.hardLinks?.inputs || {}) : {};
   $: inputChannels = Array.from({length: config.inputs}, (_, i) => i + 1).filter(ch => !presetHardLinks[ch]?.hidden);
-  $: outputChannels = Array.from({length: config.outputs}, (_, i) => i + 1);
+  $: outputChannels = (config.visibleBuses || Array.from({length: config.outputs}, (_, i) => i + 1)).sort((a,b) => a-b);
   $: dcaChannels = Array.from({length: config.dcas || 8}, (_, i) => i + 1);
   
   $: currentChannels = activeView === 'inputs' ? inputChannels : (activeView === 'outputs' ? outputChannels : dcaChannels);
@@ -111,6 +118,7 @@
             config.outputs = preset.outputs;
             config.dcas = preset.dcas || 8;
             config.fx = preset.fx || 4;
+            config.visibleBuses = Array.from({length: preset.outputs}, (_, i) => i + 1);
          }
       }
   }
@@ -150,6 +158,20 @@
           <label for="out">Total Output Buses</label>
           <input id="out" type="number" bind:value={config.outputs} min="1" max="64" disabled={config.presetId !== 'CUSTOM'} />
         </div>
+        
+        {#if config.presetId !== 'CUSTOM' || config.outputs > 0}
+        <div class="form-group">
+          <label>Visible Buses / Outputs (Sandbox Access)</label>
+          <div class="bus-grid">
+             {#each Array(config.outputs) as _, i}
+               <label class="bus-toggle">
+                  <input type="checkbox" bind:group={config.visibleBuses} value={i+1} />
+                  AUX {i+1}
+               </label>
+             {/each}
+          </div>
+        </div>
+        {/if}
         
         <button class="action-btn" on:click={completeSetup}>Save Configuration & Enter App</button>
       </section>
@@ -304,7 +326,13 @@
   .setup-wizard .form-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .setup-wizard label { font-size: 0.85rem; font-weight: 600; color: #a1a1aa; }
   .setup-wizard input { background: #000; border: 1px solid #27272a; color: #fff; padding: 0.8rem; border-radius: 6px; outline: none; transition: border 0.2s; font-family: 'JetBrains Mono', monospace; }
-  .setup-wizard input:focus { border-color: #3b82f6; }
+  .setup-wizard input[type="number"]:focus { border-color: #3b82f6; }
+  
+  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem; }
+  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #1e293b; padding: 0.6rem; border-radius: 6px; border: 1px solid #334155; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
+  .bus-toggle:hover { background: #334155; border-color: #64748b; }
+  .bus-toggle input { cursor: pointer; width: 16px; height: 16px; accent-color: #3b82f6; margin: 0; }
+  
   .action-btn { background: #3b82f6; color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: block; width: 100%; transition: background 0.2s; font-size: 1rem; box-shadow: 0 4px 12px rgba(59,130,246,0.4); margin-top: 1rem; }
   .action-btn:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.5); }
 

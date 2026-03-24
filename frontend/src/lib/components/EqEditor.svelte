@@ -52,6 +52,10 @@
       updateBands();
   }
   function closeDropdowns() { dropdownOpenId = null; }
+  
+  function getGainDisplay(val) {
+      return val > 0 ? '+' + val.toFixed(1) : val.toFixed(1);
+  }
 
   let selectedBandIndex = 2; // Default focus
   
@@ -245,7 +249,7 @@
 
 <svelte:window on:click={closeDropdowns} />
 
-<div class="eq-container fade-in">
+<div class="eq-container fade-in layout-wing">
     <svg style="display: none;">
       <symbol id="icon-hpf12" viewBox="0 0 24 24"><path d="M4 22 Q10 22 12 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
       <symbol id="icon-hpf48" viewBox="0 0 24 24"><path d="M4 22 L10 22 L10 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
@@ -262,124 +266,139 @@
     <div class="canvas-wrapper">
         <canvas bind:this={canvas} {width} {height}></canvas>
     </div>
-    
-    <div class="controls-panel">
-        <div class="band-matrix">
+
+    <!-- Wing CSS Architecture Sidebar -->
+    <div class="wing-sidebar">
+        <!-- Vertical Column 1: Band Selection -->
+        <div class="wing-band-list">
             {#each bands as band, i}
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
-                <div class="band-column" class:active={selectedBandIndex === i} on:click={() => selectedBandIndex = i}>
-                    
-                    <div class="band-header">
-                        <button class="enable-btn" class:is-on={band.enabled} on:click|stopPropagation={() => { band.enabled = !band.enabled; updateBands(); }}>
-                           {band.id}
+                <button class="wing-band-row" class:active={selectedBandIndex === i} on:click|stopPropagation={() => selectedBandIndex = i}>
+                    <div class="wing-band-name">
+                        <span class="w-id">{band.id}</span>
+                        <span class="w-type">{filterNames[band.type].split(' ')[0].toUpperCase()}</span>
+                    </div>
+                    <div class="w-toggle" class:is-on={band.enabled} on:click|stopPropagation={() => { band.enabled = !band.enabled; updateBands(); }}></div>
+                </button>
+            {/each}
+        </div>
+
+        <!-- Vertical Column 2: Specific Selection Parameter Array -->
+        <div class="wing-detail-view">
+            {@const activeBand = bands[selectedBandIndex]}
+            {#if activeBand}
+                <div class="w-detail-header">
+                    <div class="w-detail-title-group">
+                        <span class="w-band-label">BAND {activeBand.id}</span>
+                        <button class="w-mini-toggle" class:is-on={activeBand.enabled} on:click|stopPropagation={() => { activeBand.enabled = !activeBand.enabled; updateBands(); }}>
+                            {activeBand.enabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
                     
-                    <div class="params-container">
-                        <!-- Custom Shape Dropdown Trigger -->
-                        <button class="shape-btn" on:click|stopPropagation={(e) => toggleDropdown(e, band.id)} disabled={!band.enabled} title={filterNames[band.type] || band.type}>
-                            <svg width="22" height="14" viewBox="0 0 24 24"><use href="#icon-{band.type}" /></svg>
-                            <span class="dropdown-arrow">▼</span>
+                    <div class="w-dropdown-wrapper">
+                        <button class="w-shape-btn" on:click|stopPropagation={(e) => toggleDropdown(e, activeBand.id)}>
+                            <div class="w-shape-flex">
+                                <svg width="24" height="14" viewBox="0 0 24 24"><use href="#icon-{activeBand.type}"/></svg>
+                                <span>{filterNames[activeBand.type]}</span>
+                            </div>
+                            <span class="w-dropdown-arrow">▼</span>
                         </button>
-                        
-                        {#if dropdownOpenId === band.id}
-                        <!-- Omnidirectional popup menu -->
-                        <div class="shape-dropdown fade-in">
-                            {#each filterTypes as t}
-                                <button class="shape-option" class:active={band.type === t} on:click|stopPropagation={() => selectShape(band, t)}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24"><use href="#icon-{t}" /></svg>
-                                    <span>{filterNames[t]}</span>
-                                    {#if band.type === t}<span class="active-dot">•</span>{/if}
-                                </button>
-                            {/each}
-                        </div>
+                        {#if dropdownOpenId === activeBand.id}
+                            <div class="w-shape-dropdown fade-in">
+                                {#each filterTypes as t}
+                                    <button class="shape-option" class:active={activeBand.type === t} on:click|stopPropagation={() => selectShape(activeBand, t)}>
+                                        <svg width="20" height="20" viewBox="0 0 24 24"><use href="#icon-{t}"/></svg>
+                                        <span>{filterNames[t]}</span>
+                                        {#if activeBand.type === t}<span class="active-dot">•</span>{/if}
+                                    </button>
+                                {/each}
+                            </div>
                         {/if}
-                        
-                        <div class="slider-group">
-                            <label for="freq-{band.id}">Freq</label>
-                            <input id="freq-{band.id}" type="range" class="fw knob-proxy" min="1.0" max="4.342" step="0.01" bind:value={band.logVal} on:input={updateBands} disabled={!band.enabled} />
-                            <span class="val">{band.freq >= 1000 ? (band.freq/1000).toFixed(2)+' kHz' : Math.floor(band.freq)+' Hz'}</span>
-                        </div>
-
-                        <div class="slider-group">
-                            <label for="gain-{band.id}">Gain</label>
-                            <input id="gain-{band.id}" type="range" class="fw knob-proxy" min="-15" max="15" step="0.1" bind:value={band.gain} on:input={updateBands} disabled={!band.enabled || band.type === 'hpf' || band.type === 'lpf'} />
-                            <span class="val">{band.gain > 0 ? '+'+band.gain.toFixed(1) : band.gain.toFixed(1)} dB</span>
-                        </div>
-
-                        <div class="slider-group">
-                            <label for="q-{band.id}">Q</label>
-                            <input id="q-{band.id}" type="range" class="fw q-proxy" min="0.1" max="10" step="0.1" bind:value={band.q} on:input={updateBands} disabled={!band.enabled} />
-                            <span class="val">{band.q.toFixed(2)}</span>
-                        </div>
                     </div>
                 </div>
-            {/each}
+
+                <div class="w-slider-group">
+                    <label>GAIN <span class="w-val">{getGainDisplay(activeBand.gain)} dB</span></label>
+                    <input type="range" class="knob-proxy" min="-15" max="15" step="0.1" bind:value={activeBand.gain} on:input={updateBands} disabled={!activeBand.enabled} />
+                </div>
+                
+                <div class="w-slider-group">
+                    <label>Q <span class="w-val-green">{activeBand.q.toFixed(2)}</span></label>
+                    <input type="range" class="knob-proxy-green" min="0.1" max="10" step="0.1" bind:value={activeBand.q} on:input={updateBands} disabled={!activeBand.enabled} />
+                </div>
+                
+                <div class="w-slider-group">
+                    <label>FREQ <span class="w-val-blue">{Math.round(Math.pow(10, activeBand.logVal))} Hz</span></label>
+                    <input type="range" class="knob-proxy-blue" min="1.0" max="4.342" step="0.01" bind:value={activeBand.logVal} on:input={updateBands} disabled={!activeBand.enabled} />
+                </div>
+            {/if}
         </div>
     </div>
 </div>
 
 <style>
-  .eq-container { display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 4px; background: #262626; border: 1px solid #3f3f46; overflow: visible; box-shadow: 0 12px 32px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif; }
-  .canvas-wrapper { flex: 1; min-height: 180px; position: relative; background: #1c1c1c; border-bottom: 1px solid #111; } /* Ableton Dark Graph bg */
+  /* Layout Wing UI Overrides */
+  .layout-wing { display: flex; flex-direction: row; width: 100%; height: 100%; min-height: 380px; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; }
+  .canvas-wrapper { flex: 1; min-height: 0; position: relative; background: #080a0f; border-right: 1px solid #000; }
   canvas { display: block; width: 100%; height: 100%; }
-
-  .controls-panel { background: #b0b4b8; border-top: 1px solid #171717; padding: 0.4rem; flex-shrink: 0; } /* Ableton Silver layout */
-  .band-matrix { display: flex; gap: 4px; justify-content: space-between; }
   
-  .band-column { flex: 1; display: flex; flex-direction: column; align-items: center; background: #c2c6ca; border: 1px solid #9ca3af; border-radius: 4px; padding: 0.5rem 0.2rem; transition: all 0.2s; cursor: pointer; }
-  .band-column:hover:not(.active) { background: #d1d5db; }
-  .band-column.active { background: #e2e8f0; box-shadow: inset 0 0 0 1px #00e5ff; }
+  /* Right Sidebar Split */
+  .wing-sidebar { width: 340px; flex-shrink: 0; display: flex; flex-direction: row; background: #12151c; }
   
-  .band-header { display: flex; align-items: center; justify-content: center; margin-bottom: 0.8rem; width: 100%; }
-  .enable-btn { background: #71717a; color: #fff; border: 1px solid #52525b; width: 24px; height: 18px; border-radius: 2px; font-size: 0.7rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(255,255,255,0.2); transition: 0.1s; }
-  .enable-btn.is-on { background: #00e5ff; color: #000; border-color: #0891b2; box-shadow: 0 0 8px rgba(0,229,255,0.4); }
+  /* Band Selection List Base */
+  .wing-band-list { width: 110px; display: flex; flex-direction: column; background: #0f1115; border-right: 1px solid #000; overflow-y: auto; }
+  .wing-band-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0.6rem; border: none; border-bottom: 1px solid #1e293b; background: transparent; cursor: pointer; transition: 0.1s; outline: none; }
+  .wing-band-row:hover { background: rgba(59,130,246,0.05); }
+  .wing-band-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
+  .wing-band-name { display: flex; gap: 0.5rem; align-items: center; color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+  .wing-band-row.active .wing-band-name { color: #f8fafc; font-weight: 700; }
+  .w-id { font-weight: 800; }
   
-  .params-container { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; position: relative; }
+  .w-toggle { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #475569; background: #0f1115; transition: 0.2s; }
+  .w-toggle.is-on { background: transparent; border-color: #f8fafc; border-width: 2px; }
   
-  .shape-btn { 
-      background: #c2c6ca; border: 1px solid #9ca3af; color: #18181b; border-radius: 2px;
-      display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; 
-      cursor: pointer; width: 90%; margin: 0 auto 0.2rem auto; outline: none; transition: 0.1s;
-      box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
-  }
-  .shape-btn:hover { background: #00e5ff; color: #000; border-color: #0891b2; }
-  .shape-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .dropdown-arrow { font-size: 0.5rem; color: #3f3f46; transform: translateY(1px); }
-  .band-column.active .shape-btn { background: #00e5ff; color: #000; border-color: #0891b2; }
-
-  .shape-dropdown {
-      position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; background: #1f2229; 
-      border: 1px solid #3f3f46; border-radius: 6px; padding: 0.4rem 0; width: 155px; box-shadow: 0 12px 32px rgba(0,0,0,0.8);
-      display: flex; flex-direction: column; z-index: 1000;
-  }
-  .shape-dropdown::after {
-      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-      border-width: 6px; border-style: solid; border-color: #1f2229 transparent transparent transparent;
-  }
-  .shape-option {
-      background: transparent; border: none; color: #e2e8f0; padding: 0.4rem 0.8rem;
-      display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.1s; width: 100%; text-align: left;
-      font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif;
-  }
-  .shape-option:hover { background: rgba(59,130,246,0.2); color: #fff; }
-  .shape-option.active { color: #ffb700; }
-  .active-dot { margin-left: auto; color: #ffb700; font-size: 1rem; line-height: 0; }
+  /* Detail View Array Panel */
+  .wing-detail-view { flex: 1; padding: 1.25rem 1rem; display: flex; flex-direction: column; gap: 1.5rem; background: #1f2937; }
+  .w-detail-header { display: flex; flex-direction: column; gap: 0.8rem; }
+  .w-detail-title-group { display: flex; justify-content: space-between; align-items: center; }
+  .w-band-label { color: #94a3b8; font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; }
+  .w-mini-toggle { border: none; background: #374151; color: #94a3b8; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer; font-weight: 800; transition: 0.2s; }
+  .w-mini-toggle.is-on { background: #f59e0b; color: #000; }
   
-  .slider-group { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
-  .slider-group label { font-size: 0.65rem; color: #3f3f46; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .val { font-size: 0.7rem; font-family: 'Inter', sans-serif; font-weight: 500; color: #18181b; background: transparent; padding: 0; text-align: center; }
+  /* Filter Geometries UI Overlay */
+  .w-dropdown-wrapper { position: relative; width: 100%; }
+  .w-shape-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; background: #111827; border: 1px solid #374151; color: #f8fafc; padding: 0.6rem; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .w-shape-btn:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
+  .w-shape-flex { display: flex; align-items: center; gap: 0.5rem; }
+  .w-dropdown-arrow { font-size: 0.6rem; color: #94a3b8; }
   
-  /* Styled Input Proxies mimicking Ableton horizontal knob parameter mapping */
-  .fw { width: 85%; -webkit-appearance: none; appearance: none; height: 4px; background: #9ca3af; outline: none; border-radius: 2px; border: 1px solid #cbd5e1; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
-  .fw::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; background: #3f3f46; border-radius: 50%; cursor: pointer; border: 2px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-  .fw:disabled::-webkit-slider-thumb { background: #9ca3af; cursor: not-allowed; }
-  .fw:disabled { opacity: 0.5; }
+  .w-shape-dropdown { position: absolute; top: 110%; left: 0; width: 100%; background: #111827; border: 1px solid #374151; border-radius: 6px; z-index: 1000; box-shadow: 0 12px 32px rgba(0,0,0,0.9); overflow: hidden; display: flex; flex-direction: column; }
+  .shape-option { display: flex; align-items: center; gap: 0.8rem; padding: 0.75rem 1rem; background: transparent; border: none; border-bottom: 1px solid #1f2937; color: #94a3b8; width: 100%; font-size: 0.8rem; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; transition: 0.1s; }
+  .shape-option:last-child { border-bottom: none; }
+  .shape-option:hover { background: rgba(59,130,246,0.15); color: #fff; }
+  .shape-option.active { color: #f59e0b; background: rgba(245, 158, 11, 0.05); border-left: 2px solid #f59e0b; }
+  .active-dot { margin-left: auto; color: #f59e0b; font-size: 1rem; line-height: 0; }
   
-  /* Cyan highlight for active node tracking */
-  .band-column.active .fw::-webkit-slider-thumb { background: #00e5ff; border-color: #fff; box-shadow: 0 0 6px rgba(0,229,255,0.6); }
-
+  /* Parameter Sliders */
+  .w-slider-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .w-slider-group label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #e2e8f0; font-weight: 600; letter-spacing: 0.5px; }
+  .w-val { color: #f8fafc; font-family: 'JetBrains Mono', monospace; }
+  .w-val-green { color: #10b981; font-family: 'JetBrains Mono', monospace; }
+  .w-val-blue { color: #3b82f6; font-family: 'JetBrains Mono', monospace; }
+  
+  .knob-proxy, .knob-proxy-green, .knob-proxy-blue { width: 100%; margin: 0; appearance: none; background: transparent; height: 16px; outline: none; }
+  .knob-proxy:disabled, .knob-proxy-green:disabled, .knob-proxy-blue:disabled { opacity: 0.3; cursor: not-allowed; }
+  
+  .knob-proxy::-webkit-slider-runnable-track, .knob-proxy-green::-webkit-slider-runnable-track, .knob-proxy-blue::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #111827; border-radius: 2px; }
+  
+  .knob-proxy::-webkit-slider-thumb { appearance: none; height: 16px; width: 16px; border-radius: 2px; background: #e2e8f0; border: none; margin-top: -6px; cursor: pointer; transition: 0.1s; }
+  .knob-proxy:active::-webkit-slider-thumb { background: #fff; transform: scale(1.1); }
+  
+  .knob-proxy-green::-webkit-slider-thumb { appearance: none; height: 16px; width: 16px; border-radius: 2px; background: #10b981; border: none; margin-top: -6px; cursor: pointer; transition: 0.1s; }
+  .knob-proxy-green:active::-webkit-slider-thumb { background: #34d399; transform: scale(1.1); }
+  
+  .knob-proxy-blue::-webkit-slider-thumb { appearance: none; height: 16px; width: 16px; border-radius: 2px; background: #3b82f6; border: none; margin-top: -6px; cursor: pointer; transition: 0.1s; }
+  .knob-proxy-blue:active::-webkit-slider-thumb { background: #60a5fa; transform: scale(1.1); }
+  
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 </style>
