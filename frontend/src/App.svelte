@@ -268,6 +268,12 @@
   }
 </script>
 
+<div class="portrait-warning">
+  <div class="rotate-icon">📱 <span>🔄</span></div>
+  <h2>Rotate Your Device</h2>
+  <p>OpenMix is designed explicitly for landscape usage to mimic a real digital console.</p>
+</div>
+
 <main class="app-container" class:scribble-mode={scribbleEditMode}>
       <Navbar {activeRole} onExitRole={() => activeRole = null} onExportScene={handleExportScene} onFileLoad={handleFileUpload} onScribbleEdit={() => scribbleEditMode = !scribbleEditMode} />
 
@@ -785,4 +791,29 @@
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Mobile & Tablet Responsiveness */
+  .portrait-warning {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: #0b0d12; color: #f8fafc; z-index: 9999;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 2rem;
+  }
+  .portrait-warning h2 { margin-bottom: 0.5rem; font-size: 1.5rem; }
+  .portrait-warning p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; max-width: 300px; }
+  .rotate-icon { font-size: 4rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; }
+  
+  @media (max-width: 1400px) {
+    :global(#app) { max-width: 95% !important; }
+  }
+  @media (max-width: 1100px) {
+    :global(#app) { max-width: 100% !important; }
+    .card { padding: 1.5rem; border-radius: 0; border-left: none; border-right: none; }
+    .glass-header { padding: 0.5rem 1rem; }
+    .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.75rem; }
+  }
+  @media (max-width: 900px) and (orientation: portrait) {
+    .app-container { display: none !important; }
+    .portrait-warning { display: flex; }
+  }
 </style>
