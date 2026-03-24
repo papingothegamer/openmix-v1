@@ -85,23 +85,44 @@
   let stereoLinks = {};  // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
   function toggleStereoLink(ch) {
     const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
-    stereoLinks = { ...stereoLinks, [oddCh]: !stereoLinks[oddCh] };
+    const newState = !stereoLinks[oddCh];
+    stereoLinks = { ...stereoLinks, [oddCh]: newState };
+    setOsc(`/config/chlink/${oddCh}-${oddCh+1}`, newState ? 1 : 0);
   }
-  function isLinked(ch) {
+  function isLinked(ch, _stereoLinksDep) {
     if (typeof ch !== 'number') return false;
     const oddCh = ch % 2 === 1 ? ch : ch - 1;
-    return !!stereoLinks[oddCh];
+    return !!_stereoLinksDep[oddCh];
   }
 
   // Main output assignment per channel
   let mainOutAssign = {};  // { 'in_1': true, 'in_2': true, ... }
   function toggleMainOut(chId) {
-    mainOutAssign = { ...mainOutAssign, [chId]: !mainOutAssign[chId] };
+    const newState = !mainOutAssign[chId];
+    mainOutAssign = { ...mainOutAssign, [chId]: newState };
+    
+    if (chId.startsWith('in_')) {
+      const num = chId.replace('in_', '').padStart(2, '0');
+      setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
+    } else if (chId.startsWith('fx_')) {
+      const num = chId.replace('fx_', '');
+      setOsc(`/rtn/${num}/mix/lr`, newState ? 1 : 0);
+    }
   }
 
   function handleBandsChange(chId, newBands) {
       channelEqState[chId] = newBands.map(b => ({...b}));
       channelEqState = {...channelEqState}; // trigger reactivity
+      
+      // Emit OSC for each band
+      if (chId.startsWith('in_')) {
+          const num = chId.replace('in_', '').padStart(2, '0');
+          newBands.forEach((band, i) => {
+              setOsc(`/ch/${num}/eq/${i+1}/f`, band.freq);
+              setOsc(`/ch/${num}/eq/${i+1}/g`, band.gain);
+              setOsc(`/ch/${num}/eq/${i+1}/q`, band.q);
+          });
+      }
   }
 
   $: currentEqBands = channelEqState[selectedChannel] || null;
@@ -236,8 +257,8 @@
         <p>Configure OpenMix bounds for your digital live mixer.</p>
         
         <div class="form-group">
-          <label>Hardware Architecture Preset</label>
-          <select bind:value={config.presetId} on:change={applyPreset}>
+          <label for="preset">Hardware Architecture Preset</label>
+          <select id="preset" bind:value={config.presetId} on:change={applyPreset}>
             {#each PredefinedMixersArray as preset}
               <option value={preset.id}>{preset.name}</option>
             {/each}
@@ -255,7 +276,7 @@
         
         {#if config.presetId !== 'CUSTOM' || config.outputs > 0}
         <div class="form-group">
-          <label>Visible Buses / Outputs (Sandbox Access)</label>
+          <p class="label">Visible Buses / Outputs (Sandbox Access)</p>
           <div class="bus-grid">
              {#each Array(config.outputs) as _, i}
                <label class="bus-toggle">
@@ -325,12 +346,12 @@
               <div class="musician-rack">
                 {#each inputChannels as chIndex}
                   <ChannelStrip 
-                    channelIndex={chIndex} 
+                    channelIndex={String(chIndex)} 
                     role="musician"
                     stripType="input"
                     name={scribbles[`in_${chIndex}`]?.name || (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`)}
                     iconType={scribbles[`in_${chIndex}`]?.iconType || 'icon_01'}
-                    color={isLinked(chIndex) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[`in_${chIndex}`]?.color || '#3f3f46')}
+                    color={isLinked(chIndex, stereoLinks) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[`in_${chIndex}`]?.color || '#3f3f46')}
                     peakLevel={fohMeters[chIndex - 1] || -60}
                     on:nameClick={() => {}}
                   />
@@ -357,15 +378,15 @@
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
                   <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = sId; }}>
                     <ChannelStrip 
-                      channelIndex={chIndex} 
+                      channelIndex={String(chIndex)} 
                       role={activeRole}
                       stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
                       name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
                       iconType={scribbles[sId]?.iconType || 'icon_01'}
-                      color={activeView === 'inputs' && isLinked(chIndex) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6'))}
+                      color={activeView === 'inputs' && isLinked(chIndex, stereoLinks) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6'))}
                       peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
                       eqCurvePath={computeMiniEqPath(sId)}
-                      stereoLink={activeView === 'inputs' ? isLinked(chIndex) : false}
+                      stereoLink={activeView === 'inputs' ? isLinked(chIndex, stereoLinks) : false}
                       on:toggleLink={() => toggleStereoLink(chIndex)}
                       on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
                     />
@@ -380,7 +401,7 @@
                     <!-- svelte-ignore a11y-no-static-element-interactions -->
                     <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = fxSId; }}>
                       <ChannelStrip
-                        channelIndex={fxIdx}
+                        channelIndex={String(fxIdx)}
                         role={activeRole}
                         stripType="fx"
                         name={scribbles[fxSId]?.name || `FX ${fxIdx}`}
@@ -624,25 +645,6 @@
   }
   
   .app-container { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-  .glass-header {
-    background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 100;
-  }
-  .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
-  .highlight { color: #3b82f6; }
-
-  .toolbar { display: flex; align-items: center; gap: 1rem; }
-  .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; }
-  .status-indicator.connected { color: #10b981; }
-  .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
-  .connected .ping-dot { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
-
-  .btn-sm { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; transition: background 0.2s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-  .btn-sm:hover { background: rgba(255,255,255,0.2); }
-  .upload-btn { background: #3b82f6; border-color: #3b82f6; color: white; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
-  .upload-btn:hover { background: #2563eb; }
 
   .content-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
   .content-wrapper:not(.is-mixing) { padding: 1.5rem; }
