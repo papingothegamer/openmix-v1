@@ -187,7 +187,14 @@
     const sceneLayout = {
         name: 'OpenMix Export',
         timestamp: Date.now(),
-        state: { flatOscCache: $mixerState.flatOscCache }
+        state: { flatOscCache: $mixerState.flatOscCache },
+        uiConfig: {
+            config,
+            scribbles,
+            channelEqState,
+            mainOutAssign,
+            stereoLinks
+        }
     };
     const sceneData = JSON.stringify(sceneLayout, null, 2);
     const blob = new Blob([sceneData], { type: 'application/json' });
@@ -210,10 +217,25 @@
         const result = ev.target.result;
         const text = typeof result === 'string' ? result : new TextDecoder().decode(result);
         const json = JSON.parse(text);
-        socket.emit('pushState', json, (res) => {
-          if (res && res.error) alert('Error: ' + res.error);
-          else alert(`Session Loaded! (${res ? res.sentCount : 'Unknown'} paths successfully dispatched to mixer)`);
-        });
+        
+        if (json.uiConfig) {
+           if (json.uiConfig.config) config = json.uiConfig.config;
+           if (json.uiConfig.scribbles) scribbles = json.uiConfig.scribbles;
+           if (json.uiConfig.channelEqState) channelEqState = json.uiConfig.channelEqState;
+           if (json.uiConfig.mainOutAssign) mainOutAssign = json.uiConfig.mainOutAssign;
+           if (json.uiConfig.stereoLinks) stereoLinks = json.uiConfig.stereoLinks;
+           
+           localStorage.setItem('openmix_config', JSON.stringify(config));
+        }
+
+        if (json.state && json.state.flatOscCache && Object.keys(json.state.flatOscCache).length > 0) {
+            socket.emit('pushState', json, (res) => {
+              if (res && res.error) alert('Error: ' + res.error);
+              else alert(`Session Loaded! (${res ? res.sentCount : 'Unknown'} paths successfully dispatched to mixer)`);
+            });
+        } else {
+            alert('UI Configuration loaded successfully! (No OSC state found in file)');
+        }
       } catch(err) {
         alert('Invalid JSON file.');
       }
