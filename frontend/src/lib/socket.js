@@ -11,7 +11,7 @@ export const socket = io(SOCKET_URL, {
 
 // Svelte stores for reactivity
 export const isConnected = writable(false);
-export const mixerState = writable({ buses: {}, channels: {}, meters: [] });
+export const mixerState = writable({ buses: {}, channels: {}, meters: [], flatOscCache: {} });
 export const rawMeters = writable([]);
 export const meterLight = writable('off'); // 'off', 'green', 'yellow', 'red'
 

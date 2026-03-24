@@ -184,7 +184,12 @@
       alert('No mixer state available to export yet. Please connect first.');
       return;
     }
-    const sceneData = JSON.stringify($mixerState.flatOscCache, null, 2);
+    const sceneLayout = {
+        name: 'OpenMix Export',
+        timestamp: Date.now(),
+        state: { flatOscCache: $mixerState.flatOscCache }
+    };
+    const sceneData = JSON.stringify(sceneLayout, null, 2);
     const blob = new Blob([sceneData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
