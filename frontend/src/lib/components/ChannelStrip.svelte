@@ -88,7 +88,6 @@
         <button class="switch-btn link" class:active={stereoLink} on:click={() => stereoLink = !stereoLink}>LINK</button>
       </div>
 
-      <!-- Mock EQ / Comp Charts mimicking Ableton -->
       <div class="chart eq-chart">
         <span class="label">EQ</span>
         <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
@@ -98,6 +97,22 @@
         <div class="gr-meter"></div>
       </div>
     </div>
+  {/if}
+
+  <!-- Main/Output strip EQ chart (no preamp switches) -->
+  {#if role === 'foh' && (stripType === 'main' || stripType === 'output')}
+    {#if stripType === 'main'}
+      <div class="foh-controls">
+        <div class="chart eq-chart">
+          <span class="label">EQ</span>
+          <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
+        </div>
+        <div class="chart comp-chart">
+          <span class="label">COMP</span>
+          <div class="gr-meter"></div>
+        </div>
+      </div>
+    {/if}
   {/if}
 
   <div class="spacer"></div>

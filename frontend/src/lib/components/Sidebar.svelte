@@ -3,8 +3,10 @@
   export let activeView = 'inputs';
   export let currentPage = 0;
   export let totalPages = 1;
+  export let stripsPerPage = 8;
   export let onPageChange = (p) => {};
   export let onViewChange = (v) => {};
+  export let onStripsChange = (n) => {};
   export let onResetEq = () => {};
 
   function prev() { if (currentPage > 0) onPageChange(currentPage - 1); }
@@ -18,6 +20,15 @@
       <button class="layer-btn" class:active={activeView === 'inputs'} on:click={() => onViewChange('inputs')}>INPUTS</button>
       <button class="layer-btn" class:active={activeView === 'outputs'} on:click={() => onViewChange('outputs')}>OUTPUTS</button>
       <button class="layer-btn" class:active={activeView === 'dcas'} on:click={() => onViewChange('dcas')}>DCAs</button>
+    </div>
+
+    <div class="routing-section">
+      <h4>Visible Strips</h4>
+      <div class="strips-control">
+        <button class="strip-adj" on:click={() => { if (stripsPerPage > 1) onStripsChange(stripsPerPage - 1); }}>−</button>
+        <span class="strip-count">{stripsPerPage}</span>
+        <button class="strip-adj" on:click={() => onStripsChange(stripsPerPage + 1)}>+</button>
+      </div>
     </div>
 
     <div class="spacer"></div>
@@ -94,6 +105,11 @@
   .layer-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; box-shadow: 0 0 16px rgba(59,130,246,0.3); transform: translateY(-2px); }
 
   .spacer { flex: 1; }
+
+  .strips-control { display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+  .strip-adj { width: 32px; height: 32px; border-radius: 6px; background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 1.1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+  .strip-adj:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
+  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 800; color: #f8fafc; min-width: 24px; text-align: center; }
 
   .pagination-section { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border: 1px solid #1e293b; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
   .pagination-section h4 { margin-bottom: 0.5rem; }

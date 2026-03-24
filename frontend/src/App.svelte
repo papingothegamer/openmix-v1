@@ -18,6 +18,7 @@
   let activeView = 'inputs'; // 'inputs', 'outputs', 'dcas'
   let currentPage = 1;
   let channelsPerPage = 8;
+  let stripsPerPage = 8; // User-configurable visible strips
   
   // Scribble Strip / Global Selectors
   let scribbleEditMode = false;
@@ -168,7 +169,7 @@
   let containerWidth = 0;
   const STRIP_WIDTH = 90; // Standard layout size
   
-  $: channelsPerPage = containerWidth > 0 ? Math.floor(containerWidth / STRIP_WIDTH) : currentChannels.length;
+  $: channelsPerPage = stripsPerPage;
   $: totalPages = Math.ceil(currentChannels.length / Math.max(1, channelsPerPage));
   $: displayedChannels = currentChannels.slice(currentPage * channelsPerPage, (currentPage + 1) * channelsPerPage);
 
@@ -304,7 +305,7 @@
                   role="musician"
                   stripType="output"
                   name={scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux}`}
-                  iconType={scribbles[`out_${musicianAux}`]?.iconType || ''}
+                  iconType={scribbles[`out_${musicianAux}`]?.iconType || 'icon_01'}
                   color={scribbles[`out_${musicianAux}`]?.color || '#8b5cf6'}
                   peakLevel={-60}
                   on:nameClick={() => {}}
@@ -324,7 +325,7 @@
                       role={activeRole}
                       stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
                       name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
-                      iconType={scribbles[sId]?.iconType || (activeView === 'inputs' ? 'icon_01' : '')}
+                      iconType={scribbles[sId]?.iconType || 'icon_01'}
                       color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
                       peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
                       eqCurvePath={computeMiniEqPath(sId)}
@@ -343,7 +344,7 @@
                       role={activeRole}
                       stripType="main"
                       name={scribbles['main_LR']?.name || "MAIN LR"}
-                      iconType={scribbles['main_LR']?.iconType || ''}
+                      iconType={scribbles['main_LR']?.iconType || 'icon_01'}
                       color={scribbles['main_LR']?.color || "#ef4444"}
                       peakLevel={-60}
                       eqCurvePath={computeMiniEqPath('main_LR')}
@@ -474,9 +475,10 @@
           </div>
         {/if}
 
-        <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} 
+        <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} {stripsPerPage}
                  onPageChange={(p) => currentPage = p} 
                  onViewChange={(v) => activeView = v}
+                 onStripsChange={(n) => stripsPerPage = n}
                  onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
       </div>
       {/if}
