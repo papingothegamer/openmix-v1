@@ -21,8 +21,8 @@
   }
 </script>
 
-<div class="modal-backdrop" on:click={close}>
-  <div class="modal-content" on:click|stopPropagation>
+<div class="modal-backdrop">
+  <div class="modal-content">
     <h3>Scribble Strip: CH {channelIndex}</h3>
     
     <div class="form-group">
@@ -31,7 +31,7 @@
     </div>
 
     <div class="form-group">
-      <label>Select Icon Mapping</label>
+      <p class="label" style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8rem;">Select Icon Mapping</p>
       <div class="icon-grid">
         {#each iconsList as icName}
           <button 
@@ -46,10 +46,10 @@
     </div>
     
     <div class="form-group">
-      <label>Strip Highlight Color</label>
+      <p class="label" style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8rem;">Strip Highlight Color</p>
       <div class="color-grid">
          {#each colorsList as cName}
-           <button class="color-btn" class:selected={currentColor === cName} style="background-color: {cName};" on:click={() => currentColor = cName}></button>
+           <button class="color-btn" aria-label="Select color {cName}" class:selected={currentColor === cName} style="background-color: {cName};" on:click={() => currentColor = cName}></button>
          {/each}
       </div>
     </div>

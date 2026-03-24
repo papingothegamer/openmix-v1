@@ -3,6 +3,7 @@
   import { UploadCloud, DownloadCloud, Maximize, Edit3 } from 'lucide-svelte';
 
   export let activeRole = null;
+  export let scribbleEditMode = false;
   export let onExitRole = () => {};
   export let onFileLoad = () => {};
   export let onExportScene = () => {};
@@ -23,7 +24,7 @@
     </div>
     
     {#if activeRole === 'foh'}
-      <button class="btn-sm scribble-btn" on:click={onScribbleEdit}>
+      <button class="btn-sm scribble-btn" class:active={scribbleEditMode} on:click={onScribbleEdit}>
         <Edit3 size={14} /> Scribble Strips
       </button>
       <button class="btn-sm export-btn" on:click={onExportScene}>
@@ -66,6 +67,7 @@
   .export-btn:hover { background: #7c3aed; }
   .scribble-btn { background: #10b981; border-color: #10b981; color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
   .scribble-btn:hover { background: #059669; }
+  .scribble-btn.active { background: #047857; border-color: #047857; box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
   .exit-btn { border-color: #ef4444; color: #fca5a5; }
   .exit-btn:hover { background: #ef4444; color: white; }
 </style>
