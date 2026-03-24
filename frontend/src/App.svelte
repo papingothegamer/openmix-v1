@@ -60,6 +60,10 @@
 
   let requiresSetup = localStorage.getItem('openmix_setup') !== 'true';
   let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM', visibleBuses: [1,2,3,4,5,6] };
+
+  // Main LR cannot route to sends/FX/routing
+  $: disabledTabs = selectedChannel === 'main_LR' ? ['sends', 'fx', 'routing'] : [];
+  $: if (disabledTabs.includes(activeTab)) { activeTab = 'channel'; }
   
   // Watch config outputs to expand visibleBuses if CUSTOM mode expands globally without setting explicit visibility
   $: {
@@ -278,7 +282,7 @@
 
       {:else}
       {#if activeRole === 'foh'}
-          <GlobalTabs bind:activeTab />
+          <GlobalTabs bind:activeTab {disabledTabs} />
       {/if}
 
       <div class="workspace">

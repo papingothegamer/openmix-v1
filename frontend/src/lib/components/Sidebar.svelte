@@ -15,15 +15,15 @@
 
 <aside class="sidebar fade-in">
   {#if activeTab === 'mixer'}
-    <div class="routing-section">
-      <h4>Routing Layers</h4>
+    <div class="section">
+      <h4>Layers</h4>
       <button class="layer-btn" class:active={activeView === 'inputs'} on:click={() => onViewChange('inputs')}>INPUTS</button>
       <button class="layer-btn" class:active={activeView === 'outputs'} on:click={() => onViewChange('outputs')}>OUTPUTS</button>
       <button class="layer-btn" class:active={activeView === 'dcas'} on:click={() => onViewChange('dcas')}>DCAs</button>
     </div>
 
-    <div class="routing-section">
-      <h4>Visible Strips</h4>
+    <div class="section compact">
+      <h4>Strips</h4>
       <div class="strips-control">
         <button class="strip-adj" on:click={() => { if (stripsPerPage > 1) onStripsChange(stripsPerPage - 1); }}>−</button>
         <span class="strip-count">{stripsPerPage}</span>
@@ -34,90 +34,90 @@
     <div class="spacer"></div>
 
     {#if totalPages > 1}
-      <div class="pagination-section">
-        <h4>Bank Control</h4>
-        <button class="page-btn" disabled={currentPage === 0} on:click={prev}>◀ Prev</button>
+      <div class="section compact">
+        <h4>Bank</h4>
+        <button class="page-btn" disabled={currentPage === 0} on:click={prev}>◀</button>
         <div class="page-count">{currentPage + 1} / {totalPages}</div>
-        <button class="page-btn" disabled={currentPage >= totalPages - 1} on:click={next}>Next ▶</button>
+        <button class="page-btn" disabled={currentPage >= totalPages - 1} on:click={next}>▶</button>
       </div>
     {/if}
 
   {:else if activeTab === 'eq'}
-    <div class="routing-section">
-      <h4>EQ Controls</h4>
-      <button class="layer-btn">Bypass EQ</button>
-      <button class="layer-btn">RTA Overlay</button>
-      <button class="layer-btn">Copy EQ</button>
-      <button class="layer-btn">Paste EQ</button>
+    <div class="section">
+      <h4>EQ</h4>
       <button class="layer-btn" on:click={onResetEq}>Reset Flat</button>
+      <button class="layer-btn">Bypass</button>
+      <button class="layer-btn">Copy</button>
+      <button class="layer-btn">Paste</button>
     </div>
 
   {:else if activeTab === 'channel'}
-    <div class="routing-section">
-      <h4>Channel Tools</h4>
+    <div class="section">
+      <h4>Channel</h4>
       <button class="layer-btn">Gate</button>
-      <button class="layer-btn">Compressor</button>
+      <button class="layer-btn">Comp</button>
       <button class="layer-btn">Preamp</button>
       <button class="layer-btn">Phase Inv</button>
     </div>
 
   {:else if activeTab === 'sends'}
-    <div class="routing-section">
-      <h4>Bus Routing</h4>
-      <button class="layer-btn">Pre/Post Toggle</button>
-      <button class="layer-btn">Copy Sends</button>
-      <button class="layer-btn">Paste Sends</button>
+    <div class="section">
+      <h4>Sends</h4>
+      <button class="layer-btn">Pre/Post</button>
+      <button class="layer-btn">Copy</button>
+      <button class="layer-btn">Paste</button>
     </div>
 
   {:else if activeTab === 'fx'}
-    <div class="routing-section">
-      <h4>FX Engine</h4>
+    <div class="section">
+      <h4>FX</h4>
       <button class="layer-btn">Reverb</button>
       <button class="layer-btn">Delay</button>
       <button class="layer-btn">Chorus</button>
-      <button class="layer-btn">Tap Tempo</button>
+      <button class="layer-btn">Tap</button>
     </div>
 
   {:else if activeTab === 'routing'}
-    <div class="routing-section">
-      <h4>Routing Tools</h4>
-      <button class="layer-btn">USB / DAW</button>
-      <button class="layer-btn">P16 / Ultranet</button>
-      <button class="layer-btn">Patch Matrix</button>
+    <div class="section">
+      <h4>Routing</h4>
+      <button class="layer-btn">USB/DAW</button>
+      <button class="layer-btn">P16</button>
+      <button class="layer-btn">Patch</button>
     </div>
 
   {:else}
-    <div class="routing-section">
-      <h4>{activeTab.toUpperCase()} Tools</h4>
-      <p style="font-size:0.75rem; color:#94a3b8; text-align:center;">Macro tools pending.</p>
+    <div class="section">
+      <h4>{activeTab.toUpperCase()}</h4>
+      <p class="muted">Tools pending.</p>
     </div>
   {/if}
 </aside>
 
 <style>
-  .sidebar { width: 140px; background: #0b0f19; border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 1.5rem 1rem; color: #e2e8f0; height: 100%; box-sizing: border-box; flex-shrink: 0; box-shadow: -4px 0 24px rgba(0,0,0,0.5); }
-  h4 { margin: 0 0 1rem 0; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+  .sidebar { width: 120px; background: #0b0f19; border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 0.75rem 0.5rem; gap: 0.75rem; color: #e2e8f0; height: 100%; box-sizing: border-box; flex-shrink: 0; overflow-y: auto; }
+  .sidebar::-webkit-scrollbar { width: 0; }
+  h4 { margin: 0 0 0.5rem 0; font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; text-align: center; }
   
-  .routing-section { display: flex; flex-direction: column; gap: 0.6rem; }
-  .layer-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.8rem; border-radius: 6px; font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-size: 0.8rem; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-  .layer-btn:hover { background: #334155; transform: translateY(-2px); }
-  .layer-btn:active { transform: translateY(0); }
-  .layer-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; box-shadow: 0 0 16px rgba(59,130,246,0.3); transform: translateY(-2px); }
+  .section { display: flex; flex-direction: column; gap: 0.35rem; }
+  .section.compact { gap: 0.3rem; }
+  .layer-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.5rem 0.4rem; border-radius: 4px; font-weight: 700; cursor: pointer; transition: all 0.15s; font-size: 0.7rem; width: 100%; text-align: center; }
+  .layer-btn:hover { background: #334155; }
+  .layer-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; }
 
   .spacer { flex: 1; }
 
-  .strips-control { display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
-  .strip-adj { width: 32px; height: 32px; border-radius: 6px; background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 1.1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+  .strips-control { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .strip-adj { width: 26px; height: 26px; border-radius: 4px; background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
   .strip-adj:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
-  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 800; color: #f8fafc; min-width: 24px; text-align: center; }
+  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #f8fafc; min-width: 20px; text-align: center; }
 
-  .pagination-section { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border: 1px solid #1e293b; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-  .pagination-section h4 { margin-bottom: 0.5rem; }
-  .page-btn { background: #334155; color: white; border: 1px solid #475569; padding: 0.8rem; border-radius: 6px; font-weight: 800; cursor: pointer; width: 100%; transition: all 0.2s; font-size: 0.8rem; }
-  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; border-color: #334155; }
-  .page-btn:not(:disabled):hover { background: #475569; border-color: #94a3b8; }
-  .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: bold; color: #94a3b8; margin: 0.4rem 0; }
+  .page-btn { background: #334155; color: white; border: 1px solid #475569; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .page-btn:not(:disabled):hover { background: #475569; }
+  .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: bold; color: #94a3b8; text-align: center; padding: 0.2rem 0; }
 
-  .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+  .muted { font-size: 0.65rem; color: #475569; text-align: center; margin: 0; }
+
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
 </style>

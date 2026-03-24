@@ -1,6 +1,7 @@
 <script>
-  export let activeTab = 'mixer'; // 'mixer', 'channel', 'eq', 'sends', 'routing'
+  export let activeTab = 'mixer';
   export let onTabSwitch = (t) => {};
+  export let disabledTabs = [];
 
   const fohTabs = [
     { id: 'mixer', label: 'MIXER' },
@@ -12,6 +13,7 @@
   ];
   
   function setTab(e) {
+      if (disabledTabs.includes(e)) return;
       activeTab = e;
       onTabSwitch(e);
   }
@@ -19,7 +21,13 @@
 
 <nav class="global-tabs-bar">
   {#each fohTabs as tab}
-    <button class="tab-btn" class:active={activeTab === tab.id} on:click={() => setTab(tab.id)}>{tab.label}</button>
+    <button 
+      class="tab-btn" 
+      class:active={activeTab === tab.id} 
+      class:disabled={disabledTabs.includes(tab.id)}
+      disabled={disabledTabs.includes(tab.id)}
+      on:click={() => setTab(tab.id)}
+    >{tab.label}</button>
   {/each}
 </nav>
 
@@ -33,6 +41,7 @@
     font-size: 0.8rem; letter-spacing: 0.5px; border-top-left-radius: 8px; border-top-right-radius: 8px;
     cursor: pointer; transition: all 0.2s ease; border-bottom: 3px solid transparent;
   }
-  .tab-btn:hover { color: #cbd5e1; background: rgba(30,41,59,0.5); }
+  .tab-btn:hover:not(:disabled) { color: #cbd5e1; background: rgba(30,41,59,0.5); }
   .tab-btn.active { color: #f8fafc; background: #1e293b; border-bottom-color: #3b82f6; }
+  .tab-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 </style>
