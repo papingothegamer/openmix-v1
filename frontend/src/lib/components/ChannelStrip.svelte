@@ -17,6 +17,7 @@
   
   // Fake meter values for demo purposes
   export let peakLevel = -60;
+  export let eqCurvePath = 'M0,20 L100,20'; // Live EQ curve from App state
 
   // FOH Extras
   export let phantom = false;
@@ -86,7 +87,7 @@
       <!-- Mock EQ / Comp Charts mimicking Ableton -->
       <div class="chart eq-chart">
         <span class="label">EQ</span>
-        <svg viewBox="0 0 100 40" class="curve"><path d="M0,20 Q25,5 50,20 T100,20" /></svg>
+        <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
       </div>
       <div class="chart comp-chart">
         <span class="label">COMP</span>

@@ -70,6 +70,52 @@
   // Phase 13 Parametric Nodes Reference
   let eqComponent;
 
+  // Per-channel EQ state persistence (survives tab switches)
+  let channelEqState = {};
+
+  function handleBandsChange(chId, newBands) {
+      channelEqState[chId] = newBands.map(b => ({...b}));
+      channelEqState = {...channelEqState}; // trigger reactivity
+  }
+
+  $: currentEqBands = channelEqState[selectedChannel] || null;
+
+  // Mini EQ path computation for ChannelStrip previews
+  function computeMiniEqPath(chId, w = 100, h = 40) {
+      const state = channelEqState[chId];
+      if (!state) return 'M0,20 L100,20'; // flat line default
+      const numPts = 32;
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(22000);
+      let d = '';
+      for (let i = 0; i <= numPts; i++) {
+          const logFreq = logMin + (i / numPts) * (logMax - logMin);
+          const freq = Math.pow(10, logFreq);
+          let totalGain = 0;
+          for (const b of state) {
+              if (!b.enabled) continue;
+              const f0 = Math.pow(10, b.logVal);
+              const ratio = freq / f0;
+              const logR = Math.log2(ratio);
+              switch(b.type) {
+                  case 'hpf12': totalGain += ratio < 1 ? -12 * Math.log2(1/ratio) : 0; break;
+                  case 'hpf48': totalGain += ratio < 1 ? -48 * Math.log2(1/ratio) : 0; break;
+                  case 'lpf12': totalGain += ratio > 1 ? -12 * Math.log2(ratio) : 0; break;
+                  case 'lpf48': totalGain += ratio > 1 ? -48 * Math.log2(ratio) : 0; break;
+                  case 'loshelf': totalGain += b.gain / (1 + Math.pow(ratio, 2)); break;
+                  case 'hishelf': totalGain += b.gain * (1 - 1 / (1 + Math.pow(ratio, 2))); break;
+                  case 'notch': { const bw2 = 1/Math.max(b.q,0.1); const x2 = logR/bw2; totalGain += -15/(1+x2*x2); break; }
+                  default: { const bw = 1/Math.max(b.q,0.1); const x = logR/bw; totalGain += b.gain/(1+x*x*4); break; }
+              }
+          }
+          totalGain = Math.max(-15, Math.min(15, totalGain));
+          const x = (i / numPts) * w;
+          const y = h / 2 - (totalGain / 15) * (h / 2 - 4);
+          d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+      }
+      return d;
+  }
+
   onMount(() => {
     socket.connect();
     // Load local configuration
@@ -233,6 +279,7 @@
                     iconType={scribbles[sId]?.iconType || (activeView === 'inputs' ? 'icon_01' : 'icon_55')}
                     color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
                     peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
+                    eqCurvePath={computeMiniEqPath(sId)}
                     on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
                   />
                 </div>
@@ -268,7 +315,7 @@
               </div>
             </div>
             <div style="flex: 1; width: 100%; display: flex; flex-direction: column;">
-                <EqEditor bind:this={eqComponent} channelId={selectedChannel} />
+                <EqEditor bind:this={eqComponent} channelId={selectedChannel} eqBands={currentEqBands} onBandsChange={handleBandsChange} />
             </div>
           </div>
 

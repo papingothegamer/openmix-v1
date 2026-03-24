@@ -1,16 +1,20 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   
   export let channelId = 'in_1';
+  /** Parent-managed bands array. If provided, EqEditor uses and mutates this. */
+  export let eqBands = null;
+  /** Callback fired whenever bands change, so parent can persist state */
+  export let onBandsChange = () => {};
   
   let canvas;
   let ctx;
   let width = 800;
   let height = 400;
-  let selectedBandIndex = 2; // Default to Band 3
+  let selectedBandIndex = 2;
+  let mounted = false;
 
-  // --- Core EQ Band Model ---
-  let bands = [
+  const defaultBands = () => [
     { id: 1, type: 'hpf12', freq: 80,  gain: 0, q: 0.71, logVal: 1.903, enabled: true },
     { id: 2, type: 'loshelf', freq: 200, gain: 0, q: 0.71, logVal: 2.301, enabled: true },
     { id: 3, type: 'peq',  freq: 500, gain: 0, q: 1.0,  logVal: 2.699, enabled: true },
@@ -20,6 +24,9 @@
     { id: 7, type: 'hishelf', freq: 8000,gain: 0, q: 0.71, logVal: 3.903, enabled: true },
     { id: 8, type: 'lpf12',  freq: 18000,gain: 0, q: 0.71, logVal: 4.255, enabled: true },
   ];
+
+  // Use parent-provided bands or fall back to defaults
+  $: bands = eqBands || defaultBands();
 
   const filterTypes = ['hpf12', 'hpf48', 'loshelf', 'peq', 'notch', 'hishelf', 'lpf12', 'lpf48'];
   const filterNames = {
@@ -85,7 +92,7 @@
   }
 
   function drawEQ() {
-      if (!ctx) return;
+      if (!ctx || width <= 0 || height <= 0) return;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
@@ -96,7 +103,6 @@
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 0.5;
 
-      // Horizontal gain lines
       const gainValues = [-12, -6, 0, 6, 12];
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
@@ -110,7 +116,6 @@
           ctx.fillText(`${g > 0 ? '+' : ''}${g}dB`, 42, y - 3);
       }
 
-      // Vertical frequency lines
       const freqs = [20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 15000, 20000];
       const labelFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
       ctx.textAlign = 'center';
@@ -142,7 +147,6 @@
           points.push({ x: freqToX(freq), y: gainToY(totalGain) });
       }
 
-      // Fill under curve
       ctx.beginPath();
       ctx.moveTo(points[0].x, gainToY(0));
       for (const p of points) ctx.lineTo(p.x, p.y);
@@ -155,7 +159,6 @@
       ctx.fillStyle = grad;
       ctx.fill();
 
-      // Stroke curve
       ctx.beginPath();
       for (let i = 0; i <= numPoints; i++) {
           if (i === 0) ctx.moveTo(points[i].x, points[i].y);
@@ -165,7 +168,6 @@
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // --- Band control nodes ---
       for (let i = 0; i < bands.length; i++) {
           const b = bands[i];
           const bx = freqToX(Math.pow(10, b.logVal));
@@ -196,35 +198,32 @@
   function updateBands() {
       bands.forEach(b => { b.freq = Math.pow(10, b.logVal); });
       bands = [...bands];
+      if (eqBands) { eqBands = bands; }
+      onBandsChange(channelId, bands);
       drawEQ();
   }
 
   export function resetFlat() {
       bands = bands.map(b => ({ ...b, gain: 0, q: 1.0 }));
-      updateBands();
+      if (eqBands) { eqBands = bands; }
+      onBandsChange(channelId, bands);
+      drawEQ();
   }
 
-  /** Returns a simplified SVG path for the current EQ curve (for ChannelStrip mini-chart) */
-  export function getCurvePath(w = 100, h = 40) {
-      const numPts = 64;
-      const logMin = Math.log10(20);
-      const logMax = Math.log10(22000);
-      let d = '';
-      for (let i = 0; i <= numPts; i++) {
-          const logFreq = logMin + (i / numPts) * (logMax - logMin);
-          const freq = Math.pow(10, logFreq);
-          let totalGain = 0;
-          for (const b of bands) totalGain += computeBandResponse(b, freq);
-          totalGain = Math.max(-15, Math.min(15, totalGain));
-          const x = (i / numPts) * w;
-          const y = h / 2 - (totalGain / 15) * (h / 2 - 4);
-          d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
-      }
-      return d;
-  }
-
-  onMount(() => {
+  onMount(async () => {
       ctx = canvas.getContext('2d');
+      mounted = true;
+      // Defer first draw to ensure the container has laid out
+      await tick();
+      requestAnimationFrame(() => {
+          const rect = canvas.parentElement.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+              width = rect.width;
+              height = rect.height;
+          }
+          drawEQ();
+      });
+
       const ro = new ResizeObserver(entries => {
           for (const entry of entries) {
               width = entry.contentRect.width;
@@ -233,11 +232,10 @@
           }
       });
       ro.observe(canvas.parentElement);
-      drawEQ();
       return () => ro.disconnect();
   });
 
-  $: if (ctx && bands) drawEQ();
+  $: if (mounted && ctx && bands) drawEQ();
 </script>
 
 <svelte:window on:click={closeDropdowns} />
