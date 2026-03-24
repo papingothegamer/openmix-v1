@@ -64,7 +64,11 @@
   <!-- Header: Icon & Name -->
   <div class="strip-header" style="background: linear-gradient(180deg, {color}55 0%, transparent 100%); border-top: 3px solid {color};">
     <div class="icon-slot">
-      <img src="/icons-bmp/{iconType}.bmp" alt="Channel Icon" style="width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; border-radius: 2px; border: 1px solid #000;" />
+      {#if iconType}
+        <img src="/icons-bmp/{iconType}.bmp" alt="Channel Icon" style="width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; border-radius: 2px; border: 1px solid #000;" />
+      {:else}
+        <div style="width: 22px; height: 22px; border-radius: 2px; border: 1px solid #27272a; background: #18181b;"></div>
+      {/if}
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->

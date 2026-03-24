@@ -21,8 +21,11 @@
   
   // Scribble Strip / Global Selectors
   let scribbleEditMode = false;
-  let editingChannel = null; // String ID like 'in_1', 'main_LR'
+  let editingChannel = null;
   let selectedChannel = 'in_1';
+  
+  // Musician Monitor Mix — which aux bus they control
+  let musicianAux = null;
 
   function cycleChannel(dir) {
     if (!selectedChannel || selectedChannel === 'main_LR') return;
@@ -247,7 +250,7 @@
             <h3>FOH Master Control</h3>
             <p>Access high-res meters, processing graphs, and full routing console.</p>
           </button>
-          <button class="role-btn musician" on:click={() => activeRole = 'musician'}>
+          <button class="role-btn musician" on:click={() => { activeRole = 'musician'; musicianAux = null; }}>
             <h3>Musician Monitor Sandbox</h3>
             <p>Fader-only responsive view. Protected by strict backend auxiliary routing.</p>
           </button>
@@ -256,6 +259,23 @@
       </section>
 
     {:else}
+      <!-- Musician Aux Selection Gate -->
+      {#if activeRole === 'musician' && !musicianAux}
+        <section class="card aux-selector fade-in">
+          <h2>Select Your Monitor Mix</h2>
+          <p>Choose the AUX output bus assigned to your in-ear or wedge monitor.</p>
+          <div class="aux-grid">
+            {#each (config.visibleBuses || []) as auxNum}
+              <button class="aux-btn" on:click={() => musicianAux = auxNum}>
+                <span class="aux-num">AUX {auxNum}</span>
+                <span class="aux-label">{scribbles[`out_${auxNum}`]?.name || `Output ${auxNum}`}</span>
+              </button>
+            {/each}
+          </div>
+          <button class="btn-text" on:click={() => activeRole = null}>← Back to Role Select</button>
+        </section>
+
+      {:else}
       {#if activeRole === 'foh'}
           <GlobalTabs bind:activeTab />
       {/if}
@@ -263,47 +283,77 @@
       <div class="workspace">
         {#if activeTab === 'mixer'}
           <!-- EDGE-TO-EDGE MIXER ROUTING -->
-          <div class="console-view fade-in" bind:clientWidth={containerWidth}>
-            <div class="channels-track">
-              {#each displayedChannels as chIndex}
-                {@const sId = activeView === 'inputs' ? `in_${chIndex}` : (activeView === 'outputs' ? `out_${chIndex}` : `dca_${chIndex}`)}
-                <!-- Wrap in a clickable overlay if scribble mode is active -->
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
-                <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = sId; }}>
+          {#if activeRole === 'musician'}
+            <div class="console-view fade-in" bind:clientWidth={containerWidth}>
+              <div class="channels-track">
+                {#each inputChannels as chIndex}
                   <ChannelStrip 
                     channelIndex={chIndex} 
-                    role={activeRole}
-                    stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
-                    name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
-                    iconType={scribbles[sId]?.iconType || (activeView === 'inputs' ? 'icon_01' : 'icon_55')}
-                    color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
-                    peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
-                    eqCurvePath={computeMiniEqPath(sId)}
-                    on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
+                    role="musician"
+                    stripType="input"
+                    name={scribbles[`in_${chIndex}`]?.name || (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`)}
+                    iconType={scribbles[`in_${chIndex}`]?.iconType || 'icon_01'}
+                    color={scribbles[`in_${chIndex}`]?.color || '#3f3f46'}
+                    peakLevel={fohMeters[chIndex - 1] || -60}
+                    on:nameClick={() => {}}
                   />
-                </div>
-              {/each}
-              
-              {#if activeView === 'outputs'}
+                {/each}
                 <div class="master-divider"></div>
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
-                <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = 'main_LR'; }}>
-                  <ChannelStrip 
-                    channelIndex="LR"
-                    role={activeRole}
-                    stripType="main"
-                    name={scribbles['main_LR']?.name || "MAIN LR"}
-                    iconType={scribbles['main_LR']?.iconType || "icon_68"}
-                    color={scribbles['main_LR']?.color || "#ef4444"}
-                    peakLevel={-60}
-                    on:nameClick={() => { selectedChannel = 'main_LR'; activeTab = 'channel'; }}
-                  />
-                </div>
-              {/if}
+                <ChannelStrip 
+                  channelIndex={musicianAux}
+                  role="musician"
+                  stripType="output"
+                  name={scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux}`}
+                  iconType={scribbles[`out_${musicianAux}`]?.iconType || ''}
+                  color={scribbles[`out_${musicianAux}`]?.color || '#8b5cf6'}
+                  peakLevel={-60}
+                  on:nameClick={() => {}}
+                />
+              </div>
             </div>
-          </div>
+          {:else}
+            <div class="console-view fade-in" bind:clientWidth={containerWidth}>
+              <div class="channels-track">
+                {#each displayedChannels as chIndex}
+                  {@const sId = activeView === 'inputs' ? `in_${chIndex}` : (activeView === 'outputs' ? `out_${chIndex}` : `dca_${chIndex}`)}
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = sId; }}>
+                    <ChannelStrip 
+                      channelIndex={chIndex} 
+                      role={activeRole}
+                      stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
+                      name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
+                      iconType={scribbles[sId]?.iconType || (activeView === 'inputs' ? 'icon_01' : '')}
+                      color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
+                      peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
+                      eqCurvePath={computeMiniEqPath(sId)}
+                      on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
+                    />
+                  </div>
+                {/each}
+                
+                {#if activeView === 'outputs'}
+                  <div class="master-divider"></div>
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = 'main_LR'; }}>
+                    <ChannelStrip 
+                      channelIndex="LR"
+                      role={activeRole}
+                      stripType="main"
+                      name={scribbles['main_LR']?.name || "MAIN LR"}
+                      iconType={scribbles['main_LR']?.iconType || ''}
+                      color={scribbles['main_LR']?.color || "#ef4444"}
+                      peakLevel={-60}
+                      eqCurvePath={computeMiniEqPath('main_LR')}
+                      on:nameClick={() => { selectedChannel = 'main_LR'; activeTab = 'channel'; }}
+                    />
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/if}
                    
         {:else if activeTab === 'eq'}
           <div class="macro-view fade-in">
@@ -429,6 +479,7 @@
                  onViewChange={(v) => activeView = v}
                  onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
       </div>
+      {/if}
     {/if}
 
     
@@ -546,6 +597,13 @@
   .param-row input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 2px; background: #3b82f6; cursor: pointer; }
   .toggle-sm { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
   .toggle-sm:hover { background: #334155; color: #fff; }
+
+  /* Musician Aux Selector */
+  .aux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+  .aux-btn { background: rgba(15,23,42,0.6); border: 2px solid rgba(139,92,246,0.3); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); color: inherit; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+  .aux-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(139,92,246,0.3); border-color: #8b5cf6; background: rgba(139,92,246,0.15); }
+  .aux-num { font-size: 1.5rem; font-weight: 800; color: #8b5cf6; }
+  .aux-label { font-size: 0.8rem; color: #94a3b8; }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
