@@ -332,8 +332,8 @@
   .scribble-mode .strip-wrapper:hover { background: rgba(16, 185, 129, 0.1); }
 
   /* Macro Views Styling */
-  .macro-view { padding: 1rem; width: 100%; height: 100%; display: flex; flex-direction: column; background: #0b0f19; }
-  .view-header { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; background: #1e293b; padding: 1rem; border-radius: 8px; border: 1px solid #334155; }
+  .macro-view { padding: 1rem; width: 100%; max-width: 960px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  .view-header { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; background: #1e293b; padding: 1rem; border-radius: 8px; border: 1px solid #334155; flex-shrink: 0; }
   .view-header h2 { margin: 0; color: #f8fafc; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
   .nav-arrow { background: #0f172a; border: 1px solid #334155; color: #a1a1aa; font-size: 1.5rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; padding: 0.2rem 1.5rem; }
   .nav-arrow:hover { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 0 12px rgba(59,130,246,0.6); }

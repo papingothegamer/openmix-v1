@@ -10,14 +10,14 @@
   
   // Ableton EQ Eight Reference Architecture
   let bands = [
-    { id: 1, type: 'hpf', freq: 30, gain: 0, q: 0.71, enabled: true, logVal: 1.477 },
+    { id: 1, type: 'hpf48', freq: 30, gain: 0, q: 0.71, enabled: true, logVal: 1.477 },
     { id: 2, type: 'loshelf', freq: 100, gain: 0, q: 0.71, enabled: true, logVal: 2 },
     { id: 3, type: 'peq', freq: 250, gain: 0, q: 0.71, enabled: true, logVal: 2.398 },
     { id: 4, type: 'peq', freq: 500, gain: 0, q: 0.71, enabled: true, logVal: 2.698 },
     { id: 5, type: 'peq', freq: 1000, gain: 0, q: 0.71, enabled: true, logVal: 3 },
     { id: 6, type: 'peq', freq: 2500, gain: 0, q: 0.71, enabled: true, logVal: 3.398 },
     { id: 7, type: 'hishelf', freq: 6000, gain: 0, q: 0.71, enabled: true, logVal: 3.778 },
-    { id: 8, type: 'lpf', freq: 15000, gain: 0, q: 0.71, enabled: true, logVal: 4.176 }
+    { id: 8, type: 'lpf48', freq: 15000, gain: 0, q: 0.71, enabled: true, logVal: 4.176 }
   ];
 
   export const resetFlat = () => {
@@ -28,6 +28,15 @@
       });
       updateBands();
   };
+
+  const filterTypes = ['hpf12', 'hpf48', 'loshelf', 'peq', 'notch', 'hishelf', 'lpf12', 'lpf48'];
+  
+  function cycleShape(b) {
+      if (!b.enabled) return;
+      const idx = filterTypes.indexOf(b.type);
+      b.type = filterTypes[(idx + 1) % filterTypes.length];
+      updateBands();
+  }
 
   let selectedBandIndex = 2; // Default focus
   
@@ -68,16 +77,14 @@
               const octaves = Math.log2(f / b.freq);
               // Mathematical notch cut depth
               totalDb += -40 * Math.exp(-Math.pow(octaves * b.q * 2, 2));
-          } else if (b.type === 'hpf') {
-              if (f < b.freq) {
-                  const drop = Math.log2(b.freq / Math.max(f, 1)) * -12; // 12dB/octave cut limit
-                  totalDb += drop;
-              }
-          } else if (b.type === 'lpf') {
-              if (f > b.freq) {
-                  const drop = Math.log2(f / b.freq) * -12;
-                  totalDb += drop;
-              }
+          } else if (b.type === 'hpf' || b.type === 'hpf12') {
+              if (f < b.freq) totalDb += Math.log2(b.freq / Math.max(f, 1)) * -12;
+          } else if (b.type === 'hpf48') {
+              if (f < b.freq) totalDb += Math.log2(b.freq / Math.max(f, 1)) * -48;
+          } else if (b.type === 'lpf' || b.type === 'lpf12') {
+              if (f > b.freq) totalDb += Math.log2(f / b.freq) * -12;
+          } else if (b.type === 'lpf48') {
+              if (f > b.freq) totalDb += Math.log2(f / b.freq) * -48;
           }
       }
       return totalDb;
@@ -222,6 +229,19 @@
 </script>
 
 <div class="eq-container fade-in">
+    <svg style="display: none;">
+      <symbol id="icon-hpf12" viewBox="0 0 24 24"><path d="M4 22 Q10 22 12 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+      <symbol id="icon-hpf48" viewBox="0 0 24 24"><path d="M4 22 L10 22 L10 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
+      <symbol id="icon-loshelf" viewBox="0 0 24 24"><path d="M4 18 L10 18 C14 18, 14 8, 18 8 L22 8" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+      <symbol id="icon-peq" viewBox="0 0 24 24"><path d="M4 16 C8 16, 10 4, 12 4 C14 4, 16 16, 20 16" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+      <symbol id="icon-notch" viewBox="0 0 24 24"><path d="M4 8 L10 8 L12 22 L14 8 L20 8" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
+      <symbol id="icon-hishelf" viewBox="0 0 24 24"><path d="M4 8 L10 8 C14 8, 14 18, 18 18 L22 18" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+      <symbol id="icon-lpf12" viewBox="0 0 24 24"><path d="M4 12 L12 12 Q14 12 20 22" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+      <symbol id="icon-lpf48" viewBox="0 0 24 24"><path d="M4 12 L14 12 L14 22 L20 22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
+      <symbol id="icon-hpf" viewBox="0 0 24 24"><use href="#icon-hpf12"/></symbol>
+      <symbol id="icon-lpf" viewBox="0 0 24 24"><use href="#icon-lpf12"/></symbol>
+    </svg>
+
     <div class="canvas-wrapper">
         <canvas bind:this={canvas} {width} {height}></canvas>
     </div>
@@ -240,14 +260,10 @@
                     </div>
                     
                     <div class="params-container">
-                        <select class="type-selector" bind:value={band.type} on:change={updateBands} disabled={!band.enabled}>
-                            <option value="hpf">Low Cut</option>
-                            <option value="loshelf">Low Shelf</option>
-                            <option value="peq">Peak</option>
-                            <option value="notch">Notch</option>
-                            <option value="hishelf">High Shelf</option>
-                            <option value="lpf">High Cut</option>
-                        </select>
+                        <button class="shape-btn" on:click|stopPropagation={() => cycleShape(band)} disabled={!band.enabled} title="Filter Type: {band.type}">
+                            <svg width="22" height="14" viewBox="0 0 24 24"><use href="#icon-{band.type}" /></svg>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
                         
                         <div class="slider-group">
                             <label for="freq-{band.id}">Freq</label>
@@ -291,12 +307,16 @@
   
   .params-container { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; }
   
-  .type-selector {
-      background: #18181b; color: #f8fafc; border: 1px solid #3f3f46; border-radius: 3px; 
-      font-size: 0.65rem; padding: 0.2rem 0; width: 90%; text-align: center;
-      font-weight: 700; margin: 0 auto 0.2rem auto; outline: none; cursor: pointer;
+  .shape-btn { 
+      background: #c2c6ca; border: 1px solid #9ca3af; color: #18181b; border-radius: 2px;
+      display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; 
+      cursor: pointer; width: 90%; margin: 0 auto 0.2rem auto; outline: none; transition: 0.1s;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
   }
-  .type-selector:disabled { opacity: 0.4; cursor: not-allowed; }
+  .shape-btn:hover { background: #00e5ff; color: #000; border-color: #0891b2; }
+  .shape-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .dropdown-arrow { font-size: 0.5rem; color: #3f3f46; transform: translateY(1px); }
+  .band-column.active .shape-btn { background: #00e5ff; color: #000; border-color: #0891b2; }
   
   .slider-group { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
   .slider-group label { font-size: 0.65rem; color: #3f3f46; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
