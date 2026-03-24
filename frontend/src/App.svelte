@@ -486,16 +486,18 @@
                 <div class="param-row"><span>Level</span><input type="range" min="-90" max="10" value="0" /><span>0 dB</span></div>
               </div>
               <!-- Main Out Assignment -->
-              <div class="bento-card">
-                <h3>Main Out</h3>
-                <div class="param-row">
-                  <span>Assign to LR</span>
-                  <button class="toggle-sm" class:active={mainOutAssign[selectedChannel]} on:click={() => toggleMainOut(selectedChannel)}>
-                    {mainOutAssign[selectedChannel] ? 'ON' : 'OFF'}
-                  </button>
+              {#if !selectedChannel.startsWith('out_')}
+                <div class="bento-card">
+                  <h3>Main Out</h3>
+                  <div class="param-row">
+                    <span>Assign to LR</span>
+                    <button class="toggle-sm" class:active={mainOutAssign[selectedChannel]} on:click={() => toggleMainOut(selectedChannel)}>
+                      {mainOutAssign[selectedChannel] ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  <p class="bento-hint">Route this channel to the Main LR output bus. Disable for talkback or monitor-only channels.</p>
                 </div>
-                <p class="bento-hint">Route this channel to the Main LR output bus. Disable for talkback or monitor-only channels.</p>
-              </div>
+              {/if}
               <!-- Stereo Link -->
               {#if selectedChannel.startsWith('in_')}
                 {@const chNum = parseInt(selectedChannel.replace('in_', ''))}
