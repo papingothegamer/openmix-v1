@@ -1,45 +1,31 @@
 <script>
   import { onMount } from 'svelte';
   
-  export let channelId = 'in_1'; // Targeted routing ID seamlessly piped from FOH
-  let eqBypass = false;
+  export let channelId = 'in_1';
   
   let canvas;
   let ctx;
   let width = 800;
-  let height = 300;
-  
-  // Ableton EQ Eight Reference Architecture
-  let bands = [
-    { id: 1, type: 'hpf48', freq: 30, gain: 0, q: 0.71, enabled: true, logVal: 1.477 },
-    { id: 2, type: 'loshelf', freq: 100, gain: 0, q: 0.71, enabled: true, logVal: 2 },
-    { id: 3, type: 'peq', freq: 250, gain: 0, q: 0.71, enabled: true, logVal: 2.398 },
-    { id: 4, type: 'peq', freq: 500, gain: 0, q: 0.71, enabled: true, logVal: 2.698 },
-    { id: 5, type: 'peq', freq: 1000, gain: 0, q: 0.71, enabled: true, logVal: 3 },
-    { id: 6, type: 'peq', freq: 2500, gain: 0, q: 0.71, enabled: true, logVal: 3.398 },
-    { id: 7, type: 'hishelf', freq: 6000, gain: 0, q: 0.71, enabled: true, logVal: 3.778 },
-    { id: 8, type: 'lpf48', freq: 15000, gain: 0, q: 0.71, enabled: true, logVal: 4.176 }
-  ];
+  let height = 400;
+  let selectedBandIndex = 2; // Default to Band 3
 
-  export const resetFlat = () => {
-      bands.forEach(b => {
-          b.gain = 0; // Flatten magnitude
-          b.q = 0.71; // Base width
-          if (b.type === 'peq') b.type = 'peq'; 
-      });
-      updateBands();
-  };
+  // --- Core EQ Band Model ---
+  let bands = [
+    { id: 1, type: 'hpf12', freq: 80,  gain: 0, q: 0.71, logVal: 1.903, enabled: true },
+    { id: 2, type: 'loshelf', freq: 200, gain: 0, q: 0.71, logVal: 2.301, enabled: true },
+    { id: 3, type: 'peq',  freq: 500, gain: 0, q: 1.0,  logVal: 2.699, enabled: true },
+    { id: 4, type: 'peq',  freq: 1000,gain: 0, q: 1.0,  logVal: 3.0,   enabled: true },
+    { id: 5, type: 'peq',  freq: 2000,gain: 0, q: 1.0,  logVal: 3.301, enabled: true },
+    { id: 6, type: 'peq',  freq: 4000,gain: 0, q: 1.0,  logVal: 3.602, enabled: true },
+    { id: 7, type: 'hishelf', freq: 8000,gain: 0, q: 0.71, logVal: 3.903, enabled: true },
+    { id: 8, type: 'lpf12',  freq: 18000,gain: 0, q: 0.71, logVal: 4.255, enabled: true },
+  ];
 
   const filterTypes = ['hpf12', 'hpf48', 'loshelf', 'peq', 'notch', 'hishelf', 'lpf12', 'lpf48'];
   const filterNames = {
-      hpf12: 'Highpass 12dB',
-      hpf48: 'Highpass 48dB',
-      loshelf: 'Low Shelf',
-      peq: 'Bell',
-      notch: 'Notch',
-      hishelf: 'High Shelf',
-      lpf12: 'Lowpass 12dB',
-      lpf48: 'Lowpass 48dB'
+      hpf12: 'Highpass 12dB', hpf48: 'Highpass 48dB',
+      loshelf: 'Low Shelf', peq: 'Bell', notch: 'Notch',
+      hishelf: 'High Shelf', lpf12: 'Lowpass 12dB', lpf48: 'Lowpass 48dB'
   };
   const shortNames = {
       hpf12: 'HPF', hpf48: 'HPF', loshelf: 'LO-SHV', peq: 'BELL',
@@ -48,213 +34,215 @@
 
   let dropdownOpenId = null;
   function toggleDropdown(e, id) {
-      if (dropdownOpenId === id) dropdownOpenId = null;
-      else dropdownOpenId = id;
+      e.stopPropagation();
+      dropdownOpenId = dropdownOpenId === id ? null : id;
   }
-  function selectShape(b, type) {
-      b.type = type;
+  function closeDropdowns() { dropdownOpenId = null; }
+  function selectShape(band, type) {
+      band.type = type;
       dropdownOpenId = null;
       updateBands();
   }
-  function closeDropdowns() { dropdownOpenId = null; }
-  
-  function getGainDisplay(val) {
-      return val > 0 ? '+' + val.toFixed(1) : val.toFixed(1);
-  }
 
-  let selectedBandIndex = 2; // Default focus
-  
-  const MIN_FREQ = 10;
-  const MAX_FREQ = 22000;
-  const MIN_DB = -15;
-  const MAX_DB = 15;
+  function getGainDisplay(g) { return g > 0 ? '+' + g.toFixed(1) : g.toFixed(1); }
 
-  // Logarithmic graphical interpolations natively mapped to HD canvas
+  // --- Canvas Rendering ---
   function freqToX(f) {
-      const minLog = Math.log10(MIN_FREQ);
-      const maxLog = Math.log10(MAX_FREQ);
-      return ((Math.log10(f) - minLog) / (maxLog - minLog)) * width;
-  }
-  
-  function dbToY(db) {
-      // 0dB center line mapping
-      return height/2 - (db / MAX_DB) * (height/2 - 20); // 20px headroom padding
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(22000);
+      return ((Math.log10(f) - logMin) / (logMax - logMin)) * width;
   }
 
-  // Purely visual curve approximation - translates parameter bounds to realistic Bell filters
-  function getResponse(f) {
-      let totalDb = 0;
-      for (const b of bands) {
-          if (!b.enabled) continue;
-          if (b.type === 'peq') {
-              const octaves = Math.log2(f / b.freq);
-              totalDb += b.gain * Math.exp(-Math.pow(octaves * b.q * 1.5, 2));
-          } else if (b.type === 'loshelf') {
-              const octaves = Math.log2(f / b.freq);
-              const shelf = b.gain / (1 + Math.exp(octaves * 4 * b.q));
-              totalDb += shelf;
-          } else if (b.type === 'hishelf') {
-              const octaves = Math.log2(f / b.freq);
-              const shelf = b.gain / (1 + Math.exp(-octaves * 4 * b.q));
-              totalDb += shelf;
-          } else if (b.type === 'notch') {
-              const octaves = Math.log2(f / b.freq);
-              // Mathematical notch cut depth
-              totalDb += -40 * Math.exp(-Math.pow(octaves * b.q * 2, 2));
-          } else if (b.type === 'hpf' || b.type === 'hpf12') {
-              if (f < b.freq) totalDb += Math.log2(b.freq / Math.max(f, 1)) * -12;
-          } else if (b.type === 'hpf48') {
-              if (f < b.freq) totalDb += Math.log2(b.freq / Math.max(f, 1)) * -48;
-          } else if (b.type === 'lpf' || b.type === 'lpf12') {
-              if (f > b.freq) totalDb += Math.log2(f / b.freq) * -12;
-          } else if (b.type === 'lpf48') {
-              if (f > b.freq) totalDb += Math.log2(f / b.freq) * -48;
+  function gainToY(g) {
+      return height / 2 - (g / 15) * (height / 2 - 30);
+  }
+
+  function computeBandResponse(band, freq) {
+      if (!band.enabled) return 0;
+      const f0 = Math.pow(10, band.logVal);
+      const ratio = freq / f0;
+      const logR = Math.log2(ratio);
+
+      switch(band.type) {
+          case 'hpf12': return ratio < 1 ? -12 * Math.log2(1/ratio) : 0;
+          case 'hpf48': return ratio < 1 ? -48 * Math.log2(1/ratio) : 0;
+          case 'lpf12': return ratio > 1 ? -12 * Math.log2(ratio) : 0;
+          case 'lpf48': return ratio > 1 ? -48 * Math.log2(ratio) : 0;
+          case 'loshelf': return band.gain / (1 + Math.pow(ratio, 2));
+          case 'hishelf': return band.gain * (1 - 1 / (1 + Math.pow(ratio, 2)));
+          case 'notch': {
+              const bw = 1 / Math.max(band.q, 0.1);
+              const x = logR / bw;
+              return -15 / (1 + x * x);
+          }
+          case 'peq':
+          default: {
+              const bw = 1 / Math.max(band.q, 0.1);
+              const x = logR / bw;
+              return band.gain / (1 + x * x * 4);
           }
       }
-      return totalDb;
   }
 
-  function draw() {
-      if (!ctx || width === 0) return;
+  function drawEQ() {
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, height);
 
-      // Render rigid grid system - Ableton dark matrix style
-      ctx.strokeStyle = '#27272a';
-      ctx.lineWidth = 1;
-      
-      [-12, -6, 0, 6, 12].forEach(db => {
-          const y = dbToY(db);
+      // --- Background Grid ---
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.5;
+
+      // Horizontal gain lines
+      const gainValues = [-12, -6, 0, 6, 12];
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      for (const g of gainValues) {
+          const y = gainToY(g);
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(width, y);
           ctx.stroke();
-          ctx.fillStyle = '#71717a';
-          ctx.font = '11px "Inter", sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText((db > 0 ? '+'+db : db) + 'dB', 8, y - 6);
-      });
+          ctx.fillStyle = '#475569';
+          ctx.fillText(`${g > 0 ? '+' : ''}${g}dB`, 42, y - 3);
+      }
 
-      // Frame core centerline
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.beginPath(); ctx.moveTo(0, dbToY(0)); ctx.lineTo(width, dbToY(0)); ctx.stroke();
-
-      // Logarithmic X-Axis (Dense Ableton Equivalent)
-      const freqs = [
-        10, 20, 30, 40, 50, 100, 200, 300, 400, 500, 
-        1000, 2000, 3000, 4000, 5000, 10000, 20000
-      ];
-      
-      freqs.forEach(f => {
+      // Vertical frequency lines
+      const freqs = [20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 15000, 20000];
+      const labelFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+      ctx.textAlign = 'center';
+      for (const f of freqs) {
           const x = freqToX(f);
+          ctx.strokeStyle = labelFreqs.includes(f) ? '#334155' : '#1a2233';
           ctx.beginPath();
           ctx.moveTo(x, 0);
           ctx.lineTo(x, height);
-          // Highlight prime intervals 100, 1k, 10k
-          if ([10, 100, 1000, 10000].includes(f)) {
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-              ctx.stroke();
-              ctx.fillStyle = '#71717a';
-              ctx.textAlign = 'center';
-              ctx.fillText(f >= 1000 ? (f/1000)+'k' : f, x, height - 8);
-          } else {
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
-              ctx.stroke();
+          ctx.stroke();
+          if (labelFreqs.includes(f)) {
+              ctx.fillStyle = '#475569';
+              ctx.fillText(f >= 1000 ? (f/1000) + 'k' : f.toString(), x, height - 6);
           }
-      });
-
-      // Composite Frequency Response Render Array
-      ctx.beginPath();
-      for (let x = 0; x <= width; x += 2) {
-          const normalized = x / width;
-          const minLog = Math.log10(MIN_FREQ);
-          const maxLog = Math.log10(MAX_FREQ);
-          const f = Math.pow(10, normalized * (maxLog - minLog) + minLog);
-          
-          const db = Math.max(Math.min(getResponse(f), MAX_DB), MIN_DB);
-          const y = dbToY(db);
-          
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
       }
-      
-      // Ableton Cyan Curve
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-      
-      // Paint Under-Mask Fill organically down to bounds
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
+
+      // --- Composite Response Curve ---
+      const numPoints = 512;
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(22000);
+      const points = [];
+
+      for (let i = 0; i <= numPoints; i++) {
+          const logFreq = logMin + (i / numPoints) * (logMax - logMin);
+          const freq = Math.pow(10, logFreq);
+          let totalGain = 0;
+          for (const b of bands) totalGain += computeBandResponse(b, freq);
+          totalGain = Math.max(-15, Math.min(15, totalGain));
+          points.push({ x: freqToX(freq), y: gainToY(totalGain) });
+      }
+
+      // Fill under curve
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, gainToY(0));
+      for (const p of points) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(points[points.length - 1].x, gainToY(0));
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.05)';
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, 'rgba(56, 189, 248, 0.12)');
+      grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.02)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0.12)');
+      ctx.fillStyle = grad;
       ctx.fill();
 
-      // Render strictly mapped control nodes securely over active band frequencies
-      bands.forEach((b, i) => {
-          if (!b.enabled) return;
-          const x = freqToX(b.freq);
-          const y = dbToY(b.gain);
-          
-          // Ableton Yellow Node
-          ctx.beginPath();
-          ctx.arc(x, y, i === selectedBandIndex ? 10 : 8, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffb700'; 
-          ctx.fill();
-          
-          // Selection Highlight Ring
-          if (i === selectedBandIndex) {
-              ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 2;
-              ctx.stroke();
-          }
+      // Stroke curve
+      ctx.beginPath();
+      for (let i = 0; i <= numPoints; i++) {
+          if (i === 0) ctx.moveTo(points[i].x, points[i].y);
+          else ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
 
-          // Node Number Label
+      // --- Band control nodes ---
+      for (let i = 0; i < bands.length; i++) {
+          const b = bands[i];
+          const bx = freqToX(Math.pow(10, b.logVal));
+          let totalGain = 0;
+          const freq = Math.pow(10, b.logVal);
+          for (const ob of bands) totalGain += computeBandResponse(ob, freq);
+          totalGain = Math.max(-15, Math.min(15, totalGain));
+          const by = gainToY(totalGain);
+
+          ctx.beginPath();
+          ctx.arc(bx, by, i === selectedBandIndex ? 9 : 7, 0, Math.PI * 2);
+          ctx.fillStyle = b.enabled
+              ? (i === selectedBandIndex ? '#f59e0b' : '#38bdf8')
+              : '#475569';
+          ctx.fill();
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
           ctx.fillStyle = '#000';
-          ctx.font = 'bold 11px "Inter", sans-serif';
+          ctx.font = 'bold 9px Inter';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(b.id, x, y + 1);
-      });
+          ctx.fillText(b.id.toString(), bx, by);
+      }
   }
 
   function updateBands() {
-      // Safely mutate frequency natively using internal logarithmic mappings
       bands.forEach(b => { b.freq = Math.pow(10, b.logVal); });
-      bands = bands; // Trigger native graphic rewrite cleanly
-      if (ctx) requestAnimationFrame(draw);
+      bands = [...bands];
+      drawEQ();
+  }
+
+  export function resetFlat() {
+      bands = bands.map(b => ({ ...b, gain: 0, q: 1.0 }));
+      updateBands();
+  }
+
+  /** Returns a simplified SVG path for the current EQ curve (for ChannelStrip mini-chart) */
+  export function getCurvePath(w = 100, h = 40) {
+      const numPts = 64;
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(22000);
+      let d = '';
+      for (let i = 0; i <= numPts; i++) {
+          const logFreq = logMin + (i / numPts) * (logMax - logMin);
+          const freq = Math.pow(10, logFreq);
+          let totalGain = 0;
+          for (const b of bands) totalGain += computeBandResponse(b, freq);
+          totalGain = Math.max(-15, Math.min(15, totalGain));
+          const x = (i / numPts) * w;
+          const y = h / 2 - (totalGain / 15) * (h / 2 - 4);
+          d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+      }
+      return d;
   }
 
   onMount(() => {
       ctx = canvas.getContext('2d');
-      
-      // Determine immediate container geometry to prevent zeros bounding boxes
-      if (canvas.parentElement) {
-          width = canvas.parentElement.clientWidth || 800;
-          height = canvas.parentElement.clientHeight || 280;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      updateBands();
-      
-      const observer = new ResizeObserver(entries => {
-          for (let entry of entries) {
-              const newW = entry.contentRect.width;
-              // Squelch infinite subpixel observation triggers
-              if (newW > 0 && Math.abs(width - newW) > 1) {
-                  width = newW;
-                  canvas.width = width;
-                  requestAnimationFrame(draw);
-              }
+      const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+              width = entry.contentRect.width;
+              height = entry.contentRect.height;
+              drawEQ();
           }
       });
-      if (canvas.parentElement) observer.observe(canvas.parentElement);
-      return () => observer.disconnect();
+      ro.observe(canvas.parentElement);
+      drawEQ();
+      return () => ro.disconnect();
   });
+
+  $: if (ctx && bands) drawEQ();
 </script>
 
 <svelte:window on:click={closeDropdowns} />
 
-<div class="eq-container fade-in layout-wing">
+<div class="eq-container fade-in">
     <svg style="display: none;">
       <symbol id="icon-hpf12" viewBox="0 0 24 24"><path d="M4 22 Q10 22 12 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
       <symbol id="icon-hpf48" viewBox="0 0 24 24"><path d="M4 22 L10 22 L10 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
@@ -264,13 +252,10 @@
       <symbol id="icon-hishelf" viewBox="0 0 24 24"><path d="M4 8 L10 8 C14 8, 14 18, 18 18 L22 18" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
       <symbol id="icon-lpf12" viewBox="0 0 24 24"><path d="M4 12 L12 12 Q14 12 20 22" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
       <symbol id="icon-lpf48" viewBox="0 0 24 24"><path d="M4 12 L14 12 L14 22 L20 22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/></symbol>
-      <symbol id="icon-hpf" viewBox="0 0 24 24"><use href="#icon-hpf12"/></symbol>
-      <symbol id="icon-lpf" viewBox="0 0 24 24"><use href="#icon-lpf12"/></symbol>
     </svg>
 
-    <!-- Wing CSS Architecture Sidebar (Moved to LEFT axis) -->
+    <!-- Left Wing Sidebar -->
     <div class="wing-sidebar">
-        <!-- Vertical Column 1: Band Selection -->
         <div class="wing-band-list">
             {#each bands as band, i}
                 <button class="wing-band-row" class:active={selectedBandIndex === i} on:click|stopPropagation={() => selectedBandIndex = i}>
@@ -278,12 +263,13 @@
                         <span class="w-id">{band.id}</span>
                         <span class="w-type">{shortNames[band.type]}</span>
                     </div>
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                    <!-- svelte-ignore a11y-no-static-element-interactions -->
                     <div class="w-toggle" class:is-on={band.enabled} on:click|stopPropagation={() => { band.enabled = !band.enabled; updateBands(); }}></div>
                 </button>
             {/each}
         </div>
 
-        <!-- Vertical Column 2: Specific Selection Parameter Array -->
         <div class="wing-detail-view">
             {#if bands[selectedBandIndex]}
                 {@const activeBand = bands[selectedBandIndex]}
@@ -318,18 +304,18 @@
                 </div>
 
                 <div class="w-slider-group">
-                    <label>GAIN <span class="w-val">{getGainDisplay(activeBand.gain)} dB</span></label>
-                    <input type="range" class="knob-proxy" min="-15" max="15" step="0.1" bind:value={activeBand.gain} on:input={updateBands} disabled={!activeBand.enabled} />
+                    <label for="eq-gain-{activeBand.id}">GAIN <span class="w-val">{getGainDisplay(activeBand.gain)} dB</span></label>
+                    <input id="eq-gain-{activeBand.id}" type="range" class="knob-proxy" min="-15" max="15" step="0.1" bind:value={activeBand.gain} on:input={updateBands} disabled={!activeBand.enabled} />
                 </div>
                 
                 <div class="w-slider-group">
-                    <label>Q <span class="w-val-green">{activeBand.q.toFixed(2)}</span></label>
-                    <input type="range" class="knob-proxy-green" min="0.1" max="10" step="0.1" bind:value={activeBand.q} on:input={updateBands} disabled={!activeBand.enabled} />
+                    <label for="eq-q-{activeBand.id}">Q <span class="w-val-green">{activeBand.q.toFixed(2)}</span></label>
+                    <input id="eq-q-{activeBand.id}" type="range" class="knob-proxy-green" min="0.1" max="10" step="0.1" bind:value={activeBand.q} on:input={updateBands} disabled={!activeBand.enabled} />
                 </div>
                 
                 <div class="w-slider-group">
-                    <label>FREQ <span class="w-val-blue">{Math.round(Math.pow(10, activeBand.logVal))} Hz</span></label>
-                    <input type="range" class="knob-proxy-blue" min="1.0" max="4.342" step="0.01" bind:value={activeBand.logVal} on:input={updateBands} disabled={!activeBand.enabled} />
+                    <label for="eq-freq-{activeBand.id}">FREQ <span class="w-val-blue">{Math.round(Math.pow(10, activeBand.logVal))} Hz</span></label>
+                    <input id="eq-freq-{activeBand.id}" type="range" class="knob-proxy-blue" min="1.0" max="4.342" step="0.01" bind:value={activeBand.logVal} on:input={updateBands} disabled={!activeBand.enabled} />
                 </div>
             {/if}
         </div>
@@ -338,45 +324,18 @@
     <!-- Center Canvas Engine -->
     <div class="canvas-wrapper">
         <canvas bind:this={canvas} {width} {height}></canvas>
-        {#if eqBypass}
-            <div class="bypass-overlay fade-in">EQ BYPASSED</div>
-        {/if}
-    </div>
-
-    <!-- Right Wing Sidebar (EQ Controls) -->
-    <div class="wing-sidebar-right">
-        <button class="w-macro-btn" class:active={eqBypass} on:click={() => eqBypass = !eqBypass}>
-            {eqBypass ? 'EQ Bypassed' : 'Bypass EQ'}
-        </button>
-        <button class="w-macro-btn">RTA Overlay</button>
-        <button class="w-macro-btn">Copy EQ</button>
-        <button class="w-macro-btn">Paste EQ</button>
-        <div style="flex: 1;"></div>
-        <button class="w-macro-btn alert" on:click={resetFlat}>Reset Flat</button>
     </div>
 </div>
 
 <style>
-  /* Layout Wing UI Overrides */
-  .layout-wing { display: flex; flex-direction: row; width: 100%; height: 500px; max-height: 65vh; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; box-shadow: 0 12px 48px rgba(0,0,0,0.4); margin: 0 auto; }
+  .eq-container { display: flex; flex-direction: row; width: 100%; height: 500px; max-height: 65vh; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; box-shadow: 0 12px 48px rgba(0,0,0,0.4); }
   .canvas-wrapper { flex: 1; min-height: 0; position: relative; background: #080a0f; }
   canvas { display: block; width: 100%; height: 100%; }
-  .bypass-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 800; color: #ef4444; letter-spacing: 6px; pointer-events: none; z-index: 10; text-shadow: 0 4px 12px rgba(0,0,0,0.8); backdrop-filter: blur(2px); }
   
-  /* Left Sidebar Split */
   .wing-sidebar { width: 340px; flex-shrink: 0; display: flex; flex-direction: row; background: #12151c; border-right: 1px solid #1e293b; }
   
-  /* Right Sidebar Macro Split */
-  .wing-sidebar-right { width: 140px; flex-shrink: 0; display: flex; flex-direction: column; background: #12151c; border-left: 1px solid #1e293b; padding: 1.5rem 1rem; gap: 0.8rem; }
-  .w-macro-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.8rem 0.5rem; border-radius: 6px; font-weight: 800; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-size: 0.75rem; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
-  .w-macro-btn:hover { background: #334155; transform: translateY(-2px); }
-  .w-macro-btn:active { transform: translateY(0); }
-  .w-macro-btn.active { background: #ef4444; color: white; border-color: #f87171; box-shadow: 0 0 16px rgba(239,68,68,0.3); transform: translateY(-2px); }
-  .w-macro-btn.alert { background: #7f1d1d; color: white; border-color: #b91c1c; }
-  .w-macro-btn.alert:hover { background: #991b1b; }
-  
-  /* Band Selection List Base */
   .wing-band-list { width: 125px; display: flex; flex-direction: column; background: #0f1115; border-right: 1px solid #1e293b; overflow-y: auto; }
+  .wing-band-list::-webkit-scrollbar { width: 0; }
   .wing-band-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0.6rem; border: none; border-bottom: 1px solid #1e293b; background: transparent; cursor: pointer; transition: 0.1s; outline: none; }
   .wing-band-row:hover { background: rgba(59,130,246,0.05); }
   .wing-band-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
@@ -387,7 +346,6 @@
   .w-toggle { min-width: 12px; min-height: 12px; border-radius: 50%; border: 1px solid #475569; background: #0f1115; transition: 0.2s; flex-shrink: 0; }
   .w-toggle.is-on { background: transparent; border-color: #f8fafc; border-width: 2px; }
   
-  /* Detail View Array Panel */
   .wing-detail-view { flex: 1; padding: 1.25rem 1rem; display: flex; flex-direction: column; gap: 1.5rem; background: #1f2937; }
   .w-detail-header { display: flex; flex-direction: column; gap: 0.8rem; }
   .w-detail-title-group { display: flex; justify-content: space-between; align-items: center; }
@@ -395,7 +353,6 @@
   .w-mini-toggle { border: none; background: #374151; color: #94a3b8; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer; font-weight: 800; transition: 0.2s; }
   .w-mini-toggle.is-on { background: #f59e0b; color: #000; }
   
-  /* Filter Geometries UI Overlay */
   .w-dropdown-wrapper { position: relative; width: 100%; }
   .w-shape-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; background: #111827; border: 1px solid #374151; color: #f8fafc; padding: 0.6rem; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif; }
   .w-shape-btn:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
@@ -409,7 +366,6 @@
   .shape-option.active { color: #f59e0b; background: rgba(245, 158, 11, 0.05); border-left: 2px solid #f59e0b; }
   .active-dot { margin-left: auto; color: #f59e0b; font-size: 1rem; line-height: 0; }
   
-  /* Parameter Sliders */
   .w-slider-group { display: flex; flex-direction: column; gap: 0.5rem; }
   .w-slider-group label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #e2e8f0; font-weight: 600; letter-spacing: 0.5px; }
   .w-val { color: #f8fafc; font-family: 'JetBrains Mono', monospace; }

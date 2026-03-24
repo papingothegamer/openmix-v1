@@ -38,6 +38,22 @@
     }
   }
 
+  // Chevron boundary detection
+  $: isFirstChannel = (() => {
+    if (!selectedChannel || selectedChannel === 'main_LR') return true;
+    const [type, numStr] = selectedChannel.split('_');
+    return parseInt(numStr, 10) <= 1;
+  })();
+  $: isLastChannel = (() => {
+    if (!selectedChannel || selectedChannel === 'main_LR') return true;
+    const [type, numStr] = selectedChannel.split('_');
+    const num = parseInt(numStr, 10);
+    if (type === 'in') return num >= config.inputs;
+    if (type === 'out') return num >= config.outputs;
+    if (type === 'dca') return num >= (config.dcas || 8);
+    return true;
+  })();
+
   let requiresSetup = localStorage.getItem('openmix_setup') !== 'true';
   let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM', visibleBuses: [1,2,3,4,5,6] };
   
@@ -247,34 +263,124 @@
             <div class="view-header-inline">
               <h2 class="title-left">EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
               <div class="nav-group">
-                  <button class="nav-icon-btn" on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
               </div>
             </div>
             <div style="flex: 1; width: 100%; display: flex; flex-direction: column;">
                 <EqEditor bind:this={eqComponent} channelId={selectedChannel} />
             </div>
           </div>
+
+        {:else if activeTab === 'channel'}
+          <div class="macro-view fade-in">
+            <div class="view-header-inline">
+              <h2 class="title-left">CHANNEL: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
+            </div>
+            <div class="tab-content-body">
+              <div class="param-section">
+                <h3>Preamp</h3>
+                <div class="param-row"><span>Gain</span><input type="range" min="0" max="60" value="30" /><span>30 dB</span></div>
+                <div class="param-row"><span>48V</span><button class="toggle-sm">OFF</button></div>
+                <div class="param-row"><span>Phase</span><button class="toggle-sm">0°</button></div>
+              </div>
+              <div class="param-section">
+                <h3>Gate</h3>
+                <div class="param-row"><span>Threshold</span><input type="range" min="-80" max="0" value="-40" /><span>-40 dB</span></div>
+                <div class="param-row"><span>Range</span><input type="range" min="0" max="60" value="20" /><span>20 dB</span></div>
+              </div>
+              <div class="param-section">
+                <h3>Compressor</h3>
+                <div class="param-row"><span>Threshold</span><input type="range" min="-60" max="0" value="-20" /><span>-20 dB</span></div>
+                <div class="param-row"><span>Ratio</span><input type="range" min="1" max="20" value="4" /><span>4:1</span></div>
+                <div class="param-row"><span>Attack</span><input type="range" min="0" max="100" value="10" /><span>10 ms</span></div>
+                <div class="param-row"><span>Release</span><input type="range" min="5" max="500" value="100" /><span>100 ms</span></div>
+              </div>
+            </div>
+          </div>
+
+        {:else if activeTab === 'sends'}
+          <div class="macro-view fade-in">
+            <div class="view-header-inline">
+              <h2 class="title-left">SENDS: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
+            </div>
+            <div class="tab-content-body">
+              <div class="param-section">
+                <h3>Bus Sends</h3>
+                {#each Array(config.outputs) as _, i}
+                  <div class="param-row">
+                    <span>AUX {i + 1}</span>
+                    <input type="range" min="-60" max="10" value="-60" />
+                    <button class="toggle-sm">PRE</button>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+
+        {:else if activeTab === 'fx'}
+          <div class="macro-view fade-in">
+            <div class="view-header-inline">
+              <h2 class="title-left">FX: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
+            </div>
+            <div class="tab-content-body">
+              {#each Array(config.fx || 4) as _, i}
+                <div class="param-section">
+                  <h3>FX {i + 1} Send</h3>
+                  <div class="param-row"><span>Level</span><input type="range" min="-60" max="10" value="-60" /><span>-∞</span></div>
+                  <div class="param-row"><span>Tap</span><button class="toggle-sm">POST</button></div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+        {:else if activeTab === 'routing'}
+          <div class="macro-view fade-in">
+            <div class="view-header-inline">
+              <h2 class="title-left">ROUTING</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
+            </div>
+            <div class="tab-content-body">
+              <div class="param-section">
+                <h3>Output Patching</h3>
+                <p style="color:#94a3b8; font-size: 0.85rem;">Configure physical output routing, USB/DAW streams, and P16/Ultranet assignments.</p>
+                <div class="wireframe-content"></div>
+              </div>
+            </div>
+          </div>
+
         {:else}
           <div class="macro-view fade-in">
             <div class="view-header-inline">
               <h2 class="title-left">{activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
               <div class="nav-group">
-                  <button class="nav-icon-btn" on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
               </div>
             </div>
-            <p>Focusing on parameter properties for {selectedChannel}</p>
             <div class="wireframe-content"></div>
           </div>
         {/if}
 
-        {#if activeTab !== 'eq'}
-          <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} 
-                   onPageChange={(p) => currentPage = p} 
-                   onViewChange={(v) => activeView = v}
-                   onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
-        {/if}
+        <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} 
+                 onPageChange={(p) => currentPage = p} 
+                 onViewChange={(v) => activeView = v}
+                 onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
       </div>
     {/if}
 
@@ -373,9 +479,26 @@
   .title-left { margin: 0; color: #f8fafc; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
   .nav-group { display: flex; gap: 0.5rem; }
   .nav-icon-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; border-radius: 6px; padding: 0.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  .nav-icon-btn:hover { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 2px 8px rgba(59,130,246,0.4); transform: scale(1.05); }
+  .nav-icon-btn:hover:not(:disabled) { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 2px 8px rgba(59,130,246,0.4); transform: scale(1.05); }
+  .nav-icon-btn:disabled { opacity: 0.25; cursor: not-allowed; }
   
-  .wireframe-content { flex: 1; border: 2px dashed #3f3f46; border-radius: 12px; opacity: 0.5; }
+  .wireframe-content { flex: 1; border: 2px dashed #3f3f46; border-radius: 12px; opacity: 0.5; min-height: 60px; }
+
+  /* Tab Content Body */
+  .tab-content-body { flex: 1; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; padding: 0.5rem 0; }
+  .tab-content-body::-webkit-scrollbar { width: 6px; }
+  .tab-content-body::-webkit-scrollbar-track { background: transparent; }
+  .tab-content-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  .param-section { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; }
+  .param-section h3 { margin: 0 0 0.8rem 0; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .param-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; border-bottom: 1px solid #1e293b; }
+  .param-row:last-child { border-bottom: none; }
+  .param-row span { font-size: 0.8rem; color: #cbd5e1; min-width: 70px; font-weight: 600; }
+  .param-row span:last-child { min-width: 55px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #94a3b8; }
+  .param-row input[type="range"] { flex: 1; appearance: none; height: 4px; background: #1e293b; border-radius: 2px; outline: none; }
+  .param-row input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 2px; background: #3b82f6; cursor: pointer; }
+  .toggle-sm { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
+  .toggle-sm:hover { background: #334155; color: #fff; }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }

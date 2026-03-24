@@ -1,6 +1,6 @@
 <script>
   export let activeTab = 'mixer';
-  export let activeView = 'inputs'; // 'inputs', 'outputs', 'dcas'
+  export let activeView = 'inputs';
   export let currentPage = 0;
   export let totalPages = 1;
   export let onPageChange = (p) => {};
@@ -30,6 +30,7 @@
         <button class="page-btn" disabled={currentPage >= totalPages - 1} on:click={next}>Next ▶</button>
       </div>
     {/if}
+
   {:else if activeTab === 'eq'}
     <div class="routing-section">
       <h4>EQ Controls</h4>
@@ -39,11 +40,41 @@
       <button class="layer-btn">Paste EQ</button>
       <button class="layer-btn" on:click={onResetEq}>Reset Flat</button>
     </div>
+
+  {:else if activeTab === 'channel'}
+    <div class="routing-section">
+      <h4>Channel Tools</h4>
+      <button class="layer-btn">Gate</button>
+      <button class="layer-btn">Compressor</button>
+      <button class="layer-btn">Preamp</button>
+      <button class="layer-btn">Phase Inv</button>
+    </div>
+
   {:else if activeTab === 'sends'}
     <div class="routing-section">
-      <h4>Sends Tap</h4>
-      <button class="layer-btn">Toggle Pre/Post</button>
+      <h4>Bus Routing</h4>
+      <button class="layer-btn">Pre/Post Toggle</button>
+      <button class="layer-btn">Copy Sends</button>
+      <button class="layer-btn">Paste Sends</button>
     </div>
+
+  {:else if activeTab === 'fx'}
+    <div class="routing-section">
+      <h4>FX Engine</h4>
+      <button class="layer-btn">Reverb</button>
+      <button class="layer-btn">Delay</button>
+      <button class="layer-btn">Chorus</button>
+      <button class="layer-btn">Tap Tempo</button>
+    </div>
+
+  {:else if activeTab === 'routing'}
+    <div class="routing-section">
+      <h4>Routing Tools</h4>
+      <button class="layer-btn">USB / DAW</button>
+      <button class="layer-btn">P16 / Ultranet</button>
+      <button class="layer-btn">Patch Matrix</button>
+    </div>
+
   {:else}
     <div class="routing-section">
       <h4>{activeTab.toUpperCase()} Tools</h4>
