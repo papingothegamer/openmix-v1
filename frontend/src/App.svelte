@@ -330,7 +330,7 @@
                     stripType="input"
                     name={scribbles[`in_${chIndex}`]?.name || (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`)}
                     iconType={scribbles[`in_${chIndex}`]?.iconType || 'icon_01'}
-                    color={scribbles[`in_${chIndex}`]?.color || '#3f3f46'}
+                    color={isLinked(chIndex) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[`in_${chIndex}`]?.color || '#3f3f46')}
                     peakLevel={fohMeters[chIndex - 1] || -60}
                     on:nameClick={() => {}}
                   />
@@ -362,7 +362,7 @@
                       stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
                       name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
                       iconType={scribbles[sId]?.iconType || 'icon_01'}
-                      color={scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6')}
+                      color={activeView === 'inputs' && isLinked(chIndex) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6'))}
                       peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
                       eqCurvePath={computeMiniEqPath(sId)}
                       stereoLink={activeView === 'inputs' ? isLinked(chIndex) : false}
@@ -507,7 +507,7 @@
                   <h3>Stereo Link</h3>
                   <div class="param-row">
                     <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
-                    <button class="toggle-sm" class:active={stereoLinks[oddCh]} on:click={() => toggleStereoLink(chNum)}>
+                    <button class="toggle-sm" class:active-yellow={stereoLinks[oddCh]} on:click={() => toggleStereoLink(chNum)}>
                       {stereoLinks[oddCh] ? 'LINKED' : 'OFF'}
                     </button>
                   </div>
@@ -721,6 +721,8 @@
   .param-row input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 3px; background: #3b82f6; cursor: pointer; border: none; }
   .toggle-sm { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
   .toggle-sm:hover { background: #334155; color: #fff; }
+  .toggle-sm.active { background: #3b82f6; color: white; border-color: #60a5fa; }
+  .toggle-sm.active-yellow { background: #eab308; color: #1c1917; border-color: #fde047; }
 
   /* Musician Aux Selector */
   .aux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; margin-top: 1.5rem; margin-bottom: 1rem; }
