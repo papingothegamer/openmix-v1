@@ -541,11 +541,13 @@
           </div>
         {/if}
 
-        <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} {stripsPerPage}
-                 onPageChange={(p) => currentPage = p} 
-                 onViewChange={(v) => activeView = v}
-                 onStripsChange={(n) => stripsPerPage = n}
-                 onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
+        {#if activeRole === 'foh'}
+          <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} {stripsPerPage}
+                   onPageChange={(p) => currentPage = p} 
+                   onViewChange={(v) => activeView = v}
+                   onStripsChange={(n) => stripsPerPage = n}
+                   onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
+        {/if}
       </div>
       {/if}
     {/if}
@@ -661,8 +663,12 @@
   .param-row:last-child { border-bottom: none; }
   .param-row span { font-size: 0.8rem; color: #cbd5e1; min-width: 70px; font-weight: 600; }
   .param-row span:last-child { min-width: 55px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #94a3b8; }
-  .param-row input[type="range"] { flex: 1; appearance: none; height: 4px; background: #1e293b; border-radius: 2px; outline: none; }
-  .param-row input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 2px; background: #3b82f6; cursor: pointer; }
+  .param-row input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; background: #1e293b; border-radius: 3px; outline: none; margin: 0; }
+  .param-row input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; }
+  .param-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 3px; background: #3b82f6; cursor: pointer; margin-top: -5px; border: none; transition: background 0.15s; }
+  .param-row input[type="range"]::-webkit-slider-thumb:hover { background: #60a5fa; }
+  .param-row input[type="range"]::-moz-range-track { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; border: none; }
+  .param-row input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 3px; background: #3b82f6; cursor: pointer; border: none; }
   .toggle-sm { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
   .toggle-sm:hover { background: #334155; color: #fff; }
 
