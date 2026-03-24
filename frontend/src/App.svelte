@@ -8,6 +8,7 @@
   import GlobalTabs from './lib/components/GlobalTabs.svelte';
   import EqEditor from './lib/components/EqEditor.svelte';
   import { MixerPresets, PredefinedMixersArray } from './lib/mixerPresets';
+  import { ChevronLeft, ChevronRight } from 'lucide-svelte';
   
   let fohMeters = new Array(16).fill(-60);
   
@@ -221,21 +222,25 @@
                    
         {:else if activeTab === 'eq'}
           <div class="macro-view fade-in">
-            <div class="view-header">
-              <button class="nav-arrow" on:click={() => cycleChannel(-1)}>&larr;</button>
-              <h2>EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <button class="nav-arrow" on:click={() => cycleChannel(1)}>&rarr;</button>
+            <div class="view-header-inline">
+              <h2 class="title-left">EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
             </div>
-            <div style="flex: 1; width: 100%;">
+            <div style="flex: 1; width: 100%; display: flex; flex-direction: column;">
                 <EqEditor bind:this={eqComponent} channelId={selectedChannel} />
             </div>
           </div>
         {:else}
           <div class="macro-view fade-in">
-            <div class="view-header">
-              <button class="nav-arrow" on:click={() => cycleChannel(-1)}>&larr;</button>
-              <h2>{activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <button class="nav-arrow" on:click={() => cycleChannel(1)}>&rarr;</button>
+            <div class="view-header-inline">
+              <h2 class="title-left">{activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
+              <div class="nav-group">
+                  <button class="nav-icon-btn" on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
+                  <button class="nav-icon-btn" on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+              </div>
             </div>
             <p>Focusing on parameter properties for {selectedChannel}</p>
             <div class="wireframe-content"></div>
@@ -332,11 +337,14 @@
   .scribble-mode .strip-wrapper:hover { background: rgba(16, 185, 129, 0.1); }
 
   /* Macro Views Styling */
-  .macro-view { padding: 1rem; width: 100%; max-width: 960px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-  .view-header { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; background: #1e293b; padding: 1rem; border-radius: 8px; border: 1px solid #334155; flex-shrink: 0; }
-  .view-header h2 { margin: 0; color: #f8fafc; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-  .nav-arrow { background: #0f172a; border: 1px solid #334155; color: #a1a1aa; font-size: 1.5rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; padding: 0.2rem 1.5rem; }
-  .nav-arrow:hover { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 0 12px rgba(59,130,246,0.6); }
+  .macro-view { padding: 0.5rem; width: 100%; max-width: 960px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  
+  .view-header-inline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0 0.5rem; flex-shrink: 0; }
+  .title-left { margin: 0; color: #f8fafc; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+  .nav-group { display: flex; gap: 0.5rem; }
+  .nav-icon-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; border-radius: 6px; padding: 0.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .nav-icon-btn:hover { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 2px 8px rgba(59,130,246,0.4); transform: scale(1.05); }
+  
   .wireframe-content { flex: 1; border: 2px dashed #3f3f46; border-radius: 12px; opacity: 0.5; }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

@@ -30,13 +30,28 @@
   };
 
   const filterTypes = ['hpf12', 'hpf48', 'loshelf', 'peq', 'notch', 'hishelf', 'lpf12', 'lpf48'];
-  
-  function cycleShape(b) {
-      if (!b.enabled) return;
-      const idx = filterTypes.indexOf(b.type);
-      b.type = filterTypes[(idx + 1) % filterTypes.length];
+  const filterNames = {
+      hpf12: 'Highpass 12dB',
+      hpf48: 'Highpass 48dB',
+      loshelf: 'Low Shelf',
+      peq: 'Bell',
+      notch: 'Notch',
+      hishelf: 'High Shelf',
+      lpf12: 'Lowpass 12dB',
+      lpf48: 'Lowpass 48dB'
+  };
+
+  let dropdownOpenId = null;
+  function toggleDropdown(e, id) {
+      if (dropdownOpenId === id) dropdownOpenId = null;
+      else dropdownOpenId = id;
+  }
+  function selectShape(b, type) {
+      b.type = type;
+      dropdownOpenId = null;
       updateBands();
   }
+  function closeDropdowns() { dropdownOpenId = null; }
 
   let selectedBandIndex = 2; // Default focus
   
@@ -228,6 +243,8 @@
   });
 </script>
 
+<svelte:window on:click={closeDropdowns} />
+
 <div class="eq-container fade-in">
     <svg style="display: none;">
       <symbol id="icon-hpf12" viewBox="0 0 24 24"><path d="M4 22 Q10 22 12 12 L20 12" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
@@ -260,10 +277,24 @@
                     </div>
                     
                     <div class="params-container">
-                        <button class="shape-btn" on:click|stopPropagation={() => cycleShape(band)} disabled={!band.enabled} title="Filter Type: {band.type}">
+                        <!-- Custom Shape Dropdown Trigger -->
+                        <button class="shape-btn" on:click|stopPropagation={(e) => toggleDropdown(e, band.id)} disabled={!band.enabled} title={filterNames[band.type] || band.type}>
                             <svg width="22" height="14" viewBox="0 0 24 24"><use href="#icon-{band.type}" /></svg>
                             <span class="dropdown-arrow">▼</span>
                         </button>
+                        
+                        {#if dropdownOpenId === band.id}
+                        <!-- Omnidirectional popup menu -->
+                        <div class="shape-dropdown fade-in">
+                            {#each filterTypes as t}
+                                <button class="shape-option" class:active={band.type === t} on:click|stopPropagation={() => selectShape(band, t)}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24"><use href="#icon-{t}" /></svg>
+                                    <span>{filterNames[t]}</span>
+                                    {#if band.type === t}<span class="active-dot">•</span>{/if}
+                                </button>
+                            {/each}
+                        </div>
+                        {/if}
                         
                         <div class="slider-group">
                             <label for="freq-{band.id}">Freq</label>
@@ -290,11 +321,11 @@
 </div>
 
 <style>
-  .eq-container { display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 4px; background: #262626; border: 1px solid #3f3f46; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif; }
-  .canvas-wrapper { flex: 1; min-height: 280px; position: relative; background: #1c1c1c; } /* Ableton Dark Graph bg */
+  .eq-container { display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 4px; background: #262626; border: 1px solid #3f3f46; overflow: visible; box-shadow: 0 12px 32px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif; }
+  .canvas-wrapper { flex: 1; min-height: 180px; position: relative; background: #1c1c1c; border-bottom: 1px solid #111; } /* Ableton Dark Graph bg */
   canvas { display: block; width: 100%; height: 100%; }
 
-  .controls-panel { background: #b0b4b8; border-top: 1px solid #171717; padding: 0.5rem; } /* Ableton Silver layout */
+  .controls-panel { background: #b0b4b8; border-top: 1px solid #171717; padding: 0.4rem; flex-shrink: 0; } /* Ableton Silver layout */
   .band-matrix { display: flex; gap: 4px; justify-content: space-between; }
   
   .band-column { flex: 1; display: flex; flex-direction: column; align-items: center; background: #c2c6ca; border: 1px solid #9ca3af; border-radius: 4px; padding: 0.5rem 0.2rem; transition: all 0.2s; cursor: pointer; }
@@ -305,7 +336,7 @@
   .enable-btn { background: #71717a; color: #fff; border: 1px solid #52525b; width: 24px; height: 18px; border-radius: 2px; font-size: 0.7rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(255,255,255,0.2); transition: 0.1s; }
   .enable-btn.is-on { background: #00e5ff; color: #000; border-color: #0891b2; box-shadow: 0 0 8px rgba(0,229,255,0.4); }
   
-  .params-container { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; }
+  .params-container { display: flex; flex-direction: column; gap: 0.8rem; width: 100%; position: relative; }
   
   .shape-btn { 
       background: #c2c6ca; border: 1px solid #9ca3af; color: #18181b; border-radius: 2px;
@@ -317,6 +348,24 @@
   .shape-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .dropdown-arrow { font-size: 0.5rem; color: #3f3f46; transform: translateY(1px); }
   .band-column.active .shape-btn { background: #00e5ff; color: #000; border-color: #0891b2; }
+
+  .shape-dropdown {
+      position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; background: #1f2229; 
+      border: 1px solid #3f3f46; border-radius: 6px; padding: 0.4rem 0; width: 155px; box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+      display: flex; flex-direction: column; z-index: 1000;
+  }
+  .shape-dropdown::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border-width: 6px; border-style: solid; border-color: #1f2229 transparent transparent transparent;
+  }
+  .shape-option {
+      background: transparent; border: none; color: #e2e8f0; padding: 0.4rem 0.8rem;
+      display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.1s; width: 100%; text-align: left;
+      font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif;
+  }
+  .shape-option:hover { background: rgba(59,130,246,0.2); color: #fff; }
+  .shape-option.active { color: #ffb700; }
+  .active-dot { margin-left: auto; color: #ffb700; font-size: 1rem; line-height: 0; }
   
   .slider-group { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
   .slider-group label { font-size: 0.65rem; color: #3f3f46; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
