@@ -40,6 +40,10 @@
       lpf12: 'Lowpass 12dB',
       lpf48: 'Lowpass 48dB'
   };
+  const shortNames = {
+      hpf12: 'HPF', hpf48: 'HPF', loshelf: 'LO-SHV', peq: 'BELL',
+      notch: 'NOTCH', hishelf: 'HI-SHV', lpf12: 'LPF', lpf48: 'LPF'
+  };
 
   let dropdownOpenId = null;
   function toggleDropdown(e, id) {
@@ -263,11 +267,7 @@
       <symbol id="icon-lpf" viewBox="0 0 24 24"><use href="#icon-lpf12"/></symbol>
     </svg>
 
-    <div class="canvas-wrapper">
-        <canvas bind:this={canvas} {width} {height}></canvas>
-    </div>
-
-    <!-- Wing CSS Architecture Sidebar -->
+    <!-- Wing CSS Architecture Sidebar (Moved to LEFT axis) -->
     <div class="wing-sidebar">
         <!-- Vertical Column 1: Band Selection -->
         <div class="wing-band-list">
@@ -275,7 +275,7 @@
                 <button class="wing-band-row" class:active={selectedBandIndex === i} on:click|stopPropagation={() => selectedBandIndex = i}>
                     <div class="wing-band-name">
                         <span class="w-id">{band.id}</span>
-                        <span class="w-type">{filterNames[band.type].split(' ')[0].toUpperCase()}</span>
+                        <span class="w-type">{shortNames[band.type]}</span>
                     </div>
                     <div class="w-toggle" class:is-on={band.enabled} on:click|stopPropagation={() => { band.enabled = !band.enabled; updateBands(); }}></div>
                 </button>
@@ -284,8 +284,8 @@
 
         <!-- Vertical Column 2: Specific Selection Parameter Array -->
         <div class="wing-detail-view">
-            {@const activeBand = bands[selectedBandIndex]}
-            {#if activeBand}
+            {#if bands[selectedBandIndex]}
+                {@const activeBand = bands[selectedBandIndex]}
                 <div class="w-detail-header">
                     <div class="w-detail-title-group">
                         <span class="w-band-label">BAND {activeBand.id}</span>
@@ -333,27 +333,32 @@
             {/if}
         </div>
     </div>
+
+    <!-- Center Canvas Engine -->
+    <div class="canvas-wrapper">
+        <canvas bind:this={canvas} {width} {height}></canvas>
+    </div>
 </div>
 
 <style>
   /* Layout Wing UI Overrides */
-  .layout-wing { display: flex; flex-direction: row; width: 100%; height: 100%; min-height: 380px; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; }
-  .canvas-wrapper { flex: 1; min-height: 0; position: relative; background: #080a0f; border-right: 1px solid #000; }
+  .layout-wing { display: flex; flex-direction: row; width: 100%; height: 500px; max-height: 65vh; background: #0b0d12; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif; box-shadow: 0 12px 48px rgba(0,0,0,0.4); margin: 0 auto; }
+  .canvas-wrapper { flex: 1; min-height: 0; position: relative; background: #080a0f; }
   canvas { display: block; width: 100%; height: 100%; }
   
-  /* Right Sidebar Split */
-  .wing-sidebar { width: 340px; flex-shrink: 0; display: flex; flex-direction: row; background: #12151c; }
+  /* Left Sidebar Split */
+  .wing-sidebar { width: 340px; flex-shrink: 0; display: flex; flex-direction: row; background: #12151c; border-right: 1px solid #1e293b; }
   
   /* Band Selection List Base */
-  .wing-band-list { width: 110px; display: flex; flex-direction: column; background: #0f1115; border-right: 1px solid #000; overflow-y: auto; }
+  .wing-band-list { width: 125px; display: flex; flex-direction: column; background: #0f1115; border-right: 1px solid #1e293b; overflow-y: auto; }
   .wing-band-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0.6rem; border: none; border-bottom: 1px solid #1e293b; background: transparent; cursor: pointer; transition: 0.1s; outline: none; }
   .wing-band-row:hover { background: rgba(59,130,246,0.05); }
   .wing-band-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
-  .wing-band-name { display: flex; gap: 0.5rem; align-items: center; color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+  .wing-band-name { display: flex; gap: 0.5rem; align-items: center; color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
   .wing-band-row.active .wing-band-name { color: #f8fafc; font-weight: 700; }
-  .w-id { font-weight: 800; }
+  .w-id { font-weight: 800; font-size: 0.85rem; }
   
-  .w-toggle { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #475569; background: #0f1115; transition: 0.2s; }
+  .w-toggle { min-width: 12px; min-height: 12px; border-radius: 50%; border: 1px solid #475569; background: #0f1115; transition: 0.2s; flex-shrink: 0; }
   .w-toggle.is-on { background: transparent; border-color: #f8fafc; border-width: 2px; }
   
   /* Detail View Array Panel */

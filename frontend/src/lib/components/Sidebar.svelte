@@ -33,7 +33,10 @@
   {:else if activeTab === 'eq'}
     <div class="routing-section">
       <h4>EQ Controls</h4>
+      <button class="layer-btn">Bypass EQ</button>
       <button class="layer-btn">RTA Overlay</button>
+      <button class="layer-btn">Copy EQ</button>
+      <button class="layer-btn">Paste EQ</button>
       <button class="layer-btn" on:click={onResetEq}>Reset Flat</button>
     </div>
   {:else if activeTab === 'sends'}
