@@ -8,7 +8,7 @@
   import GlobalTabs from './lib/components/GlobalTabs.svelte';
   import EqEditor from './lib/components/EqEditor.svelte';
   import { MixerPresets, PredefinedMixersArray } from './lib/mixerPresets';
-  import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-svelte';
   
   let fohMeters = new Array(16).fill(-60);
   
@@ -487,8 +487,15 @@
             </div>
             <div class="bento-grid">
               <!-- Icon Preview -->
-              <div class="bento-card bento-icon-preview">
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
+              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <div class="bento-card bento-icon-preview"
+                   class:is-editable={activeRole === 'foh' && scribbleEditMode}
+                   on:click={() => { if (activeRole === 'foh' && scribbleEditMode) editingChannel = selectedChannel; }}>
                 <h3>Channel Icon</h3>
+                {#if activeRole === 'foh' && scribbleEditMode}
+                   <div class="edit-badge"><Edit3 size={14} /></div>
+                {/if}
                 <div class="icon-preview-slot">
                   {#if scribbles[selectedChannel]?.iconType}
                     <img src="/icons-bmp/{scribbles[selectedChannel].iconType}.bmp" alt="Icon" class="icon-lg" />
@@ -766,7 +773,10 @@
   .bento-grid::-webkit-scrollbar { width: 0; }
   .bento-card { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem; }
   .bento-card h3 { margin: 0 0 0.5rem 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; }
-  .bento-icon-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .bento-icon-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: 0.2s; }
+  .bento-icon-preview.is-editable { cursor: pointer; border-color: #10b981; background: rgba(16,185,129,0.05); }
+  .bento-icon-preview.is-editable:hover { background: rgba(16,185,129,0.1); }
+  .edit-badge { position: absolute; top: 0.5rem; right: 0.5rem; color: #10b981; }
   .icon-preview-slot { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.5rem 0; }
   .icon-lg { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; border-radius: 4px; border: 2px solid #334155; }
   .icon-placeholder { width: 48px; height: 48px; border-radius: 4px; border: 2px dashed #334155; background: #0f172a; }
