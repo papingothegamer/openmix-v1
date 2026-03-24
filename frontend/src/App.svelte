@@ -295,9 +295,17 @@
         {#if activeTab === 'mixer'}
           <!-- EDGE-TO-EDGE MIXER ROUTING -->
           {#if activeRole === 'musician'}
-            <div class="console-view fade-in" bind:clientWidth={containerWidth}>
-              <div class="channels-track">
-                {#each musicianDisplayedChannels as chIndex}
+            <div class="musician-mix fade-in">
+              <div class="musician-header">
+                {#if scribbles[`out_${musicianAux}`]?.iconType}
+                  <img src="/icons-bmp/{scribbles[`out_${musicianAux}`].iconType}.bmp" alt="" class="musician-header-icon" />
+                {:else}
+                  <div class="musician-header-icon-empty"></div>
+                {/if}
+                <h2>{scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux} Monitor Mix`}</h2>
+              </div>
+              <div class="musician-rack">
+                {#each inputChannels as chIndex}
                   <ChannelStrip 
                     channelIndex={chIndex} 
                     role="musician"
@@ -321,13 +329,6 @@
                   on:nameClick={() => {}}
                 />
               </div>
-              {#if musicianTotalPages > 1}
-                <div class="musician-pagination">
-                  <button class="page-nav" disabled={musicianPage === 0} on:click={() => musicianPage--}>◀</button>
-                  <span class="page-info">{musicianPage + 1} / {musicianTotalPages}</span>
-                  <button class="page-nav" disabled={musicianPage >= musicianTotalPages - 1} on:click={() => musicianPage++}>▶</button>
-                </div>
-              {/if}
             </div>
           {:else}
             <div class="console-view fade-in" bind:clientWidth={containerWidth}>
@@ -694,12 +695,17 @@
   .bento-eq-curve { width: 100%; height: 50px; background: #0b0f19; border-radius: 4px; border: 1px solid #1e293b; }
   .bento-eq-curve path { fill: none; stroke: #38bdf8; stroke-width: 1.5; }
 
-  /* Musician Pagination */
-  .musician-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0; background: #0b0f19; border-top: 1px solid #1e293b; }
-  .page-nav { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.15s; font-size: 0.8rem; }
-  .page-nav:hover:not(:disabled) { background: #3b82f6; border-color: #60a5fa; }
-  .page-nav:disabled { opacity: 0.3; cursor: not-allowed; }
-  .page-info { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
+  /* Musician Monitor Mix */
+  .musician-mix { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .musician-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: #0b0f19; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
+  .musician-header h2 { margin: 0; font-size: 1.1rem; color: #f8fafc; font-weight: 800; letter-spacing: -0.3px; }
+  .musician-header-icon { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; border-radius: 4px; border: 2px solid #8b5cf6; }
+  .musician-header-icon-empty { width: 32px; height: 32px; border-radius: 4px; border: 2px solid #334155; background: #18181b; }
+  .musician-rack { display: flex; flex-direction: row; align-items: stretch; gap: 2px; padding: 0.5rem; overflow-x: auto; flex: 1; }
+  .musician-rack::-webkit-scrollbar { height: 6px; }
+  .musician-rack::-webkit-scrollbar-track { background: #0b0f19; }
+  .musician-rack::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  .musician-rack::-webkit-scrollbar-thumb:hover { background: #475569; }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
