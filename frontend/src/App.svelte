@@ -165,6 +165,7 @@
   $: inputChannels = Array.from({length: config.inputs}, (_, i) => i + 1).filter(ch => !presetHardLinks[ch]?.hidden);
   $: outputChannels = (config.visibleBuses || Array.from({length: config.outputs}, (_, i) => i + 1)).sort((a,b) => a-b);
   $: dcaChannels = Array.from({length: config.dcas || 8}, (_, i) => i + 1);
+  $: fxChannels = Array.from({length: config.fx || 4}, (_, i) => i + 1);
   
   $: currentChannels = activeView === 'inputs' ? inputChannels : (activeView === 'outputs' ? outputChannels : dcaChannels);
   $: fohMeters = $rawMeters || [];
@@ -176,6 +177,11 @@
   $: channelsPerPage = stripsPerPage;
   $: totalPages = Math.ceil(currentChannels.length / Math.max(1, channelsPerPage));
   $: displayedChannels = currentChannels.slice(currentPage * channelsPerPage, (currentPage + 1) * channelsPerPage);
+
+  // Musician pagination
+  let musicianPage = 0;
+  $: musicianTotalPages = Math.ceil(inputChannels.length / Math.max(1, stripsPerPage));
+  $: musicianDisplayedChannels = inputChannels.slice(musicianPage * stripsPerPage, (musicianPage + 1) * stripsPerPage);
 
   // Watch for layer switches to reset bank
   $: { if (activeView) currentPage = 0; }
@@ -291,7 +297,7 @@
           {#if activeRole === 'musician'}
             <div class="console-view fade-in" bind:clientWidth={containerWidth}>
               <div class="channels-track">
-                {#each inputChannels as chIndex}
+                {#each musicianDisplayedChannels as chIndex}
                   <ChannelStrip 
                     channelIndex={chIndex} 
                     role="musician"
@@ -315,6 +321,13 @@
                   on:nameClick={() => {}}
                 />
               </div>
+              {#if musicianTotalPages > 1}
+                <div class="musician-pagination">
+                  <button class="page-nav" disabled={musicianPage === 0} on:click={() => musicianPage--}>◀</button>
+                  <span class="page-info">{musicianPage + 1} / {musicianTotalPages}</span>
+                  <button class="page-nav" disabled={musicianPage >= musicianTotalPages - 1} on:click={() => musicianPage++}>▶</button>
+                </div>
+              {/if}
             </div>
           {:else}
             <div class="console-view fade-in" bind:clientWidth={containerWidth}>
@@ -339,6 +352,25 @@
                 {/each}
                 
                 {#if activeView === 'outputs'}
+                  <div class="master-divider"></div>
+                  {#each fxChannels as fxIdx}
+                    {@const fxSId = `fx_${fxIdx}`}
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                    <!-- svelte-ignore a11y-no-static-element-interactions -->
+                    <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = fxSId; }}>
+                      <ChannelStrip
+                        channelIndex={fxIdx}
+                        role={activeRole}
+                        stripType="output"
+                        name={scribbles[fxSId]?.name || `FX ${fxIdx}`}
+                        iconType={scribbles[fxSId]?.iconType || 'icon_01'}
+                        color={scribbles[fxSId]?.color || '#f59e0b'}
+                        peakLevel={-60}
+                        eqCurvePath={computeMiniEqPath(fxSId)}
+                        on:nameClick={() => { selectedChannel = fxSId; activeTab = 'channel'; }}
+                      />
+                    </div>
+                  {/each}
                   <div class="master-divider"></div>
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -383,24 +415,54 @@
                   <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
               </div>
             </div>
-            <div class="tab-content-body">
-              <div class="param-section">
+            <div class="bento-grid">
+              <!-- Icon Preview -->
+              <div class="bento-card bento-icon-preview">
+                <h3>Channel Icon</h3>
+                <div class="icon-preview-slot">
+                  {#if scribbles[selectedChannel]?.iconType}
+                    <img src="/icons-bmp/{scribbles[selectedChannel].iconType}.bmp" alt="Icon" class="icon-lg" />
+                  {:else}
+                    <div class="icon-placeholder"></div>
+                  {/if}
+                  <span class="icon-name">{scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</span>
+                  <span class="icon-color-dot" style="background: {scribbles[selectedChannel]?.color || '#3f3f46'};"></span>
+                </div>
+              </div>
+              <!-- Preamp -->
+              <div class="bento-card">
                 <h3>Preamp</h3>
                 <div class="param-row"><span>Gain</span><input type="range" min="0" max="60" value="30" /><span>30 dB</span></div>
                 <div class="param-row"><span>48V</span><button class="toggle-sm">OFF</button></div>
                 <div class="param-row"><span>Phase</span><button class="toggle-sm">0°</button></div>
               </div>
-              <div class="param-section">
+              <!-- Gate -->
+              <div class="bento-card">
                 <h3>Gate</h3>
                 <div class="param-row"><span>Threshold</span><input type="range" min="-80" max="0" value="-40" /><span>-40 dB</span></div>
                 <div class="param-row"><span>Range</span><input type="range" min="0" max="60" value="20" /><span>20 dB</span></div>
+                <div class="param-row"><span>Attack</span><input type="range" min="0" max="120" value="5" /><span>5 ms</span></div>
+                <div class="param-row"><span>Hold</span><input type="range" min="0" max="500" value="50" /><span>50 ms</span></div>
               </div>
-              <div class="param-section">
+              <!-- Compressor -->
+              <div class="bento-card">
                 <h3>Compressor</h3>
                 <div class="param-row"><span>Threshold</span><input type="range" min="-60" max="0" value="-20" /><span>-20 dB</span></div>
                 <div class="param-row"><span>Ratio</span><input type="range" min="1" max="20" value="4" /><span>4:1</span></div>
                 <div class="param-row"><span>Attack</span><input type="range" min="0" max="100" value="10" /><span>10 ms</span></div>
                 <div class="param-row"><span>Release</span><input type="range" min="5" max="500" value="100" /><span>100 ms</span></div>
+                <div class="param-row"><span>Makeup</span><input type="range" min="0" max="24" value="0" /><span>0 dB</span></div>
+              </div>
+              <!-- Mini EQ Preview -->
+              <div class="bento-card bento-eq-preview">
+                <h3>EQ Preview</h3>
+                <svg viewBox="0 0 100 40" class="bento-eq-curve"><path d="{computeMiniEqPath(selectedChannel)}" /></svg>
+              </div>
+              <!-- Level -->
+              <div class="bento-card">
+                <h3>Output</h3>
+                <div class="param-row"><span>Pan</span><input type="range" min="-100" max="100" value="0" /><span>C</span></div>
+                <div class="param-row"><span>Level</span><input type="range" min="-90" max="10" value="0" /><span>0 dB</span></div>
               </div>
             </div>
           </div>
@@ -610,6 +672,28 @@
   .aux-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(139,92,246,0.3); border-color: #8b5cf6; background: rgba(139,92,246,0.15); }
   .aux-num { font-size: 1.5rem; font-weight: 800; color: #8b5cf6; }
   .aux-label { font-size: 0.8rem; color: #94a3b8; }
+
+  /* Bento Grid for Channel Tab */
+  .bento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; flex: 1; overflow-y: auto; padding: 0.5rem 0; align-content: start; }
+  .bento-grid::-webkit-scrollbar { width: 0; }
+  .bento-card { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem; }
+  .bento-card h3 { margin: 0 0 0.5rem 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; }
+  .bento-icon-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .icon-preview-slot { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.5rem 0; }
+  .icon-lg { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; border-radius: 4px; border: 2px solid #334155; }
+  .icon-placeholder { width: 48px; height: 48px; border-radius: 4px; border: 2px dashed #334155; background: #0f172a; }
+  .icon-name { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; }
+  .icon-color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); }
+  .bento-eq-preview { display: flex; flex-direction: column; }
+  .bento-eq-curve { width: 100%; height: 50px; background: #0b0f19; border-radius: 4px; border: 1px solid #1e293b; }
+  .bento-eq-curve path { fill: none; stroke: #38bdf8; stroke-width: 1.5; }
+
+  /* Musician Pagination */
+  .musician-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem 0; background: #0b0f19; border-top: 1px solid #1e293b; }
+  .page-nav { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.15s; font-size: 0.8rem; }
+  .page-nav:hover:not(:disabled) { background: #3b82f6; border-color: #60a5fa; }
+  .page-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+  .page-info { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
