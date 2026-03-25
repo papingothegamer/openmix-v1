@@ -8,6 +8,7 @@
   import GlobalTabs from './lib/components/GlobalTabs.svelte';
   import EqEditor from './lib/components/EqEditor.svelte';
   import SendsPanel from './lib/components/SendsPanel.svelte';
+  import EffectsRack from './lib/components/EffectsRack.svelte';
   import { MixerPresets, PredefinedMixersArray } from './lib/mixerPresets';
   import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-svelte';
   
@@ -193,6 +194,12 @@
     // Load local configuration
     const saved = localStorage.getItem('openmix_config');
     if (saved) config = JSON.parse(saved);
+
+    // Ensure FX slots exist in store for current config
+    // (deferred import to avoid circular load issues)
+    import('./lib/fxState.js').then(mod => {
+      if (config && typeof config.fx === 'number') mod.ensureFxSlots(config.fx);
+    });
 
     return () => socket.disconnect();
   });
@@ -707,24 +714,7 @@
           <SendsPanel bind:sendsState bind:selectedChannel {config} {scribbles} {cycleChannel} {isFirstChannel} {isLastChannel} />
 
         {:else if activeTab === 'fx'}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">FX: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
-              </div>
-            </div>
-            <div class="tab-content-body">
-              {#each Array(config.fx || 4) as _, i}
-                <div class="param-section">
-                  <h3>FX {i + 1} Send</h3>
-                  <div class="param-row"><span>Level</span><input type="range" min="-60" max="10" value="-60" /><span>-∞</span></div>
-                  <div class="param-row"><span>Tap</span><button class="toggle-sm">POST</button></div>
-                </div>
-              {/each}
-            </div>
-          </div>
+          <EffectsRack {config} {scribbles} bind:selectedChannel {cycleChannel} {isFirstChannel} {isLastChannel} />
 
         {:else if activeTab === 'routing'}
           <div class="macro-view fade-in">

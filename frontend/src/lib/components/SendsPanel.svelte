@@ -6,7 +6,7 @@
   export let selectedChannel;
   export let config;
   export let scribbles;
-  export let cycleChannel = () => {};
+  export let cycleChannel = (dir) => {}; // Fixed: added 'dir' parameter
   export let isFirstChannel = true;
   export let isLastChannel = true;
 
@@ -142,14 +142,9 @@
     { value: 'subgroup',   label: 'Sub Group' },
   ];
 
-  // FADER_H: travel height in px. Must match .fader-well height in CSS.
-  // Increased to better match the visual scale of the EQ editor.
   const FADER_H = 220;
-
   $: auxBuses     = config?.visibleBuses || Array.from({ length: config?.outputs || 0 }, (_, i) => i + 1);
   $: fxCount      = config?.fx || 0;
-  // Small mixer (XR18-class): ≤8 outputs → AUX + FX side by side
-  // Large mixer (X32/WING):   >8 outputs → AUX on top, FX stacked below
   $: isSmallMixer = (config?.outputs || 0) <= 8;
 </script>
 
@@ -202,14 +197,7 @@
         </div>
       </div>
 
-      <!--
-        Layout strategy:
-          Small mixer (≤8 outputs, e.g. XR18): AUX + FX side by side in a two-column grid.
-          Large mixer (>8 outputs, e.g. X32/WING): AUX on top, FX stacked below.
-      -->
-
       {#if isSmallMixer}
-        <!-- ── SMALL MIXER: side-by-side ── -->
         <div class="side-by-side">
 
           {#if auxBuses.length > 0}
@@ -277,8 +265,6 @@
         </div>
 
       {:else}
-        <!-- ── LARGE MIXER: stacked ── -->
-
         {#if auxBuses.length > 0}
           <div class="sends-section">
             <div class="section-hdr"><span class="section-lbl">AUX Bus Sends</span></div>
@@ -386,14 +372,9 @@
   .sp-lbl { font-size: 0.68rem; font-weight: 600; color: #334155; white-space: nowrap; transition: color .12s; }
   .sp-active .sp-lbl { color: #cbd5e1; }
 
-  /* Small mixer: AUX + FX side by side */
   .side-by-side {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.55rem;
-    align-items: start;
+    display: grid; grid-template-columns: 1fr auto; gap: 0.55rem; align-items: start;
   }
-  /* If only one section exists (no FX or no AUX), let it fill the row */
   .side-by-side > :only-child { grid-column: 1 / -1; }
 
   .sends-section { background: #060d17; border: 1px solid #0c1a28; border-radius: 8px; overflow: hidden; }
@@ -418,30 +399,11 @@
 
   .strip-name {
     font-size: 0.78rem; font-weight: 900; letter-spacing: .06em; color: #94a3b8;
-    text-align: center; text-transform: uppercase;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;
+    text-align: center; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;
     transition: color .12s;
   }
   .strip-on .strip-name { color: #64748b; }
 
-  /*
-    VERTICAL FADER via rotate(-90deg).
-
-    The input element has:
-      width  = FADER_H (the travel distance, set inline)
-      height = 28px    (thumb thickness, set in CSS)
-
-    After rotating -90deg around its center:
-      visual width  = 28px
-      visual height = FADER_H
-
-    The .fader-well wrapper must match the POST-rotation visual footprint:
-      width  = 28px
-      height = FADER_H (140px)
-
-    overflow:visible is needed so the rotated input isn't clipped by the wrapper.
-    The input is absolutely positioned so it doesn't affect document flow.
-  */
   .fader-well {
     position: relative;
     width: 36px;
@@ -454,21 +416,16 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    /* height = thumb area thickness */
     height: 36px;
-    /* width set inline = FADER_H = 220px */
     transform: translate(-50%, -50%) rotate(-90deg);
     -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
+    appearance: none; background: transparent;
     outline: none;
     cursor: ns-resize;
   }
 
-  /* Track */
   .v-fader::-webkit-slider-runnable-track {
-    height: 7px;
-    background: #03060b;
+    height: 7px; background: #03060b;
     border: 1px solid #0f2030;
     border-radius: 4px;
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.95);
@@ -480,16 +437,13 @@
     border-radius: 3px;
   }
 
-  /* Thumb — wide fader cap */
   .v-fader::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 34px;
-    height: 18px;
+    width: 34px; height: 18px;
     margin-top: -6px;
     background: linear-gradient(180deg, #273248 0%, #0f1724 50%, #273248 100%);
     border: 1px solid #3b5372;
-    border-radius: 4px;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
+    border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
     cursor: ns-resize;
     transition: border-color .12s, box-shadow .12s, transform .08s;
   }
@@ -507,14 +461,12 @@
   .v-fader:hover::-webkit-slider-thumb  { border-color: #60a5fa; box-shadow: 0 0 14px rgba(96,165,250,.4); }
   .v-fader:active::-webkit-slider-thumb { background: linear-gradient(180deg, #1e3a5f, #0c1e3c); cursor: grabbing; }
 
-  /* FX purple accent */
   .fx-strip.strip-on .v-fader::-webkit-slider-thumb { border-color: #7c3aed; box-shadow: 0 2px 10px rgba(124,58,237,.4); }
   .fx-strip.strip-on .v-fader::-moz-range-thumb     { border-color: #7c3aed; }
 
   .db-read {
     font-family: 'JetBrains Mono', 'Fira Mono', monospace;
-    font-size: 0.78rem; font-weight: 800; color: #cbd5e1;
-    text-align: center; white-space: nowrap; transition: color .12s;
+    font-size: 0.78rem; font-weight: 800; color: #cbd5e1; text-align: center; white-space: nowrap; transition: color .12s;
   }
   .strip-on .db-read { color: #3d5a73; }
   .db-unity          { color: #06b6d4 !important; }
