@@ -221,6 +221,13 @@
               width = rect.width;
               height = rect.height;
           }
+          // If parent has no EQ state yet, seed it with defaults so the flat
+          // response curve is immediately visible without any user interaction.
+          if (!eqBands) {
+              const initBands = defaultBands();
+              bands = initBands;
+              onBandsChange(channelId, initBands);
+          }
           drawEQ();
       });
 
