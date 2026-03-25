@@ -97,6 +97,15 @@
   .sidebar { width: 120px; background: #0b0f19; border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 0.75rem 0.5rem; gap: 0.75rem; color: #e2e8f0; height: 100%; box-sizing: border-box; flex-shrink: 0; overflow-y: auto; }
   .sidebar::-webkit-scrollbar { width: 0; }
   h4 { margin: 0 0 0.5rem 0; font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; text-align: center; }
+
+  @media (max-width: 1024px) {
+    .sidebar { width: 100px; padding: 0.5rem 0.35rem; }
+    h4 { font-size: 0.6rem; margin-bottom: 0.35rem; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+  }
   
   .section { display: flex; flex-direction: column; gap: 0.35rem; }
   .section.compact { gap: 0.3rem; }

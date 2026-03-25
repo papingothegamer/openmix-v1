@@ -14,7 +14,7 @@ const io = new Server(server, {
 });
 
 // Start UDP Loop to the Digital Mixer (default IP — will be overridden by configureMixer)
-const MIXER_IP = process.env.MIXER_IP || '192.168.1.100'; // Default fallback IP
+const MIXER_IP = process.env.MIXER_IP || '192.168.1.100';
 const MIXER_PORT = parseInt(process.env.MIXER_PORT) || 10024;
 const mixer = new MixerConnection(MIXER_IP, MIXER_PORT);
 
@@ -33,7 +33,6 @@ mixer.on('metersUpdate', (data) => {
 io.on('connection', (socket) => {
     handleConnection(socket, mixer, io);
 
-    // Auto-discovery: frontend requests a subnet scan
     socket.on('discoverMixer', async (_, callback) => {
         console.log('[Discovery] Starting mixer discovery...');
         try {
@@ -50,7 +49,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Dynamic mixer reconfiguration: frontend sends confirmed IP/port
     socket.on('configureMixer', ({ ip, port }) => {
         if (!ip) return;
         const newPort = parseInt(port) || 10024;
@@ -60,7 +58,20 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+// ── Port binding ─────────────────────────────────────────────────────────────
+const PORT = 3000;
+
 server.listen(PORT, () => {
-    console.log(`OpenMix Hub server listening on port ${PORT}`);
+    console.log(`OpenMix Hub server listening on http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`\n[Error] Port ${PORT} is already in use.`);
+        console.error(`  Kill it with:  npx kill-port ${PORT}`);
+        console.error(`  Or manually:   netstat -ano | findstr :${PORT}  →  taskkill /PID <pid> /F\n`);
+        process.exit(1);
+    } else {
+        throw err;
+    }
 });

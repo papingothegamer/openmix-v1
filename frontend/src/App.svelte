@@ -7,6 +7,7 @@
   import ScribbleEditor from './lib/components/ScribbleEditor.svelte';
   import GlobalTabs from './lib/components/GlobalTabs.svelte';
   import EqEditor from './lib/components/EqEditor.svelte';
+  import SendsPanel from './lib/components/SendsPanel.svelte';
   import { MixerPresets, PredefinedMixersArray } from './lib/mixerPresets';
   import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-svelte';
   
@@ -195,6 +196,60 @@
 
     return () => socket.disconnect();
   });
+
+  // Hydrate sendsState from backend mixerState.flatOscCache when available
+  $: if ($mixerState && $mixerState.flatOscCache) {
+    const cache = $mixerState.flatOscCache || {};
+    const updated = { ...sendsState };
+    Object.entries(cache).forEach(([path, val]) => {
+      // AUX level: /ch/01/mix/02/level
+      let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
+      if (m) {
+        const ch = parseInt(m[1], 10);
+        const bus = parseInt(m[2], 10);
+        const key = `in_${ch}_aux${bus}`;
+        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), level: parseFloat(val) };
+        return;
+      }
+      // AUX on/off: /ch/01/mix/02/on
+      m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/on$/);
+      if (m) {
+        const ch = parseInt(m[1], 10);
+        const bus = parseInt(m[2], 10);
+        const key = `in_${ch}_aux${bus}`;
+        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), on: !!parseInt(val, 10) };
+        return;
+      }
+      // AUX pre/post type: /ch/01/mix/02/type
+      m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/type$/);
+      if (m) {
+        const ch = parseInt(m[1], 10);
+        const bus = parseInt(m[2], 10);
+        const key = `in_${ch}_aux${bus}`;
+        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), prePost: parseInt(val, 10) };
+        return;
+      }
+      // FX level: /ch/01/mix/fx/1/level or /ch/01/mix/fx/1/level (some mixers use different padding)
+      m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/level$/);
+      if (m) {
+        const ch = parseInt(m[1], 10);
+        const fx = parseInt(m[2], 10);
+        const key = `in_${ch}_fx${fx}`;
+        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), level: parseFloat(val) };
+        return;
+      }
+      // FX type: /ch/01/mix/fx/1/type
+      m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/type$/);
+      if (m) {
+        const ch = parseInt(m[1], 10);
+        const fx = parseInt(m[2], 10);
+        const key = `in_${ch}_fx${fx}`;
+        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), prePost: parseInt(val, 10) };
+        return;
+      }
+    });
+    sendsState = updated;
+  }
 
   function completeSetup() {
     scribbles = {}; // Flush constraints from older layouts completely
@@ -403,7 +458,7 @@
             <h3>FOH Master Control</h3>
             <p>Access high-res meters, processing graphs, and full routing console.</p>
           </button>
-          <button class="role-btn musician" on:click={() => { activeRole = 'musician'; musicianAux = null; }}>
+          <button class="role-btn musician" on:click={() => { activeRole = 'musician'; musicianAux = null; selectedChannel = null; activeTab = 'mixer'; }}>
             <h3>Musician Monitor Sandbox</h3>
             <p>Fader-only responsive view. Protected by strict backend auxiliary routing.</p>
           </button>
@@ -491,7 +546,7 @@
                       eqCurvePath={computeMiniEqPath(sId)}
                       stereoLink={activeView === 'inputs' ? isLinked(chIndex, stereoLinks) : false}
                       on:toggleLink={() => toggleStereoLink(chIndex)}
-                      on:nameClick={() => { selectedChannel = sId; activeTab = 'channel'; }}
+                        on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = sId; activeTab = 'channel'; } }}
                     />
                   </div>
                 {/each}
@@ -502,7 +557,7 @@
                     {@const fxSId = `fx_${fxIdx}`}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <!-- svelte-ignore a11y-no-static-element-interactions -->
-                    <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = fxSId; }}>
+                      <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = fxSId; }}>
                       <ChannelStrip
                         channelIndex={String(fxIdx)}
                         role={activeRole}
@@ -512,7 +567,7 @@
                         color={scribbles[fxSId]?.color || '#f59e0b'}
                         peakLevel={-60}
                         eqCurvePath={computeMiniEqPath(fxSId)}
-                        on:nameClick={() => { selectedChannel = fxSId; activeTab = 'channel'; }}
+                        on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = fxSId; activeTab = 'channel'; } }}
                       />
                     </div>
                   {/each}
@@ -529,7 +584,7 @@
                       color={scribbles['main_LR']?.color || "#ef4444"}
                       peakLevel={-60}
                       eqCurvePath={computeMiniEqPath('main_LR')}
-                      on:nameClick={() => { selectedChannel = 'main_LR'; activeTab = 'channel'; }}
+                      on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = 'main_LR'; activeTab = 'channel'; } }}
                     />
                   </div>
                 {/if}
@@ -649,103 +704,7 @@
           </div>
 
         {:else if activeTab === 'sends'}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">SENDS: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
-              </div>
-            </div>
-            <div class="tab-content-body">
-              {#if outputChannels.length === 0}
-                <p style="color:#64748b; padding: 1rem;">No AUX buses configured. Add outputs in the Setup Wizard.</p>
-              {:else}
-              <div class="param-section">
-                <h3>AUX Bus Sends</h3>
-                {#each outputChannels as busNum}
-                  {@const busKey = `${selectedChannel}_aux${busNum}`}
-                  <div class="param-row sends-row">
-                    <span class="send-bus-label">
-                      {#if scribbles[`out_${busNum}`]?.iconType}
-                        <img src="/icons-bmp/{scribbles[`out_${busNum}`].iconType}.bmp" alt="" class="send-bus-icon" />
-                      {/if}
-                      {scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}
-                    </span>
-                    <input type="range" class="sends-fader" min="0" max="1" step="0.01"
-                      value={sendsState[busKey]?.level ?? 0}
-                      on:input={(e) => {
-                        const v = parseFloat(e.currentTarget.value);
-                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
-                        sendsState[busKey].level = v;
-                        sendsState = { ...sendsState };
-                        if (selectedChannel.startsWith('in_')) {
-                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-                          const bus = String(busNum).padStart(2, '0');
-                          setOsc(`/ch/${ch}/mix/${bus}/level`, v);
-                        }
-                      }}
-                    />
-                    <span class="send-val">{((sendsState[busKey]?.level ?? 0) * 100).toFixed(0)}%</span>
-                    <button class="toggle-sm" class:active={sendsState[busKey]?.prePost === 1}
-                      on:click={() => {
-                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
-                        const newTap = sendsState[busKey].prePost === 1 ? 0 : 1;
-                        sendsState[busKey].prePost = newTap;
-                        sendsState = { ...sendsState };
-                        if (selectedChannel.startsWith('in_')) {
-                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-                          const bus = String(busNum).padStart(2, '0');
-                          setOsc(`/ch/${ch}/mix/${bus}/type`, newTap);
-                        }
-                      }}
-                    >{sendsState[busKey]?.prePost === 1 ? 'PRE' : 'POST'}</button>
-                  </div>
-                {/each}
-              </div>
-
-              {#if config.fx > 0}
-              <div class="param-section">
-                <h3>FX Sends</h3>
-                {#each Array(config.fx || 4) as _, i}
-                  {@const busKey = `${selectedChannel}_fx${i+1}`}
-                  <div class="param-row sends-row">
-                    <span class="send-bus-label">
-                      {scribbles[`fx_${i+1}`]?.name || `FX ${i + 1}`}
-                    </span>
-                    <input type="range" class="sends-fader" min="0" max="1" step="0.01"
-                      value={sendsState[busKey]?.level ?? 0}
-                      on:input={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
-                        sendsState[busKey].level = v;
-                        sendsState = { ...sendsState };
-                        if (selectedChannel.startsWith('in_')) {
-                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-                          setOsc(`/ch/${ch}/mix/fx/${i+1}/level`, v);
-                        }
-                      }}
-                    />
-                    <span class="send-val">{((sendsState[busKey]?.level ?? 0) * 100).toFixed(0)}%</span>
-                    <button class="toggle-sm" class:active={sendsState[busKey]?.prePost === 1}
-                      on:click={() => {
-                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
-                        const newTap = sendsState[busKey].prePost === 1 ? 0 : 1;
-                        sendsState[busKey].prePost = newTap;
-                        sendsState = { ...sendsState };
-                        if (selectedChannel.startsWith('in_')) {
-                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-                          setOsc(`/ch/${ch}/mix/fx/${i+1}/type`, newTap);
-                        }
-                      }}
-                    >{sendsState[busKey]?.prePost === 1 ? 'PRE' : 'POST'}</button>
-                  </div>
-                {/each}
-              </div>
-              {/if}
-              {/if}
-            </div>
-          </div>
+          <SendsPanel bind:sendsState bind:selectedChannel {config} {scribbles} {cycleChannel} {isFirstChannel} {isLastChannel} />
 
         {:else if activeTab === 'fx'}
           <div class="macro-view fade-in">
@@ -899,7 +858,7 @@
   .scribble-mode .strip-wrapper:hover { background: rgba(16, 185, 129, 0.1); }
 
   /* Macro Views Styling */
-  .macro-view { padding: 0.5rem; width: 100%; max-width: 960px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  .macro-view { padding: 0.5rem; width: 100%; max-width: 1400px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
   
   .view-header-inline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0 0.5rem; flex-shrink: 0; }
   .title-left { margin: 0; color: #f8fafc; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -987,11 +946,12 @@
   @media (max-width: 1400px) {
     :global(#app) { max-width: 95% !important; }
   }
-  @media (max-width: 1100px) {
+  @media (min-width: 1600px) {
+    .macro-view { max-width: 1800px; padding: 1rem 2rem; }
+  }
+    @media (max-width: 1100px) {
     :global(#app) { max-width: 100% !important; }
     .card { padding: 1.5rem; border-radius: 0; border-left: none; border-right: none; }
-    .glass-header { padding: 0.5rem 1rem; }
-    .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.75rem; }
   }
   @media (max-width: 900px) and (orientation: portrait) {
     .app-container { display: none !important; }
@@ -1010,13 +970,6 @@
   .ip-field { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
   .ip-field label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
   .ip-port { max-width: 120px; }
-
-  /* ─── Sends Tab ──────────────────────────────────────── */
-  .sends-row { display: grid; grid-template-columns: 140px 1fr 48px 64px; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid #1a2233; }
-  .send-bus-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .send-bus-icon { width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
-  .sends-fader { width: 100%; accent-color: #0ea5e9; cursor: pointer; }
-  .send-val { font-size: 0.8rem; color: #64748b; text-align: right; white-space: nowrap; }
 
   /* ─── Routing Matrix ─────────────────────────────────── */
   .routing-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
