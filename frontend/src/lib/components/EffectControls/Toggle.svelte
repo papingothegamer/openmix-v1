@@ -1,15 +1,19 @@
 <script>
   export let label = 'Enabled';
   export let value = false;
-  // Fixed: Removed unused 'min' and 'max'
-  export let onChange = (val) => {}; // Fixed: Added parameter
+  export let defaultValue = value;
+  export let onChange = (val) => {}; 
 
   function handleToggle() {
     onChange(!value);
   }
+
+  function handleDoubleClick() {
+    if (defaultValue !== undefined) onChange(defaultValue);
+  }
 </script>
 
-<div class="toggle-container">
+<div class="toggle-container" on:dblclick={handleDoubleClick}>
   <button
     type="button"
     class="toggle-button"

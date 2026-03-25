@@ -1,4 +1,7 @@
+// src/lib/fxState.js
 import { writable } from 'svelte/store';
+import { FX_REGISTRY, getPresetMeta } from './fxRegistry.js';
+import { setOsc } from './socket.js'; // Import the OSC sender
 
 const DEFAULT_SLOT = {
   preset: 'Empty',
@@ -8,56 +11,8 @@ const DEFAULT_SLOT = {
   type: 'generic'
 };
 
-const PRESET_DEFAULTS = {
-  'Empty': {
-    type: 'generic',
-    params: {}
-  },
-  'Hall Reverb': {
-    type: 'reverb',
-    params: {
-      type: 'Hall Reverb',
-      size: 70,
-      decay: 25,
-      preDelay: 20,
-      damping: 50
-    }
-  },
-  'Vintage Room': {
-    type: 'reverb',
-    params: {
-      type: 'Vintage Room',
-      size: 55,
-      decay: 18,
-      preDelay: 12,
-      damping: 42
-    }
-  },
-  'Stereo Delay': {
-    type: 'delay',
-    params: {
-      type: 'Stereo Delay',
-      time: 50,
-      feedback: 40,
-      mix: 50
-    }
-  },
-  'Stereo Chorus': {
-    type: 'chorus',
-    params: {
-      rate: 30,
-      depth: 60,
-      mix: 50
-    }
-  }
-};
-
 function cloneParams(params) {
   return { ...(params || {}) };
-}
-
-function getPresetMeta(preset) {
-  return PRESET_DEFAULTS[preset] || PRESET_DEFAULTS.Empty;
 }
 
 export function normalizeSlot(slot = {}) {
@@ -69,7 +24,7 @@ export function normalizeSlot(slot = {}) {
     preset,
     type: slot.type || presetMeta.type || 'generic',
     params: {
-      ...cloneParams(presetMeta.params),
+      ...cloneParams(presetMeta.defaultParams),
       ...cloneParams(slot.params)
     }
   };
@@ -91,33 +46,61 @@ export function ensureFxSlots(count) {
   });
 }
 
+// THE ROUTER: Handles State + OSC Emission automatically
 export function setSlot(idx, patch) {
   fxState.update((s) => {
     const slots = Array.isArray(s.slots) ? s.slots.slice() : [];
     const current = normalizeSlot(slots[idx]);
-    const nextPreset = patch && Object.prototype.hasOwnProperty.call(patch, 'preset') ? patch.preset || 'Empty' : current.preset;
+    
+    const nextPreset = patch && patch.preset ? patch.preset : current.preset;
     const presetChanged = nextPreset !== current.preset;
     const presetMeta = getPresetMeta(nextPreset);
+    
+    const rtnNum = idx + 1; // OSC paths use 1-based indexing (e.g., /rtn/1/)
+
     const merged = {
       ...current,
       ...patch,
       preset: nextPreset
     };
 
-    merged.type = patch && Object.prototype.hasOwnProperty.call(patch, 'type')
-      ? patch.type
-      : (presetChanged ? presetMeta.type : merged.type || presetMeta.type || 'generic');
+    merged.type = patch && patch.type ? patch.type : (presetChanged ? presetMeta.type : current.type);
 
+    // 1. Handle Preset Change
     if (presetChanged) {
+      // Apply the default parameters for the new preset
       merged.params = {
-        ...cloneParams(presetMeta.params),
+        ...cloneParams(presetMeta.defaultParams),
         ...cloneParams(patch?.params)
       };
-    } else {
+      
+      // Tell the mixer to change the effect type
+      setOsc(`/rtn/${rtnNum}/fxtype`, presetMeta.oscTypeIndex);
+      
+      // Blast all default parameter values to the mixer so it matches the UI
+      Object.entries(merged.params).forEach(([key, value]) => {
+        const oscSuffix = presetMeta.oscMap[key];
+        if (oscSuffix && typeof value === 'number') {
+          setOsc(`/rtn/${rtnNum}${oscSuffix}`, value);
+        }
+      });
+    } 
+    // 2. Handle Parameter Adjustments (e.g. user moving a knob)
+    else {
       merged.params = {
         ...cloneParams(current.params),
         ...cloneParams(patch?.params)
       };
+
+      // If specific parameters were changed, send only those to the mixer
+      if (patch?.params) {
+        Object.entries(patch.params).forEach(([key, value]) => {
+          const oscSuffix = presetMeta.oscMap[key];
+          if (oscSuffix && current.params[key] !== value) {
+            setOsc(`/rtn/${rtnNum}${oscSuffix}`, value);
+          }
+        });
+      }
     }
 
     slots[idx] = normalizeSlot(merged);

@@ -10,34 +10,15 @@
   export let slot = { preset: 'Empty', bypass: false, params: {}, level: 0, type: 'generic' };
 
   const presetOptions = [
-    'Empty',
-    'Vintage Room',
-    'Hall Reverb',
-    'Stereo Delay',
-    'Stereo Chorus'
+    'Empty', 'Vintage Room', 'Hall Reverb', 'Stereo Delay', 'Stereo Chorus'
   ];
 
   const presetDisplay = {
-    'Empty': {
-      family: 'No Effect',
-      description: 'Choose a preset to load an FX processor into this return slot.'
-    },
-    'Vintage Room': {
-      family: 'Reverb',
-      description: 'Warm early reflections and compact ambience for vocals, drums, and acoustic sources.'
-    },
-    'Hall Reverb': {
-      family: 'Reverb',
-      description: 'Longer, spacious ambience suited to lush vocals, pads, and cinematic tails.'
-    },
-    'Stereo Delay': {
-      family: 'Delay',
-      description: 'Tempo-friendly repeats with stereo width and controllable feedback.'
-    },
-    'Stereo Chorus': {
-      family: 'Chorus',
-      description: 'Adds motion, width, and shimmer to guitars, keys, and backing vocals.'
-    }
+    'Empty': { family: 'No Effect', description: 'Choose a preset to load an FX processor.' },
+    'Vintage Room': { family: 'Reverb', description: 'Warm early reflections and compact ambience.' },
+    'Hall Reverb': { family: 'Reverb', description: 'Longer, spacious ambience suited to lush tails.' },
+    'Stereo Delay': { family: 'Delay', description: 'Tempo-friendly repeats with controllable feedback.' },
+    'Stereo Chorus': { family: 'Chorus', description: 'Adds motion, width, and shimmer.' }
   };
 
   function getModuleForPreset(preset) {
@@ -47,34 +28,17 @@
     return null;
   }
 
-  function updateSlot(patch) {
-    setSlot(index, patch);
-  }
+  function updateSlot(patch) { setSlot(index, patch); }
+  function selectPreset(event) { updateSlot({ preset: event.currentTarget.value }); }
+  function updateBypass(value) { updateSlot({ bypass: !!value }); }
+  function updateLevel(value) { updateSlot({ level: value }); }
 
-  function selectPreset(event) {
-    updateSlot({ preset: event.currentTarget.value });
-  }
-
-  function updateBypass(value) {
-    updateSlot({ bypass: !!value });
-  }
-
-  function updateLevel(value) {
-    updateSlot({ level: value });
-  }
-
-  function updateParams(patch) {
-    updateSlot({
-      params: {
-        ...(slot?.params || {}),
-        ...patch
-      }
-    });
-  }
-
-  $: selectedPreset = slot?.preset || 'Empty';
+$: selectedPreset = slot?.preset || 'Empty';
   $: selectedMeta = presetDisplay[selectedPreset] || presetDisplay.Empty;
-  $: moduleComponent = getModuleForPreset(selectedPreset);
+  
+  // FIX: Cast the dynamic component to 'any' to stop strict prop validation
+  $: moduleComponent = /** @type {any} */ (getModuleForPreset(selectedPreset));
+  
   $: slotLevel = typeof slot?.level === 'number' ? slot.level : 0;
   $: slotBypass = !!slot?.bypass;
   $: slotParams = slot?.params || {};
@@ -98,7 +62,7 @@
       </label>
 
       <div class="bypass-wrap">
-        <Toggle label="Bypass" value={slotBypass} onChange={updateBypass} />
+        <Toggle label="Bypass" value={slotBypass} defaultValue={false} onChange={updateBypass} />
       </div>
     </div>
   </div>
@@ -106,11 +70,7 @@
   <div class="slot-main">
     <div class="module-panel" class:is-empty={!moduleComponent}>
       {#if moduleComponent}
-        <svelte:component
-          this={moduleComponent}
-          index={index}
-          {...{ params: slotParams }}
-        />
+       <svelte:component this={moduleComponent} index={index} params={slotParams} />
       {:else}
         <div class="empty-module">
           <div class="empty-badge">EMPTY SLOT</div>
@@ -124,23 +84,17 @@
       <div class="return-meter-card">
         <span class="panel-kicker">Return</span>
         <div class="level-readout">{Math.round(slotLevel)}%</div>
-        <p class="panel-copy">Overall FX return level for this slot.</p>
+        <p class="panel-copy">Overall FX return level.</p>
       </div>
 
       <div class="slider-wrap">
-        <SmallSlider
-          label="Level"
-          value={slotLevel}
-          min={0}
-          max={100}
-          onChange={updateLevel}
-        />
+        <SmallSlider label="Level" value={slotLevel} defaultValue={0} min={0} max={100} onChange={updateLevel} />
       </div>
 
       <div class="status-card" class:bypassed={slotBypass}>
         <span class="status-label">Status</span>
         <strong>{slotBypass ? 'Bypassed' : 'Active'}</strong>
-        <span class="status-sub">{selectedMeta.description}</span>
+        <span class="status-sub">{slotBypass ? 'Return muted.' : 'Sending to mix.'}</span>
       </div>
     </aside>
   </div>
@@ -149,10 +103,11 @@
 <style>
   .fx-slot {
     width: 100%;
-    min-height: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
+    min-height: 0;
     color: #e2e8f0;
   }
 
@@ -161,132 +116,93 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
-    padding: 1rem 1.1rem;
+    padding: 0.5rem 1rem;
     background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 15, 28, 0.95));
     border: 1px solid #1e293b;
     border-radius: 10px;
     box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.04);
+    flex-shrink: 0;
   }
 
-  .slot-heading {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-  }
-
-  .slot-index {
-    color: #f8fafc;
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-  }
-
-  .slot-family {
-    color: #22d3ee;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: flex-end;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    min-width: 220px;
-  }
-
-  .field-label {
-    color: #94a3b8;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
+  .slot-heading { display: flex; flex-direction: column; gap: 0.15rem; }
+  .slot-index { color: #f8fafc; font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; }
+  .slot-family { color: #22d3ee; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; font-family: 'JetBrains Mono', monospace; }
+  .header-actions { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 220px; }
+  .field-label { color: #94a3b8; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  
   .fx-preset {
-    background: #0f172a;
-    color: #e2e8f0;
-    border: 1px solid #27435a;
-    padding: 0.65rem 0.8rem;
-    border-radius: 8px;
-    font-weight: 700;
-    outline: none;
+    background: #0f172a; color: #e2e8f0; border: 1px solid #27435a;
+    padding: 0.5rem 0.8rem; border-radius: 8px; font-weight: 700; outline: none;
   }
-
-  .fx-preset:focus {
-    border-color: #22d3ee;
-    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25);
-  }
-
-  .bypass-wrap {
-    padding-bottom: 0.15rem;
-  }
+  .fx-preset:focus { border-color: #22d3ee; box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25); }
 
   .slot-main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 160px;
-    gap: 1rem;
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     flex: 1;
+    min-height: 0;
   }
 
   .module-panel {
-    background: linear-gradient(180deg, #0b1220, #09101c);
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 1rem;
-    min-height: 340px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .module-panel :global(.effect-module) {
+    background: linear-gradient(135deg, #1a1a1a 0%, #222 100%) !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 10px !important;
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+  }
+  .module-panel :global(.module-header) {
+    border-bottom: 1px solid #2a2a2a !important;
+    padding-bottom: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+  .module-panel :global(.module-header h3) { color: #e0e0e0 !important; }
+  .module-panel :global(.preset-select) {
+    background: #2a2a2a !important; border-color: #3a3a3a !important; color: #00CED1 !important;
+  }
+  .module-panel :global(.controls-grid) {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important; 
+    gap: 2rem !important; 
+    flex: 1 !important;
+    overflow: hidden !important;
   }
 
   .module-panel.is-empty {
-    display: flex;
+    background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 1rem;
     align-items: center;
     justify-content: center;
   }
-
-  .empty-module {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.8rem;
-    max-width: 420px;
-  }
-
-  .empty-badge {
-    padding: 0.3rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid #27435a;
-    color: #22d3ee;
-    background: rgba(8, 47, 73, 0.45);
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-  }
-
-  .empty-module h3 {
-    margin: 0;
-    font-size: 1.3rem;
-    color: #f8fafc;
-  }
-
-  .empty-module p {
-    margin: 0;
-    color: #94a3b8;
-    line-height: 1.5;
-  }
+  .empty-module { display: flex; flex-direction: column; align-items: flex-start; gap: 0.8rem; max-width: 420px; }
+  .empty-badge { padding: 0.3rem 0.55rem; border-radius: 999px; border: 1px solid #3a3a3a; color: #00CED1; background: #2a2a2a; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; }
+  .empty-module h3 { margin: 0; font-size: 1.3rem; color: #e0e0e0; }
+  .empty-module p { margin: 0; color: #999; line-height: 1.5; }
 
   .send-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    flex-shrink: 0;
+    height: 85px;
   }
 
   .return-meter-card,
@@ -294,82 +210,38 @@
     background: linear-gradient(180deg, #0f172a, #0a1220);
     border: 1px solid #1e293b;
     border-radius: 10px;
-    padding: 0.9rem;
+    padding: 0.5rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    justify-content: center;
+    gap: 0.15rem;
+    height: 100%;
+    box-sizing: border-box;
   }
 
-  .panel-kicker,
-  .status-label {
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.68rem;
-    font-weight: 800;
-  }
-
-  .level-readout {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: #f8fafc;
-  }
-
-  .panel-copy,
-  .status-sub {
-    color: #94a3b8;
-    font-size: 0.78rem;
-    line-height: 1.45;
-  }
+  .panel-kicker, .status-label { color: #64748b; text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; font-weight: 800; }
+  .level-readout { font-size: 1.5rem; font-weight: 800; color: #f8fafc; line-height: 1; margin: 2px 0; }
+  .panel-copy, .status-sub { color: #94a3b8; font-size: 0.7rem; line-height: 1.2; margin: 0; }
 
   .slider-wrap {
     background: linear-gradient(180deg, #0f172a, #0a1220);
     border: 1px solid #1e293b;
     border-radius: 10px;
-    padding: 1rem 0.75rem;
+    padding: 0.5rem 1.5rem;
     display: flex;
+    align-items: center;
     justify-content: center;
-    min-height: 220px;
+    height: 100%;
+    box-sizing: border-box;
   }
 
-  .status-card strong {
-    color: #4ade80;
-    font-size: 1rem;
-  }
-
-  .status-card.bypassed strong {
-    color: #f59e0b;
-  }
-
-  @media (max-width: 900px) {
-    .slot-main {
-      grid-template-columns: 1fr;
-    }
-
-    .send-panel {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-
-    .return-meter-card,
-    .slider-wrap,
-    .status-card {
-      flex: 1 1 180px;
-    }
-  }
+  .status-card strong { color: #4ade80; font-size: 1rem; line-height: 1; margin: 2px 0; }
+  .status-card.bypassed strong { color: #f59e0b; }
 
   @media (max-width: 640px) {
-    .fx-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .header-actions {
-      align-items: stretch;
-    }
-
-    .field {
-      min-width: 0;
-    }
+    .fx-header { flex-direction: column; align-items: stretch; }
+    .header-actions { align-items: stretch; }
+    .field { min-width: 0; }
+    .send-panel { grid-template-columns: 1fr; height: auto; }
   }
 </style>

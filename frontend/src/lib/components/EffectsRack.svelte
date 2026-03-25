@@ -7,8 +7,11 @@
 
   export let config = { fx: 4 };
   export let scribbles = {};
+  
+  /** @type {string | null} */
   export let selectedChannel = null;
-  export let cycleChannel = (dir) => {}; // Fixed: added 'dir' parameter
+  
+  export let cycleChannel = (dir) => {}; 
   export let isFirstChannel = true;
   export let isLastChannel = true;
 
@@ -19,10 +22,8 @@
   const unsub = fxState.subscribe(v => fx = v);
   onDestroy(unsub);
 
-  // Track the currently selected FX slot for the sidebar layout
   let selectedSlotIndex = 0;
 
-  // Map preset names to short display names
   const presetShortNames = {
     'Empty': 'EMPTY',
     'Vintage Room': 'VIN ROOM',
@@ -31,41 +32,29 @@
     'Stereo Chorus': 'ST CHORUS'
   };
 
-  // Debounce OSC sends to avoid flooding the mixer
   const OSC_DEBOUNCE_MS = 100;
   let oscDebounceTimers = {};
 
-  // When a slot's plugin is selected, emit OSC to register it with the mixer (with debounce)
   function scheduleSlotOsc(index) {
     if (oscDebounceTimers[index]) clearTimeout(oscDebounceTimers[index]);
 
     oscDebounceTimers[index] = setTimeout(() => {
       const slot = fx.slots[index];
       if (slot) {
-        // Emit OSC to update FX return settings
-        // /rtn/N is the FX return slot (1-4)
         const rtnNum = index + 1;
-        // Turn return on/off based on bypass state
         setOsc(`/rtn/${rtnNum}/on`, slot.bypass ? 0 : 1);
-        
-        // Set return mix/level
         if (typeof slot.level === 'number') {
           setOsc(`/rtn/${rtnNum}/mix`, Math.max(0, Math.min(1, slot.level)));
         }
-        // Note: Effect type selection (Reverb, Delay, etc.) is typically hardware-only on X32
-        // but we store it in the app state for reference and preset recall
       }
       delete oscDebounceTimers[index];
     }, OSC_DEBOUNCE_MS);
   }
 
-  // Reactively watch for slot changes and emit OSC (debounced)
   $: {
     if (fx.slots && fx.slots.length > 0) {
       fx.slots.forEach((slot, i) => {
-        if (slot) {
-          scheduleSlotOsc(i);
-        }
+        if (slot) scheduleSlotOsc(i);
       });
     }
   }
@@ -107,7 +96,6 @@
 </div>
 
 <style>
-  /* Base Container - Matched exactly to eq-container */
   .fx-container {
     display: flex;
     flex-direction: row;
@@ -122,25 +110,24 @@
     box-shadow: 0 12px 48px rgba(0,0,0,0.4);
   }
 
-  /* Main Workspace - Matched to canvas-wrapper */
   .fx-workspace {
     flex: 1;
     min-height: 0;
-    position: relative;
+    display: flex;
+    flex-direction: column;
     background: #080a0f;
-    overflow-y: auto;
   }
+  
   .fx-workspace-inner {
-    padding: 1.5rem;
-    width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
+    padding: 1rem;
     box-sizing: border-box;
     display: flex;
     justify-content: flex-start;
     align-items: flex-start;
   }
 
-  /* Left Sidebar - Matched to wing-sidebar */
   .fx-sidebar {
     width: 260px;
     flex-shrink: 0;
@@ -150,7 +137,6 @@
     border-right: 1px solid #1e293b;
   }
 
-  /* Sidebar Header */
   .fx-header {
     display: flex;
     align-items: center;
@@ -160,114 +146,45 @@
     border-bottom: 1px solid #1e293b;
   }
 
-  .title-left {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #f8fafc;
-    margin: 0;
-  }
-
-  .ch-name {
-    color: #e2e8f0;
-  }
-
-  .header-title-group {
-    display: flex;
-    align-items: center;
-  }
-
-  .nav-group {
-    display: flex;
-    gap: 0.25rem;
-  }
+  .title-left { font-size: 1.1rem; font-weight: 800; color: #f8fafc; margin: 0; }
+  .ch-name { color: #e2e8f0; }
+  .header-title-group { display: flex; align-items: center; }
+  .nav-group { display: flex; gap: 0.25rem; }
 
   .nav-icon-btn {
-    background: #374151;
-    border: none;
-    color: #94a3b8;
-    padding: 0.4rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #374151; border: none; color: #94a3b8; padding: 0.4rem;
+    border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex;
+    align-items: center; justify-content: center;
   }
-  .nav-icon-btn:hover:not(:disabled) {
-    background: #4b5563;
-    color: #f8fafc;
-  }
-  .nav-icon-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
+  .nav-icon-btn:hover:not(:disabled) { background: #4b5563; color: #f8fafc; }
+  .nav-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  /* Slot List */
   .fx-slot-list {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    background: #0f1115;
-    overflow-y: auto;
+    display: flex; flex-direction: column; flex: 1;
+    background: #0f1115; overflow-y: auto;
   }
   .fx-slot-list::-webkit-scrollbar { width: 0; }
 
   .fx-slot-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.25rem;
-    border: none;
-    border-bottom: 1px solid #1e293b;
-    background: transparent;
-    cursor: pointer;
-    transition: 0.1s;
-    outline: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem; border: none; border-bottom: 1px solid #1e293b;
+    background: transparent; cursor: pointer; transition: 0.1s; outline: none;
   }
-  .fx-slot-row:hover {
-    background: rgba(59,130,246,0.05);
-  }
-  .fx-slot-row.active {
-    background: #1f2937;
-    border-left: 3px solid #3b82f6;
-  }
+  .fx-slot-row:hover { background: rgba(59,130,246,0.05); }
+  .fx-slot-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
 
-  .fx-slot-name {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    text-align: left;
-  }
-  .w-id {
-    color: #94a3b8;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 800;
-  }
-  .w-type {
-    color: #64748b;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-  }
-  .fx-slot-row.active .w-id,
-  .fx-slot-row.active .w-type {
-    color: #f8fafc;
-  }
+  .fx-slot-name { display: flex; flex-direction: column; gap: 0.3rem; text-align: left; }
+  .w-id { color: #94a3b8; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 800; }
+  .w-type { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+  .fx-slot-row.active .w-id, .fx-slot-row.active .w-type { color: #f8fafc; }
 
   .empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    color: #475569;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; color: #475569;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
   }
 
-  .fade-in {
-    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
+  .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }

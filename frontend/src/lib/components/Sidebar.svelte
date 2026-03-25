@@ -1,4 +1,6 @@
 <script>
+  import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+
   export let activeTab = 'mixer';
   export let activeView = 'inputs';
   export let currentPage = 0;
@@ -36,9 +38,13 @@
     {#if totalPages > 1}
       <div class="section compact">
         <h4>Bank</h4>
-        <button class="page-btn" disabled={currentPage === 0} on:click={prev}>◀</button>
+        <button class="page-btn" disabled={currentPage === 0} on:click={prev}>
+          <ChevronLeft size={16} />
+        </button>
         <div class="page-count">{currentPage + 1} / {totalPages}</div>
-        <button class="page-btn" disabled={currentPage >= totalPages - 1} on:click={next}>▶</button>
+        <button class="page-btn" disabled={currentPage >= totalPages - 1} on:click={next}>
+          <ChevronRight size={16} />
+        </button>
       </div>
     {/if}
 
@@ -120,9 +126,11 @@
   .strip-adj:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
   .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #f8fafc; min-width: 20px; text-align: center; }
 
-  .page-btn { background: #334155; color: white; border: 1px solid #475569; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
+  /* Added flex alignments for perfectly centered lucide icons */
+  .page-btn { display: flex; align-items: center; justify-content: center; background: #334155; color: white; border: 1px solid #475569; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
   .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .page-btn:not(:disabled):hover { background: #475569; }
+  
   .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: bold; color: #94a3b8; text-align: center; padding: 0.2rem 0; }
 
   .muted { font-size: 0.65rem; color: #475569; text-align: center; margin: 0; }

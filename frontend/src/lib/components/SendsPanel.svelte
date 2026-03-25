@@ -6,7 +6,7 @@
   export let selectedChannel;
   export let config;
   export let scribbles;
-  export let cycleChannel = (dir) => {}; // Fixed: added 'dir' parameter
+  export let cycleChannel = (dir) => {};
   export let isFirstChannel = true;
   export let isLastChannel = true;
 
@@ -214,6 +214,7 @@
                     <div class="fader-well">
                       <input type="range" class="v-fader" min="0" max="1" step="0.005"
                         value={level} style="width:{FADER_H}px"
+                        on:dblclick={() => setSendLevel(busKey, busNum, 0)}
                         on:input={(e) => setSendLevel(busKey, busNum, parseFloat(e.currentTarget.value))} />
                     </div>
                     <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
@@ -245,6 +246,7 @@
                     <div class="fader-well">
                       <input type="range" class="v-fader fx-fader" min="0" max="1" step="0.005"
                         value={level} style="width:{FADER_H}px"
+                        on:dblclick={() => setFxLevel(busKey, i + 1, 0)}
                         on:input={(e) => setFxLevel(busKey, i + 1, parseFloat(e.currentTarget.value))} />
                     </div>
                     <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
@@ -279,6 +281,7 @@
                   <div class="fader-well">
                     <input type="range" class="v-fader" min="0" max="1" step="0.005"
                       value={level} style="width:{FADER_H}px"
+                      on:dblclick={() => setSendLevel(busKey, busNum, 0)}
                       on:input={(e) => setSendLevel(busKey, busNum, parseFloat(e.currentTarget.value))} />
                   </div>
                   <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
@@ -310,6 +313,7 @@
                   <div class="fader-well">
                     <input type="range" class="v-fader fx-fader" min="0" max="1" step="0.005"
                       value={level} style="width:{FADER_H}px"
+                      on:dblclick={() => setFxLevel(busKey, i + 1, 0)}
                       on:input={(e) => setFxLevel(busKey, i + 1, parseFloat(e.currentTarget.value))} />
                   </div>
                   <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>

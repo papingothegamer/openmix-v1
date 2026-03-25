@@ -5,7 +5,8 @@
   export let value = 0.5;
   export let min = 0;
   export let max = 100;
-  export let onChange = (val) => {}; // Fixed: Added parameter
+  export let defaultValue = value; // Captures initial load value as default
+  export let onChange = (val) => {}; 
 
   let knobElement;
   let isDragging = false;
@@ -104,6 +105,10 @@
   function handleTouchEnd() {
     isDragging = false;
   }
+  
+  function handleDoubleClick() {
+    if (defaultValue !== undefined) onChange(defaultValue);
+  }
 
   function formatValue(val) {
     const rounded = Math.round(val * 10) / 10;
@@ -125,6 +130,7 @@
       window.removeEventListener('touchmove', handleTouchMove);
     };
   });
+
   $: clampedValue = clamp(value, Math.min(min, max), Math.max(min, max));
   $: angle = valueToAngle(clampedValue);
   $: arcPath = describeArc(angle);
@@ -139,30 +145,13 @@
   bind:this={knobElement}
   on:mousedown={handleMouseDown}
   on:touchstart|preventDefault={handleTouchStart}
+  on:dblclick={handleDoubleClick}
 >
   <svg class="knob-svg" viewBox={`${-radius} ${-radius} ${radius * 2} ${radius * 2}`}>
-    <path
-      d={describeArc(startAngle + sweepAngle)}
-      fill="none"
-      stroke="#2a2a2a"
-      stroke-width={trackWidth}
-      stroke-linecap="round"
-    />
-
-    <path
-      d={arcPath}
-      fill="none"
-      stroke="#00CED1"
-      stroke-width={trackWidth}
-      stroke-linecap="round"
-    />
-
+    <path d={describeArc(startAngle + sweepAngle)} fill="none" stroke="#2a2a2a" stroke-width={trackWidth} stroke-linecap="round" />
+    <path d={arcPath} fill="none" stroke="#00CED1" stroke-width={trackWidth} stroke-linecap="round" />
     <circle cx="0" cy="0" r="19" fill="#161616" stroke="#2b2b2b" stroke-width="1.5" />
-
-    <g transform={`rotate(${pointerAngle})`}>
-      <line x1="0" y1="-3" x2="0" y2="-16" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round" />
-    </g>
-
+    <g transform={`rotate(${pointerAngle})`}><line x1="0" y1="-3" x2="0" y2="-16" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round" /></g>
     <circle cx="0" cy="0" r="4" fill="#00CED1" />
   </svg>
 

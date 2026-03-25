@@ -3,7 +3,8 @@
   export let value = 0.5;
   export let min = 0;
   export let max = 100;
-  export let onChange = (val) => {}; // Fixed: Added parameter
+  export let defaultValue = value;
+  export let onChange = (val) => {}; 
 
   function clamp(val, low, high) {
     return Math.min(high, Math.max(low, val));
@@ -27,6 +28,10 @@
     onChange(nextValue);
   }
 
+  function handleDoubleClick() {
+    if (defaultValue !== undefined) onChange(defaultValue);
+  }
+
   function formatValue(val) {
     const rounded = Math.round(val * 10) / 10;
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
@@ -39,7 +44,7 @@
   $: fillPercent = `${sliderValue}%`;
 </script>
 
-<div class="slider-container">
+<div class="slider-container" on:dblclick={handleDoubleClick}>
   <div class="slider-label">{label}</div>
 
   <div class="slider-wrapper" style={`--fill:${fillPercent};`}>
@@ -96,18 +101,19 @@
   .slider-input::-webkit-slider-thumb {
     appearance: none;
     -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: #00ced1;
     cursor: pointer;
     border: none;
+    margin-top: -6px;
     box-shadow: 0 0 4px rgba(0, 206, 209, 0.4);
   }
 
   .slider-input::-moz-range-thumb {
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: #00ced1;
     cursor: pointer;

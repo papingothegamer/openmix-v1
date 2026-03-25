@@ -11,24 +11,83 @@
   export let stripType = 'input'; // 'input', 'dca', 'output', 'main'
   export let pan = 0; // -100 to +100
   export let role = 'musician'; // 'foh' or 'musician'
-  export let level = 0; // fader level
+  
+  // Requirement: Default fader value is -Infinity (-60dB in this component's scale)
+  export let level = -60; 
   export let muted = false;
   export let soloed = false;
   
   // Fake meter values for demo purposes
   export let peakLevel = -60;
-  export let eqCurvePath = 'M0,20 L100,20'; // Live EQ curve from App state
+
+  // Real EQ Curve Logic
+  export let eqBands = null; // Array of band objects passed from App mixer state
+  export let eqCurvePath = 'M0,20 L100,20'; // Base fallback
 
   // FOH Extras
   export let phantom = false;
   export let stereoLink = false;
 
   const dispatchStatus = (param, value) => {
-    // Expected to bubble to parent or directly hit socket 'setOsc'
     console.log(`[UI Action] ${name} ${param} => ${value}`);
   }
 
-  // Panning UI Logic
+  // --- Dynamic EQ Mini-Chart Generator ---
+  function generateSvgPath(bands) {
+    if (!bands || bands.length === 0) return 'M0,20 L100,20';
+    
+    const logMin = Math.log10(20);
+    const logMax = Math.log10(20000);
+    const points = [];
+    
+    for (let i = 0; i <= 100; i += 2) { // Iterate width 0 to 100px (step 2 for performance)
+      const logFreq = logMin + (i / 100) * (logMax - logMin);
+      const freq = Math.pow(10, logFreq);
+      let totalGain = 0;
+      
+      for (const band of bands) {
+        if (!band.enabled) continue;
+        const f0 = Math.pow(10, band.logVal || Math.log10(band.freq));
+        const ratio = freq / f0;
+        const logR = Math.log2(ratio);
+
+        switch(band.type) {
+          case 'hpf12': totalGain += ratio < 1 ? -12 * Math.log2(1/ratio) : 0; break;
+          case 'hpf48': totalGain += ratio < 1 ? -48 * Math.log2(1/ratio) : 0; break;
+          case 'lpf12': totalGain += ratio > 1 ? -12 * Math.log2(ratio) : 0; break;
+          case 'lpf48': totalGain += ratio > 1 ? -48 * Math.log2(ratio) : 0; break;
+          case 'loshelf': totalGain += band.gain / (1 + Math.pow(ratio, 2)); break;
+          case 'hishelf': totalGain += band.gain * (1 - 1 / (1 + Math.pow(ratio, 2))); break;
+          case 'notch': {
+            const bw = 1 / Math.max(band.q, 0.1);
+            const x = logR / bw;
+            totalGain += -15 / (1 + x * x);
+            break;
+          }
+          case 'peq':
+          default: {
+            const bw = 1 / Math.max(band.q, 0.1);
+            const x = logR / bw;
+            totalGain += band.gain / (1 + x * x * 4);
+            break;
+          }
+        }
+      }
+      
+      // Clamp to +/- 15dB and map to SVG Y-coordinates (Height 40px, Center 20px)
+      totalGain = Math.max(-15, Math.min(15, totalGain));
+      const y = 20 - (totalGain / 15) * 18; 
+      points.push(`${i === 0 ? 'M' : 'L'}${i},${y.toFixed(1)}`);
+    }
+    
+    return points.join(' ');
+  }
+
+  // Reactively redraw the mini EQ line if bands change
+  $: if (eqBands) eqCurvePath = generateSvgPath(eqBands);
+
+
+  // --- Panning UI Logic ---
   let isPanning = false;
   let startX = 0;
   let startPan = 0;
@@ -58,10 +117,15 @@
     pan = 0;
     dispatchStatus('pan', pan);
   }
+
+  // Reset Fader to -Infinity
+  function resetFader() {
+    level = -60;
+    dispatchStatus('level', level);
+  }
 </script>
 
 <div class="channel-strip" class:is-foh={role === 'foh'}>
-  <!-- Header: Icon & Name -->
   <div class="strip-header" style="background: linear-gradient(180deg, {color}55 0%, transparent 100%); border-top: 3px solid {color};">
     <div class="icon-slot">
       {#if iconType}
@@ -70,17 +134,13 @@
         <div style="width: 22px; height: 22px; border-radius: 2px; border: 1px solid #27272a; background: #18181b;"></div>
       {/if}
     </div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="channel-name" on:click={() => dispatch('nameClick')}>{name}</div>
   </div>
 
-  <!-- Horizontal Gain Meter -->
   <div class="gain-meter">
     <div class="gain-fill" style="width: {Math.max(0, (peakLevel + 60) / 60 * 100)}%;"></div>
   </div>
 
-  <!-- FOH Exclusive Controls -->
   {#if role === 'foh' && stripType !== 'dca'}
     <div class="foh-controls">
       {#if stripType === 'input' || stripType === 'output'}
@@ -106,7 +166,6 @@
 
   <div class="spacer"></div>
 
-  <!-- Panning Knob -->
   <div class="pan-container" title="Pan: {pan}">
     <span class="pan-label">{pan < 0 ? 'L' + Math.abs(pan) : pan > 0 ? 'R' + pan : 'C'}</span>
     <div class="pan-dial" 
@@ -120,29 +179,23 @@
     </div>
   </div>
 
-  <!-- Mute / Solo Swtiches -->
   <div class="routing-switches">
     <button class="mute-btn" class:active={muted} on:click={() => { muted = !muted; dispatchStatus('mute', muted); }}>M</button>
-    <!-- Solo is typical for FOH, less common for personal mix, but we'll include it based on prompt -->
     <button class="solo-btn" class:active={soloed} on:click={() => { soloed = !soloed; dispatchStatus('solo', soloed); }}>S</button>
   </div>
 
-  <!-- Vertical Fader Container -->
   <div class="fader-container">
-    <input type="range" class="fader-slider" min="-60" max="10" step="0.5" bind:value={level} />
+    <input type="range" class="fader-slider" min="-60" max="10" step="0.5" bind:value={level} on:dblclick={resetFader} />
     <div class="fader-track">
-      <!-- Calculated CSS Bottom Offset for custom thumb graphic -->
       <div class="fader-thumb" style="bottom: {((level + 60) / 70) * 100}%"></div>
     </div>
   </div>
 
-  <!-- Fader Db Text Input -->
   <div class="fader-value">
     <input type="number" bind:value={level} step="0.5" />
     <span>dB</span>
   </div>
 
-  <!-- Bottom Channel Label -->
   <div class="channel-number">{channelIndex}</div>
 </div>
 
@@ -192,7 +245,7 @@
   .switch-btn.link.active { background: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
   
   .chart { width: 100%; height: 32px; background: #09090b; border-radius: 3px; border: 1px solid #27272a; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
-  .chart .label { position: absolute; top: 2px; left: 3px; font-size: 0.5rem; font-weight: 700; color: #52525b; }
+  .chart .label { position: absolute; top: 2px; left: 3px; font-size: 0.5rem; font-weight: 700; color: #52525b; z-index: 2; }
   .curve { width: 100%; height: 100%; stroke: #3b82f6; stroke-width: 1.5; fill: none; filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.5)); }
   .gr-meter { width: 4px; height: 100%; background: #ef4444; position: absolute; right: 2px; transform-origin: top; transform: scaleY(0.3); opacity: 0.8; }
 
