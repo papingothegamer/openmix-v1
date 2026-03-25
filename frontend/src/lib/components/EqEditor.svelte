@@ -25,8 +25,13 @@
     { id: 8, type: 'lpf12',  freq: 18000,gain: 0, q: 0.71, logVal: 4.255, enabled: true },
   ];
 
-  // Use parent-provided bands or fall back to defaults
+  // Use parent-provided bands or fall back to defaults.
+  // IMPORTANT: assigning `bands` triggers drawEQ reactively via the block below.
   $: bands = eqBands || defaultBands();
+
+  // Redraw canvas whenever bands change from any source (prop update or user interaction)
+  $: if (mounted && bands) { drawEQ && drawEQ(); }
+
 
   const filterTypes = ['hpf12', 'hpf48', 'loshelf', 'peq', 'notch', 'hishelf', 'lpf12', 'lpf48'];
   const filterNames = {

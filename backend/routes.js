@@ -42,12 +42,29 @@ function handleConnection(socket, mixer, io) {
     socket.emit('syncState', mixer.getVirtualState());
 
     // Handling inbound OSC requests
+    // Helper: coerce raw JS values to typed OSC argument objects
+    function toOscArgs(raw) {
+        if (!raw && raw !== 0) return [];
+        const vals = Array.isArray(raw) ? raw : [raw];
+        return vals.map(v => {
+            if (typeof v === 'object' && v !== null && 'type' in v) return v; // already typed
+            if (typeof v === 'number') {
+                if (Number.isInteger(v)) return { type: 'i', value: v };
+                return { type: 'f', value: v };
+            }
+            if (typeof v === 'string') return { type: 's', value: v };
+            if (typeof v === 'boolean') return { type: 'i', value: v ? 1 : 0 };
+            return { type: 'f', value: Number(v) };
+        });
+    }
+
     socket.on('setOsc', (data) => {
         if (!data.address) return;
+        const oscArgs = toOscArgs(data.args);
 
         if (session.role === 'foh') {
             // FOH has Master Control - Forward anything
-            mixer.sendOsc(data.address, data.args);
+            mixer.sendOsc(data.address, oscArgs);
             return;
         }
 
@@ -59,11 +76,11 @@ function handleConnection(socket, mixer, io) {
             // Example: Incoming /ch/01/mix/fader translates to /ch/01/mix/0N/level
             if (data.address.endsWith('mix/fader')) {
                 const rewriteAddr = data.address.replace('/mix/fader', `/mix/${targetBusStr}/level`);
-                mixer.sendOsc(rewriteAddr, data.args);
+                mixer.sendOsc(rewriteAddr, oscArgs);
                 console.log(`[Security] Rewrote Fader to Bus level: ${rewriteAddr}`);
             } else if (data.address.includes(`/mix/${targetBusStr}/`)) {
                 // Exact auxiliary bus modification
-                mixer.sendOsc(data.address, data.args);
+                mixer.sendOsc(data.address, oscArgs);
             } else {
                 console.log(`[Security] Blocked unauthorized OSC from token ${token}: ${data.address}`);
             }
