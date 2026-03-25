@@ -675,7 +675,7 @@
                     <input type="range" class="sends-fader" min="0" max="1" step="0.01"
                       value={sendsState[busKey]?.level ?? 0}
                       on:input={(e) => {
-                        const v = parseFloat((e.target as HTMLInputElement).value);
+                        const v = parseFloat(e.currentTarget.value);
                         if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
                         sendsState[busKey].level = v;
                         sendsState = { ...sendsState };
