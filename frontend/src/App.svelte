@@ -61,6 +61,24 @@
   let requiresSetup = localStorage.getItem('openmix_setup') !== 'true';
   let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM', visibleBuses: [1,2,3,4,5,6] };
 
+  // Mixer connection config
+  let mixerConfig = JSON.parse(localStorage.getItem('openmix_mixer') || '{"ip":"","port":10024}');
+  let discoveryStatus = 'idle'; // 'idle' | 'scanning' | 'found' | 'notfound'
+
+  function startDiscovery() {
+    discoveryStatus = 'scanning';
+    socket.emit('discoverMixer', null, (result) => {
+      if (result) {
+        mixerConfig.ip = result.ip;
+        mixerConfig.port = result.port;
+        mixerConfig = { ...mixerConfig };
+        discoveryStatus = 'found';
+      } else {
+        discoveryStatus = 'notfound';
+      }
+    });
+  }
+
   // Main LR cannot route to sends/FX/routing
   $: disabledTabs = selectedChannel === 'main_LR' ? ['sends', 'fx', 'routing'] : [];
   $: if (disabledTabs.includes(activeTab)) { activeTab = 'channel'; }
@@ -80,6 +98,12 @@
 
   // Per-channel EQ state persistence (survives tab switches)
   let channelEqState = {};
+
+  // Sends tab: per-channel per-bus state { level: 0-1, prePost: 0|1 }
+  let sendsState = {};
+  
+  // Routing tab: per-channel per-bus on/off state (defaults to true = routed)
+  let routingState = {};
 
   // Stereo link state: key = odd channel number, value = true if linked to next even channel
   let stereoLinks = {};  // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
@@ -176,6 +200,10 @@
     scribbles = {}; // Flush constraints from older layouts completely
     localStorage.setItem('openmix_setup', 'true');
     localStorage.setItem('openmix_config', JSON.stringify(config));
+    localStorage.setItem('openmix_mixer', JSON.stringify(mixerConfig));
+    if (mixerConfig.ip) {
+      socket.emit('configureMixer', { ip: mixerConfig.ip, port: mixerConfig.port || 10024 });
+    }
     requiresSetup = false;
   }
 
@@ -337,8 +365,33 @@
           </div>
         </div>
         {/if}
-        
-        <button class="action-btn" on:click={completeSetup}>Save Configuration & Enter App</button>
+
+        <!-- Mixer Network Connection -->
+        <div class="form-group mixer-connect-section">
+          <p class="label" style="margin-bottom: 0.75rem;">Mixer Network Connection</p>
+          <div class="discover-row">
+            <button class="action-btn discover-btn" on:click={startDiscovery} disabled={discoveryStatus === 'scanning'}>
+              {#if discoveryStatus === 'scanning'} 🔍 Scanning... {:else} 📡 Auto-Discover Mixer {/if}
+            </button>
+            {#if discoveryStatus === 'found'}
+              <span class="discovery-badge found">✓ Found</span>
+            {:else if discoveryStatus === 'notfound'}
+              <span class="discovery-badge notfound">✗ Not found</span>
+            {/if}
+          </div>
+          <div class="ip-fields">
+            <div class="ip-field">
+              <label for="mixer-ip">Mixer IP Address</label>
+              <input id="mixer-ip" type="text" bind:value={mixerConfig.ip} placeholder="e.g. 192.168.1.100" />
+            </div>
+            <div class="ip-field ip-port">
+              <label for="mixer-port">Port</label>
+              <input id="mixer-port" type="number" bind:value={mixerConfig.port} min="1024" max="65535" />
+            </div>
+          </div>
+        </div>
+
+        <button class="action-btn" on:click={completeSetup}>Save Configuration &amp; Enter App</button>
       </section>
 
     {:else if !activeRole}
@@ -605,16 +658,92 @@
               </div>
             </div>
             <div class="tab-content-body">
+              {#if outputChannels.length === 0}
+                <p style="color:#64748b; padding: 1rem;">No AUX buses configured. Add outputs in the Setup Wizard.</p>
+              {:else}
               <div class="param-section">
-                <h3>Bus Sends</h3>
-                {#each Array(config.outputs) as _, i}
-                  <div class="param-row">
-                    <span>AUX {i + 1}</span>
-                    <input type="range" min="-60" max="10" value="-60" />
-                    <button class="toggle-sm">PRE</button>
+                <h3>AUX Bus Sends</h3>
+                {#each outputChannels as busNum}
+                  {@const busKey = `${selectedChannel}_aux${busNum}`}
+                  <div class="param-row sends-row">
+                    <span class="send-bus-label">
+                      {#if scribbles[`out_${busNum}`]?.iconType}
+                        <img src="/icons-bmp/{scribbles[`out_${busNum}`].iconType}.bmp" alt="" class="send-bus-icon" />
+                      {/if}
+                      {scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}
+                    </span>
+                    <input type="range" class="sends-fader" min="0" max="1" step="0.01"
+                      value={sendsState[busKey]?.level ?? 0}
+                      on:input={(e) => {
+                        const v = parseFloat((e.target as HTMLInputElement).value);
+                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
+                        sendsState[busKey].level = v;
+                        sendsState = { ...sendsState };
+                        if (selectedChannel.startsWith('in_')) {
+                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
+                          const bus = String(busNum).padStart(2, '0');
+                          setOsc(`/ch/${ch}/mix/${bus}/level`, v);
+                        }
+                      }}
+                    />
+                    <span class="send-val">{((sendsState[busKey]?.level ?? 0) * 100).toFixed(0)}%</span>
+                    <button class="toggle-sm" class:active={sendsState[busKey]?.prePost === 1}
+                      on:click={() => {
+                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
+                        const newTap = sendsState[busKey].prePost === 1 ? 0 : 1;
+                        sendsState[busKey].prePost = newTap;
+                        sendsState = { ...sendsState };
+                        if (selectedChannel.startsWith('in_')) {
+                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
+                          const bus = String(busNum).padStart(2, '0');
+                          setOsc(`/ch/${ch}/mix/${bus}/type`, newTap);
+                        }
+                      }}
+                    >{sendsState[busKey]?.prePost === 1 ? 'PRE' : 'POST'}</button>
                   </div>
                 {/each}
               </div>
+
+              {#if config.fx > 0}
+              <div class="param-section">
+                <h3>FX Sends</h3>
+                {#each Array(config.fx || 4) as _, i}
+                  {@const busKey = `${selectedChannel}_fx${i+1}`}
+                  <div class="param-row sends-row">
+                    <span class="send-bus-label">
+                      {scribbles[`fx_${i+1}`]?.name || `FX ${i + 1}`}
+                    </span>
+                    <input type="range" class="sends-fader" min="0" max="1" step="0.01"
+                      value={sendsState[busKey]?.level ?? 0}
+                      on:input={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
+                        sendsState[busKey].level = v;
+                        sendsState = { ...sendsState };
+                        if (selectedChannel.startsWith('in_')) {
+                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
+                          setOsc(`/ch/${ch}/mix/fx/${i+1}/level`, v);
+                        }
+                      }}
+                    />
+                    <span class="send-val">{((sendsState[busKey]?.level ?? 0) * 100).toFixed(0)}%</span>
+                    <button class="toggle-sm" class:active={sendsState[busKey]?.prePost === 1}
+                      on:click={() => {
+                        if (!sendsState[busKey]) sendsState[busKey] = { level: 0, prePost: 0 };
+                        const newTap = sendsState[busKey].prePost === 1 ? 0 : 1;
+                        sendsState[busKey].prePost = newTap;
+                        sendsState = { ...sendsState };
+                        if (selectedChannel.startsWith('in_')) {
+                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
+                          setOsc(`/ch/${ch}/mix/fx/${i+1}/type`, newTap);
+                        }
+                      }}
+                    >{sendsState[busKey]?.prePost === 1 ? 'PRE' : 'POST'}</button>
+                  </div>
+                {/each}
+              </div>
+              {/if}
+              {/if}
             </div>
           </div>
 
@@ -641,7 +770,7 @@
         {:else if activeTab === 'routing'}
           <div class="macro-view fade-in">
             <div class="view-header-inline">
-              <h2 class="title-left">ROUTING</h2>
+              <h2 class="title-left">ROUTING: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
               <div class="nav-group">
                   <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
                   <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
@@ -649,9 +778,29 @@
             </div>
             <div class="tab-content-body">
               <div class="param-section">
-                <h3>Output Patching</h3>
-                <p style="color:#94a3b8; font-size: 0.85rem;">Configure physical output routing, USB/DAW streams, and P16/Ultranet assignments.</p>
-                <div class="wireframe-content"></div>
+                <h3>Bus Routing Matrix</h3>
+                <p style="color:#94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">Toggle which output buses this channel is sent to.</p>
+                <div class="routing-matrix">
+                  {#each outputChannels as busNum}
+                    {@const rKey = `${selectedChannel}_bus${busNum}`}
+                    <button class="routing-cell"
+                      class:active={routingState[rKey] !== false}
+                      on:click={() => {
+                        const cur = routingState[rKey] !== false;
+                        routingState[rKey] = !cur;
+                        routingState = { ...routingState };
+                        if (selectedChannel.startsWith('in_')) {
+                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
+                          const bus = String(busNum).padStart(2, '0');
+                          setOsc(`/ch/${ch}/mix/${bus}/on`, !cur ? 1 : 0);
+                        }
+                      }}
+                    >
+                      <span class="routing-bus-name">{scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}</span>
+                      <span class="routing-status">{routingState[rKey] !== false ? '●' : '○'}</span>
+                    </button>
+                  {/each}
+                </div>
               </div>
             </div>
           </div>
@@ -848,4 +997,33 @@
     .app-container { display: none !important; }
     .portrait-warning { display: flex; }
   }
+
+  /* ─── Mixer Discovery UI ─────────────────────────────── */
+  .mixer-connect-section { border-top: 1px solid #1e293b; margin-top: 1.25rem; padding-top: 1.25rem; }
+  .discover-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .discover-btn { padding: 0.5rem 1rem; font-size: 0.85rem; background: #0ea5e9; border-color: #0ea5e9; }
+  .discover-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .discovery-badge { font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; }
+  .discovery-badge.found { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }
+  .discovery-badge.notfound { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
+  .ip-fields { display: flex; gap: 0.75rem; }
+  .ip-field { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+  .ip-field label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+  .ip-port { max-width: 120px; }
+
+  /* ─── Sends Tab ──────────────────────────────────────── */
+  .sends-row { display: grid; grid-template-columns: 140px 1fr 48px 64px; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid #1a2233; }
+  .send-bus-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .send-bus-icon { width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
+  .sends-fader { width: 100%; accent-color: #0ea5e9; cursor: pointer; }
+  .send-val { font-size: 0.8rem; color: #64748b; text-align: right; white-space: nowrap; }
+
+  /* ─── Routing Matrix ─────────────────────────────────── */
+  .routing-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+  .routing-cell { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.15s ease; font-size: 0.8rem; color: #64748b; }
+  .routing-cell:hover { border-color: #334155; color: #94a3b8; }
+  .routing-cell.active { background: rgba(14,165,233,0.08); border-color: #0ea5e9; color: #e2e8f0; }
+  .routing-bus-name { font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 70px; }
+  .routing-status { font-size: 1rem; color: #0ea5e9; }
+  .routing-cell:not(.active) .routing-status { color: #334155; }
 </style>

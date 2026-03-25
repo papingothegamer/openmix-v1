@@ -56,6 +56,18 @@ class MixerConnection extends EventEmitter {
         }
     }
 
+    reconfigure(newIp, newPort = 10024) {
+        if (this.keepAliveInterval) {
+            clearInterval(this.keepAliveInterval);
+            this.keepAliveInterval = null;
+        }
+        this.mixerIp = newIp;
+        this.mixerPort = newPort;
+        // Re-send /xremote to new target to handshake
+        this.startKeepAlive();
+        console.log(`[MixerSync] Reconfigured → ${newIp}:${newPort}`);
+    }
+
     handleIncomingOsc(msg, info) {
         const address = msg.address;
         const args = msg.args;
