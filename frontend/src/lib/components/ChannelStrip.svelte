@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { Link2 } from 'lucide-svelte';
+  import { setOsc } from '../socket.js';
   
   const dispatch = createEventDispatcher();
   
@@ -24,12 +25,60 @@
   export let eqBands = null; // Array of band objects passed from App mixer state
   export let eqCurvePath = 'M0,20 L100,20'; // Base fallback
 
+  // Mini gate/compression visual parameters (FOH mode).
+  export let gateThresh = -40;
+  export let gateRange = 20;
+  export let gateOn = true;
+
+  export let compThresh = -20;
+  export let compRatio = 4;
+  export let compOn = true;
+
   // FOH Extras
   export let phantom = false;
   export let stereoLink = false;
 
   const dispatchStatus = (param, value) => {
     console.log(`[UI Action] ${name} ${param} => ${value}`);
+  }
+
+  function dbToFader(db) {
+    const d = Number(db);
+    if (!Number.isFinite(d)) return 0;
+
+    // Clamp to the UI's intended -60dB .. +10dB range.
+    const clamped = Math.max(-60, Math.min(10, d));
+    if (clamped <= -60) return 0;
+
+    // Handoff expects `/ch/XX/mix/fader` as a normalized 0..1 float.
+    // Map +10dB -> 1 and -60dB -> 0.
+    const maxDb = 10;
+    const linear = Math.pow(10, clamped / 20);
+    const linearAtMax = Math.pow(10, maxDb / 20);
+    return Math.max(0, Math.min(1, linear / linearAtMax));
+  }
+
+  function emitFaderChange() {
+    // 1) Input strip fader (FOH + musician). Musicians are sandboxed server-side by token guards.
+    if (stripType === 'input') {
+      if (role !== 'foh' && role !== 'musician') return;
+      const ch = parseInt(channelIndex, 10);
+      if (!Number.isFinite(ch) || ch < 1) return;
+      const chStr = String(ch).padStart(2, '0');
+      // The backend's musician guard rewrites any `/mix/fader` to
+      // `/mix/<targetBus>/level` for safe AUX-only control.
+      setOsc(`/ch/${chStr}/mix/fader`, dbToFader(level));
+      return;
+    }
+
+    // 2) Output strip fader (FOH only). Musicians should not touch master output levels.
+    if (stripType === 'output') {
+      if (role !== 'foh') return;
+      const outNum = parseInt(channelIndex, 10);
+      if (!Number.isFinite(outNum) || outNum < 1) return;
+      setOsc(`/out/${outNum}/mix/fader`, dbToFader(level));
+      return;
+    }
   }
 
   // --- Dynamic EQ Mini-Chart Generator ---
@@ -83,6 +132,68 @@
     return points.join(' ');
   }
 
+  function clampDb(v, lo = -80, hi = 0) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(lo, Math.min(hi, n));
+  }
+
+  function dbToX(db) {
+    // Map [-80..0] -> [0..100] for the mini charts.
+    const n = clampDb(db, -80, 0);
+    return ((n + 80) / 80) * 100;
+  }
+
+  function dbToY(db) {
+    // Chart SVG viewBox is 0..40 for Y.
+    const n = clampDb(db, -80, 0);
+    return 40 - ((n + 80) / 80) * 40;
+  }
+
+  function generateGateMiniPoints(thresh, range, enabled) {
+    const effRange = enabled ? Number(range) : 0;
+    const thr = Number(thresh);
+    const pts = [];
+    for (let x = -80; x <= 0; x += 2) {
+      const y = x < thr ? x - effRange : x;
+      const sx = dbToX(x);
+      const sy = dbToY(y);
+      pts.push(`${sx},${sy}`);
+    }
+    return pts.join(" ");
+  }
+
+  function generateCompMiniPoints(thresh, ratio, enabled) {
+    const effRatio = enabled ? Math.max(1, Number(ratio)) : 1;
+    const thr = Number(thresh);
+    const pts = [];
+    for (let x = -80; x <= 0; x += 2) {
+      const y = x < thr ? x : thr + (x - thr) / effRatio;
+      const sx = dbToX(x);
+      const sy = dbToY(y);
+      pts.push(`${sx},${sy}`);
+    }
+    return pts.join(" ");
+  }
+
+  let gateCurvePoints = "";
+  let compCurvePoints = "";
+  let gateThrX = 50;
+  let compThrX = 50;
+
+  $: gateCurvePoints = generateGateMiniPoints(
+    gateThresh,
+    gateRange,
+    gateOn,
+  );
+  $: compCurvePoints = generateCompMiniPoints(
+    compThresh,
+    compRatio,
+    compOn,
+  );
+  $: gateThrX = dbToX(gateThresh);
+  $: compThrX = dbToX(compThresh);
+
   // Reactively redraw the mini EQ line if bands change
   $: if (eqBands) eqCurvePath = generateSvgPath(eqBands);
 
@@ -122,6 +233,7 @@
   function resetFader() {
     level = -60;
     dispatchStatus('level', level);
+    emitFaderChange();
   }
 </script>
 
@@ -155,10 +267,23 @@
         <svg viewBox="0 0 100 40" class="curve"><path d="{eqCurvePath}" /></svg>
       </div>
 
+      {#if stripType === 'input'}
+        <div class="chart gate-chart">
+          <span class="label">GATE</span>
+          <svg viewBox="0 0 100 40" class="mini-svg">
+            <line x1={gateThrX} y1="0" x2={gateThrX} y2="40" stroke="#1e293b" stroke-width="1" opacity={gateOn ? 0.9 : 0.25} />
+            <polyline points={gateCurvePoints} class="gate-poly" />
+          </svg>
+        </div>
+      {/if}
+
       {#if stripType !== 'fx'}
         <div class="chart comp-chart">
           <span class="label">COMP</span>
-          <div class="gr-meter"></div>
+          <svg viewBox="0 0 100 40" class="mini-svg">
+            <line x1={compThrX} y1="0" x2={compThrX} y2="40" stroke="#1e293b" stroke-width="1" opacity={compOn ? 0.9 : 0.25} />
+            <polyline points={compCurvePoints} class="comp-poly" />
+          </svg>
         </div>
       {/if}
     </div>
@@ -185,14 +310,28 @@
   </div>
 
   <div class="fader-container">
-    <input type="range" class="fader-slider" min="-60" max="10" step="0.5" bind:value={level} on:dblclick={resetFader} />
+    <input
+      type="range"
+      class="fader-slider"
+      min="-60"
+      max="10"
+      step="0.5"
+      bind:value={level}
+      on:dblclick={resetFader}
+      on:input={emitFaderChange}
+    />
     <div class="fader-track">
       <div class="fader-thumb" style="bottom: {((level + 60) / 70) * 100}%"></div>
     </div>
   </div>
 
   <div class="fader-value">
-    <input type="number" bind:value={level} step="0.5" />
+    <input
+      type="number"
+      bind:value={level}
+      step="0.5"
+      on:input={emitFaderChange}
+    />
     <span>dB</span>
   </div>
 
@@ -248,6 +387,24 @@
   .chart .label { position: absolute; top: 2px; left: 3px; font-size: 0.5rem; font-weight: 700; color: #52525b; z-index: 2; }
   .curve { width: 100%; height: 100%; stroke: #3b82f6; stroke-width: 1.5; fill: none; filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.5)); }
   .gr-meter { width: 4px; height: 100%; background: #ef4444; position: absolute; right: 2px; transform-origin: top; transform: scaleY(0.3); opacity: 0.8; }
+
+  .mini-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .gate-poly {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 2;
+  }
+
+  .comp-poly {
+    fill: none;
+    stroke: #10b981;
+    stroke-width: 2;
+  }
 
   .spacer { flex: 1; min-height: 12px; }
 

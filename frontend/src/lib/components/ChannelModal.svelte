@@ -1,7 +1,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { X, Mic, AudioWaveform, Zap, Volume2 } from 'lucide-svelte';
-  import { setOsc } from "../socket";
+  import { mixerState, setOsc } from "../socket";
+  import GateGraph from "./ChannelModalGraphs/GateGraph.svelte";
+  import CompressionGraph from "./ChannelModalGraphs/CompressionGraph.svelte";
   
   export let channelId = '';
   export let channelName = '';
@@ -16,47 +18,142 @@
     dispatch('close');
   }
   
-  // Dummy parameters for rendering UI interactions
+  // Mixer-backed parameters for graph + sliders.
+  // Graphs are always rendered from these local values.
   let params = {
-      gain: 30, phantom: false, phase: false,
-      gateThresh: -40, gateRange: 20, gateAttack: 5, gateHold: 50, gateRel: 100,
-      compThresh: -20, compRatio: 4, compAttack: 10, compRelease: 100, compMakeup: 0,
-      outPan: 0, outLevel: 0
+    gain: 30,
+    phantom: false,
+    phase: false,
+    gateThresh: -40,
+    gateRange: 20,
+    gateAttack: 5,
+    gateHold: 50,
+    gateRel: 100,
+    compThresh: -20,
+    compRatio: 4,
+    compAttack: 10,
+    compRelease: 100,
+    compMakeup: 0,
+    outPan: 0,
+    outLevel: 0,
   };
 
-  $: if (channelId && Object.keys(params).length > 0) {
-      if (channelId.startsWith("in_") || channelId.startsWith("out_")) {
-          const prefix = `/${channelId.replace('_', '/')}`;
-          // Standardized approximation maps to showcase OSC event dispatching 
-          setOsc(`${prefix}/preamp/gain`, params.gain);
-          setOsc(`${prefix}/gate/thr`, params.gateThresh);
-          setOsc(`${prefix}/dyn/thr`, params.compThresh);
-          setOsc(`${prefix}/dyn/ratio`, params.compRatio);
-          setOsc(`${prefix}/mix/fader`, params.outLevel);
-      }
+  let hydratedFor = null;
+
+  const MAX_DB = 10;
+
+  // Handoff uses `/ch/XX/mix/fader` as a normalized float (0..1).
+  // The ChannelModal UI exposes dB; this converts dB -> normalized fader value.
+  function dbToFader(db) {
+    const d = Number(db);
+    if (!Number.isFinite(d)) return 0;
+
+    const clamped = Math.max(-60, Math.min(MAX_DB, d));
+    if (clamped <= -60) return 0;
+
+    const linear = Math.pow(10, clamped / 20);
+    const linearAtMax = Math.pow(10, MAX_DB / 20);
+    return Math.max(0, Math.min(1, linear / linearAtMax));
   }
 
-  function generateCompCurve(thresh, ratio) {
-      let pts = [];
-      for (let x = -80; x <= 0; x += 2) {
-          let y = x < thresh ? x : thresh + (x - thresh) / ratio;
-          let sx = ((x + 80) / 80) * 100;
-          let sy = 100 - ((y + 80) / 80) * 100;
-          pts.push(`${sx},${sy}`);
-      }
-      return pts.join(" ");
+  // Inverse of `dbToFader`: normalized 0..1 -> dB for UI display.
+  function faderToDb(norm) {
+    const v = Number(norm);
+    if (!Number.isFinite(v) || v <= 0) return -60;
+
+    const linearAtMax = Math.pow(10, MAX_DB / 20);
+    const linear = v * linearAtMax;
+    const d = 20 * Math.log10(linear);
+    return Math.max(-60, Math.min(MAX_DB, d));
   }
 
-  function generateGateCurve(thresh, range) {
-      let pts = [];
-      for (let x = -80; x <= 0; x += 2) {
-          let y = x < thresh ? x - range : x;
-          let sx = ((x + 80) / 80) * 100;
-          let sy = 100 - ((y + 80) / 80) * 100;
-          pts.push(`${sx},${sy}`);
-      }
-      return pts.join(" ");
+  function oscPrefixFromChannelId(id) {
+    if (typeof id !== "string") return null;
+    if (id.startsWith("in_")) {
+      const num = parseInt(id.replace("in_", ""), 10);
+      if (!Number.isFinite(num) || num < 1) return null;
+      return `/ch/${String(num).padStart(2, "0")}`;
+    }
+
+    // The ChannelModal is only wired for input-channel gate/comp editing.
+    // If an out_* id ever reaches this component, we fall back to an undefined prefix.
+    return null;
   }
+
+  function readCacheNumber(cache, address, fallback) {
+    if (!cache) return fallback;
+    const v = cache[address];
+    if (v === undefined || v === null) return fallback;
+    const raw = Array.isArray(v) ? v[0] : v;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  // Hydrate params once per channelId open.
+  $: if (channelId && channelId !== hydratedFor) {
+    hydratedFor = channelId;
+    const prefix = oscPrefixFromChannelId(channelId);
+    const cache = $mixerState?.flatOscCache || {};
+
+    if (prefix) {
+      const outNorm = readCacheNumber(
+        cache,
+        `${prefix}/mix/fader`,
+        dbToFader(params.outLevel),
+      );
+
+      params = {
+        ...params,
+        gain: readCacheNumber(cache, `${prefix}/preamp/gain`, params.gain),
+        gateThresh: readCacheNumber(cache, `${prefix}/gate/thr`, params.gateThresh),
+        gateRange: readCacheNumber(cache, `${prefix}/gate/range`, params.gateRange),
+        // These may not exist on the mixer in the current profile; defaults are preserved.
+        gateAttack: readCacheNumber(cache, `${prefix}/gate/att`, params.gateAttack),
+        gateHold: readCacheNumber(cache, `${prefix}/gate/hold`, params.gateHold),
+        gateRel: readCacheNumber(cache, `${prefix}/gate/rel`, params.gateRel),
+        compThresh: readCacheNumber(cache, `${prefix}/dyn/thr`, params.compThresh),
+        compRatio: readCacheNumber(cache, `${prefix}/dyn/ratio`, params.compRatio),
+        compAttack: readCacheNumber(cache, `${prefix}/dyn/att`, params.compAttack),
+        compRelease: readCacheNumber(cache, `${prefix}/dyn/rel`, params.compRelease),
+        compMakeup: readCacheNumber(cache, `${prefix}/dyn/makeup`, params.compMakeup),
+        outLevel: faderToDb(outNorm),
+      };
+    }
+  }
+
+  function sendOscForGate() {
+    const prefix = oscPrefixFromChannelId(channelId);
+    if (!prefix) return;
+    setOsc(`${prefix}/gate/thr`, params.gateThresh);
+    setOsc(`${prefix}/gate/range`, params.gateRange);
+    setOsc(`${prefix}/gate/att`, params.gateAttack);
+    setOsc(`${prefix}/gate/hold`, params.gateHold);
+    setOsc(`${prefix}/gate/rel`, params.gateRel);
+  }
+
+  function sendOscForComp() {
+    const prefix = oscPrefixFromChannelId(channelId);
+    if (!prefix) return;
+    setOsc(`${prefix}/dyn/thr`, params.compThresh);
+    setOsc(`${prefix}/dyn/ratio`, params.compRatio);
+    setOsc(`${prefix}/dyn/att`, params.compAttack);
+    setOsc(`${prefix}/dyn/rel`, params.compRelease);
+    setOsc(`${prefix}/dyn/makeup`, params.compMakeup);
+  }
+
+  function sendOscForPreamp() {
+    const prefix = oscPrefixFromChannelId(channelId);
+    if (!prefix) return;
+    setOsc(`${prefix}/preamp/gain`, params.gain);
+  }
+
+  function sendOscForOutputLevel() {
+    const prefix = oscPrefixFromChannelId(channelId);
+    if (!prefix) return;
+    setOsc(`${prefix}/mix/fader`, dbToFader(params.outLevel));
+  }
+
+  // Keep outPan purely visual for now (OSC mapping is not present elsewhere in the repo).
 </script>
 
 <div class="modal-backdrop fade-in" on:click={close}>
@@ -92,7 +189,16 @@
             <div class="x32-bottom-faders preamp-faders">
                 <div class="fader-group">
                    <div class="v-slider-val">{params.gain} dB</div>
-                   <div class="v-slider-wrapper"><input type="range" class="v-slider red-thumb" min="0" max="60" bind:value={params.gain} /></div>
+                   <div class="v-slider-wrapper">
+                     <input
+                       type="range"
+                       class="v-slider red-thumb"
+                       min="0"
+                       max="60"
+                       value={params.gain}
+                       on:input={(e) => { params.gain = Number(e.currentTarget.value); sendOscForPreamp(); }}
+                     />
+                   </div>
                    <div class="v-slider-lbl">GAIN</div>
                 </div>
                 <div class="fader-group push-right">
@@ -104,58 +210,174 @@
 
       {:else if activeSection === 'gate'}
         <div class="x32-panel">
-            <div class="x32-top-graphs">
-                <div class="x32-graph-box">
-                    <div class="graph-title">Gain</div>
-                    <div class="graph-placeholder flex-center" style="padding: 0.5rem;">
-                        <svg viewBox="0 0 100 100" style="width:100%; height:100%; overflow:visible;">
-                           <line x1="0" y1="50" x2="100" y2="50" stroke="#1e293b" stroke-width="1"/>
-                           <line x1="50" y1="0" x2="50" y2="100" stroke="#1e293b" stroke-width="1"/>
-                           <polyline points="{generateGateCurve(params.gateThresh, params.gateRange)}" fill="none" stroke="#38bdf8" stroke-width="2" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="x32-graph-box"><div class="graph-title">Gain Envelope</div><div class="graph-placeholder flex-center"><span class="graph-watermark">ENVELOPE</span></div></div>
-                <div class="x32-graph-box"><div class="graph-title">Side Chain Filter</div><div class="graph-placeholder flex-center"><span class="graph-watermark">SC FILTER</span></div></div>
-            </div>
+            <GateGraph
+              gateThresh={params.gateThresh}
+              gateRange={params.gateRange}
+              gateAttack={params.gateAttack}
+              gateHold={params.gateHold}
+              gateRel={params.gateRel}
+            />
             <div class="x32-bottom-faders">
                 <div class="fader-section">
-                    <div class="fader-group"><div class="v-slider-val">{params.gateThresh}</div><div class="v-slider-wrapper"><input type="range" class="v-slider blue-thumb" min="-80" max="0" bind:value={params.gateThresh} /></div><div class="v-slider-lbl">THR</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.gateRange}</div><div class="v-slider-wrapper"><input type="range" class="v-slider blue-thumb" min="0" max="60" bind:value={params.gateRange} /></div><div class="v-slider-lbl">RANGE</div></div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.gateThresh}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider blue-thumb"
+                          min="-80"
+                          max="0"
+                          value={params.gateThresh}
+                          on:input={(e) => { params.gateThresh = Number(e.currentTarget.value); sendOscForGate(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">THR</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.gateRange}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider blue-thumb"
+                          min="0"
+                          max="60"
+                          value={params.gateRange}
+                          on:input={(e) => { params.gateRange = Number(e.currentTarget.value); sendOscForGate(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">RANGE</div>
+                    </div>
                 </div>
                 <div class="fader-section">
-                    <div class="fader-group"><div class="v-slider-val">{params.gateAttack}</div><div class="v-slider-wrapper"><input type="range" class="v-slider blue-thumb" min="0" max="120" bind:value={params.gateAttack} /></div><div class="v-slider-lbl">ATTACK</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.gateHold}</div><div class="v-slider-wrapper"><input type="range" class="v-slider blue-thumb" min="0" max="500" bind:value={params.gateHold} /></div><div class="v-slider-lbl">HOLD</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.gateRel}</div><div class="v-slider-wrapper"><input type="range" class="v-slider blue-thumb" min="5" max="500" bind:value={params.gateRel} /></div><div class="v-slider-lbl">RELEASE</div></div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.gateAttack}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider blue-thumb"
+                          min="0"
+                          max="120"
+                          value={params.gateAttack}
+                          on:input={(e) => { params.gateAttack = Number(e.currentTarget.value); sendOscForGate(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">ATTACK</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.gateHold}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider blue-thumb"
+                          min="0"
+                          max="500"
+                          value={params.gateHold}
+                          on:input={(e) => { params.gateHold = Number(e.currentTarget.value); sendOscForGate(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">HOLD</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.gateRel}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider blue-thumb"
+                          min="5"
+                          max="500"
+                          value={params.gateRel}
+                          on:input={(e) => { params.gateRel = Number(e.currentTarget.value); sendOscForGate(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">RELEASE</div>
+                    </div>
                 </div>
             </div>
         </div>
 
       {:else if activeSection === 'compressor'}
         <div class="x32-panel">
-            <div class="x32-top-graphs">
-                <div class="x32-graph-box">
-                    <div class="graph-title">Compression Curve</div>
-                    <div class="graph-placeholder flex-center" style="padding: 0.5rem;">
-                        <svg viewBox="0 0 100 100" style="width:100%; height:100%; overflow:visible;">
-                           <line x1="0" y1="50" x2="100" y2="50" stroke="#1e293b" stroke-width="1"/>
-                           <line x1="50" y1="0" x2="50" y2="100" stroke="#1e293b" stroke-width="1"/>
-                           <polyline points="{generateCompCurve(params.compThresh, params.compRatio)}" fill="none" stroke="#10b981" stroke-width="2" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="x32-graph-box"><div class="graph-title">Compression Envelope</div><div class="graph-placeholder flex-center"><span class="graph-watermark">ENVELOPE</span></div></div>
-                <div class="x32-graph-box"><div class="graph-title">Side Chain Filter</div><div class="graph-placeholder flex-center"><span class="graph-watermark">SC FILTER</span></div></div>
-            </div>
+            <CompressionGraph
+              compThresh={params.compThresh}
+              compRatio={params.compRatio}
+              compAttack={params.compAttack}
+              compRelease={params.compRelease}
+              compMakeup={params.compMakeup}
+            />
             <div class="x32-bottom-faders">
                 <div class="fader-section">
-                    <div class="fader-group"><div class="v-slider-val">{params.compThresh}</div><div class="v-slider-wrapper"><input type="range" class="v-slider green-thumb" min="-60" max="0" bind:value={params.compThresh} /></div><div class="v-slider-lbl">THR</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.compRatio}</div><div class="v-slider-wrapper"><input type="range" class="v-slider green-thumb" min="1" max="20" bind:value={params.compRatio} /></div><div class="v-slider-lbl">RATIO</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.compMakeup}</div><div class="v-slider-wrapper"><input type="range" class="v-slider green-thumb" min="0" max="24" bind:value={params.compMakeup} /></div><div class="v-slider-lbl">MAKEUP</div></div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.compThresh}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider green-thumb"
+                          min="-60"
+                          max="0"
+                          value={params.compThresh}
+                          on:input={(e) => { params.compThresh = Number(e.currentTarget.value); sendOscForComp(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">THR</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.compRatio}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider green-thumb"
+                          min="1"
+                          max="20"
+                          value={params.compRatio}
+                          on:input={(e) => { params.compRatio = Number(e.currentTarget.value); sendOscForComp(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">RATIO</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.compMakeup}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider green-thumb"
+                          min="0"
+                          max="24"
+                          value={params.compMakeup}
+                          on:input={(e) => { params.compMakeup = Number(e.currentTarget.value); sendOscForComp(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">MAKEUP</div>
+                    </div>
                 </div>
                 <div class="fader-section">
-                    <div class="fader-group"><div class="v-slider-val">{params.compAttack}</div><div class="v-slider-wrapper"><input type="range" class="v-slider green-thumb" min="0" max="100" bind:value={params.compAttack} /></div><div class="v-slider-lbl">ATTACK</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.compRelease}</div><div class="v-slider-wrapper"><input type="range" class="v-slider green-thumb" min="5" max="500" bind:value={params.compRelease} /></div><div class="v-slider-lbl">RELEASE</div></div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.compAttack}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider green-thumb"
+                          min="0"
+                          max="100"
+                          value={params.compAttack}
+                          on:input={(e) => { params.compAttack = Number(e.currentTarget.value); sendOscForComp(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">ATTACK</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.compRelease}</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider green-thumb"
+                          min="5"
+                          max="500"
+                          value={params.compRelease}
+                          on:input={(e) => { params.compRelease = Number(e.currentTarget.value); sendOscForComp(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">RELEASE</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -170,8 +392,27 @@
             </div>
             <div class="x32-bottom-faders">
                 <div class="fader-section">
-                    <div class="fader-group"><div class="v-slider-val">{params.outPan === 0 ? 'C' : params.outPan}</div><div class="v-slider-wrapper"><input type="range" class="v-slider gray-thumb" min="-100" max="100" bind:value={params.outPan} /></div><div class="v-slider-lbl">PAN</div></div>
-                    <div class="fader-group"><div class="v-slider-val">{params.outLevel} dB</div><div class="v-slider-wrapper"><input type="range" class="v-slider gray-thumb" min="-90" max="10" bind:value={params.outLevel} /></div><div class="v-slider-lbl">POST LVL</div></div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.outPan === 0 ? 'C' : params.outPan}</div>
+                      <div class="v-slider-wrapper">
+                        <input type="range" class="v-slider gray-thumb" min="-100" max="100" bind:value={params.outPan} />
+                      </div>
+                      <div class="v-slider-lbl">PAN</div>
+                    </div>
+                    <div class="fader-group">
+                      <div class="v-slider-val">{params.outLevel} dB</div>
+                      <div class="v-slider-wrapper">
+                        <input
+                          type="range"
+                          class="v-slider gray-thumb"
+                          min="-90"
+                          max="10"
+                          value={params.outLevel}
+                          on:input={(e) => { params.outLevel = Number(e.currentTarget.value); sendOscForOutputLevel(); }}
+                        />
+                      </div>
+                      <div class="v-slider-lbl">POST LVL</div>
+                    </div>
                 </div>
             </div>
         </div>

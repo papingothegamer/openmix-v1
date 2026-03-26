@@ -160,7 +160,23 @@ function emitOscBroadcast(io, mixerData) {
         });
     } else {
         // Standard State Updates
+        // - FOH sees everything
+        // - Musicians additionally receive only AUX send state (for their bus room)
         io.to('foh').emit('oscData', mixerData);
+
+        if (
+            mixerData.type === 'state' &&
+            typeof mixerData.address === 'string'
+        ) {
+            // AUX send paths look like: /ch/01/mix/02/level  (and /on, /type)
+            const m = mixerData.address.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\//);
+            if (m) {
+                const bus = parseInt(m[2], 10);
+                if (Number.isFinite(bus)) {
+                    io.to(`bus_${bus}`).emit('oscData', mixerData);
+                }
+            }
+        }
     }
 }
 

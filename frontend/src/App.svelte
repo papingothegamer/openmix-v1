@@ -7,6 +7,7 @@
     rawMeters,
     meterLight,
     setOsc,
+    setSocketAuthToken,
   } from "./lib/socket";
   import ChannelStrip from "./lib/components/ChannelStrip.svelte";
   import Navbar from "./lib/components/Navbar.svelte";
@@ -53,6 +54,57 @@
 
   // Musician Monitor Mix — which aux bus they control
   let musicianAux = null;
+  let musicianTokenLoading = false;
+  let musicianToken = null;
+
+  function connectAsFoh() {
+    // Clear auth token so backend defaults to master_admin_token/FOH.
+    setSocketAuthToken(null);
+    try {
+      socket.disconnect();
+    } catch (_) {}
+    socket.connect();
+  }
+
+  function connectAsMusician(token, auxNum) {
+    musicianToken = token;
+    musicianTokenLoading = true;
+    setSocketAuthToken(token);
+    try {
+      socket.disconnect();
+    } catch (_) {}
+
+    // Only show musician controls after the socket handshake completes.
+    socket.once("connect", () => {
+      musicianAux = auxNum;
+      musicianTokenLoading = false;
+    });
+
+    socket.connect();
+  }
+
+  function requestMusicianTokenAndConnect(auxNum) {
+    if (musicianTokenLoading) return;
+    musicianTokenLoading = true;
+
+    // Uses the current socket session (expected to be FOH by default) to mint a token.
+    socket.emit("generateToken", auxNum, (res) => {
+      if (!res || res.error || !res.token) {
+        alert(res?.error || "Failed to generate musician token.");
+        musicianTokenLoading = false;
+        return;
+      }
+      connectAsMusician(res.token, auxNum);
+    });
+  }
+
+  function exitRole() {
+    activeRole = null;
+    musicianAux = null;
+    musicianToken = null;
+    musicianTokenLoading = false;
+    connectAsFoh();
+  }
 
   // Channel Modal State
   let channelModalState = { isOpen: false, channelId: "", section: "preamp" };
@@ -254,6 +306,30 @@
       d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
     }
     return d;
+  }
+
+  // Convert AUX send level (normalized 0..1) to the ChannelStrip fader scale (-60dB..+10dB).
+  function auxSendLevelToDb(norm) {
+    const v = Number(norm);
+    if (!Number.isFinite(v) || v <= 0) return -60;
+
+    const maxDb = 10;
+    const linearAtMax = Math.pow(10, maxDb / 20);
+    const linear = v * linearAtMax;
+    const db = 20 * Math.log10(linear);
+    return Math.max(-60, Math.min(maxDb, db));
+  }
+
+  function readFlatOscNumber(address, fallback) {
+    const cache = $mixerState?.flatOscCache || {};
+    if (cache[address] === undefined || cache[address] === null) return fallback;
+    const raw = Array.isArray(cache[address]) ? cache[address][0] : cache[address];
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function readFlatOscBool(address, fallback = false) {
+    return !!readFlatOscNumber(address, fallback ? 1 : 0);
   }
 
   onMount(() => {
@@ -528,7 +604,7 @@
 <main class="app-container" class:scribble-mode={scribbleEditMode}>
   <Navbar
     {activeRole}
-    onExitRole={() => (activeRole = null)}
+    onExitRole={exitRole}
     onExportScene={handleExportScene}
     onFileLoad={handleFileUpload}
     onScribbleEdit={() => (scribbleEditMode = !scribbleEditMode)}
@@ -626,14 +702,33 @@
           </div>
           
           <div class="role-grid">
-            <button class="role-card" on:click={() => activeRole = "foh"}>
+            <button
+              class="role-card"
+              on:click={() => {
+                activeRole = "foh";
+                musicianAux = null;
+                musicianTokenLoading = false;
+                musicianToken = null;
+                connectAsFoh();
+              }}
+            >
               <span class="role-icon"><Sliders size={24} /></span>
               <div class="role-info">
                 <h3>FOH Engineer</h3>
                 <p>Full control over inputs, outputs, and routing.</p>
               </div>
             </button>
-            <button class="role-card" on:click={() => { activeRole = "musician"; musicianAux = null; selectedChannel = null; activeTab = "mixer"; }}>
+            <button
+              class="role-card"
+              on:click={() => {
+                activeRole = "musician";
+                musicianAux = null;
+                musicianTokenLoading = false;
+                musicianToken = null;
+                selectedChannel = null;
+                activeTab = "mixer";
+              }}
+            >
               <span class="role-icon"><Headphones size={24} /></span>
               <div class="role-info">
                 <h3>Musician</h3>
@@ -656,14 +751,18 @@
             </div>
             <div class="aux-grid" style="margin-top: 0.5rem; margin-bottom: 0;">
               {#each config.visibleBuses || [] as auxNum}
-                <button class="aux-btn" on:click={() => musicianAux = auxNum}>
+                <button
+                  class="aux-btn"
+                  disabled={musicianTokenLoading}
+                  on:click={() => requestMusicianTokenAndConnect(auxNum)}
+                >
                   <span class="aux-num">AUX {auxNum}</span>
                   <span class="aux-label">{scribbles[`out_${auxNum}`]?.name || `Output ${auxNum}`}</span>
                 </button>
               {/each}
             </div>
             <div class="action-row" style="margin-top:1.5rem;">
-              <button class="btn-ghost" on:click={() => activeRole = null} style="width: 100%;"><ArrowLeft size={16} style="margin-right: 0.5rem;"/> Back to Roles</button>
+              <button class="btn-ghost" on:click={exitRole} style="width: 100%;"><ArrowLeft size={16} style="margin-right: 0.5rem;"/> Back to Roles</button>
             </div>
           </div>
         </div>
@@ -711,6 +810,10 @@
                           ? "#3b82f6"
                           : "#ef4444"
                         : scribbles[`in_${chIndex}`]?.color || "#3f3f46"}
+                      level={auxSendLevelToDb(
+                        sendsState[`in_${chIndex}_aux${musicianAux}`]?.level ??
+                          0,
+                      )}
                       peakLevel={fohMeters[chIndex - 1] || -60}
                       on:nameClick={() => {}}
                     />
@@ -781,6 +884,54 @@
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
                         eqCurvePath={computeMiniEqPath(sId)}
+                        gateThresh={
+                          activeView === "inputs"
+                            ? readFlatOscNumber(
+                                `/ch/${String(chIndex).padStart(2, "0")}/gate/thr`,
+                                -40,
+                              )
+                            : -40
+                        }
+                        gateRange={
+                          activeView === "inputs"
+                            ? readFlatOscNumber(
+                                `/ch/${String(chIndex).padStart(2, "0")}/gate/range`,
+                                20,
+                              )
+                            : 0
+                        }
+                        gateOn={
+                          activeView === "inputs"
+                            ? readFlatOscBool(
+                                `/ch/${String(chIndex).padStart(2, "0")}/gate/on`,
+                                true,
+                              )
+                            : false
+                        }
+                        compThresh={
+                          activeView === "inputs"
+                            ? readFlatOscNumber(
+                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/thr`,
+                                -20,
+                              )
+                            : -20
+                        }
+                        compRatio={
+                          activeView === "inputs"
+                            ? readFlatOscNumber(
+                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/ratio`,
+                                4,
+                              )
+                            : 1
+                        }
+                        compOn={
+                          activeView === "inputs"
+                            ? readFlatOscBool(
+                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/on`,
+                                true,
+                              )
+                            : false
+                        }
                         stereoLink={activeView === "inputs"
                           ? isLinked(chIndex, stereoLinks)
                           : false}
