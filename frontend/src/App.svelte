@@ -79,14 +79,12 @@
       musicianAux = auxNum;
       musicianTokenLoading = false;
     });
-
     socket.connect();
   }
 
   function requestMusicianTokenAndConnect(auxNum) {
     if (musicianTokenLoading) return;
     musicianTokenLoading = true;
-
     // Uses the current socket session (expected to be FOH by default) to mint a token.
     socket.emit("generateToken", auxNum, (res) => {
       if (!res || res.error || !res.token) {
@@ -129,6 +127,7 @@
     const [type, numStr] = selectedChannel.split("_");
     return parseInt(numStr, 10) <= 1;
   })();
+
   $: isLastChannel = (() => {
     if (!selectedChannel || selectedChannel === "main_LR") return true;
     const [type, numStr] = selectedChannel.split("_");
@@ -153,6 +152,7 @@
   let mixerConfig = JSON.parse(
     localStorage.getItem("openmix_mixer") || '{"ip":"","port":10024}',
   );
+
   let discoveryStatus = "idle"; // 'idle' | 'scanning' | 'found' | 'notfound'
 
   function startDiscovery() {
@@ -206,12 +206,14 @@
 
   // Stereo link state: key = odd channel number, value = true if linked to next even channel
   let stereoLinks = {}; // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
+
   function toggleStereoLink(ch) {
     const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
     const newState = !stereoLinks[oddCh];
     stereoLinks = { ...stereoLinks, [oddCh]: newState };
     setOsc(`/config/chlink/${oddCh}-${oddCh + 1}`, newState ? 1 : 0);
   }
+  
   function isLinked(ch, _stereoLinksDep) {
     if (typeof ch !== "number") return false;
     const oddCh = ch % 2 === 1 ? ch : ch - 1;
@@ -220,6 +222,7 @@
 
   // Main output assignment per channel
   let mainOutAssign = {}; // { 'in_1': true, 'in_2': true, ... }
+  
   function toggleMainOut(chId) {
     const newState = !mainOutAssign[chId];
     mainOutAssign = { ...mainOutAssign, [chId]: newState };
@@ -312,7 +315,6 @@
   function auxSendLevelToDb(norm) {
     const v = Number(norm);
     if (!Number.isFinite(v) || v <= 0) return -60;
-
     const maxDb = 10;
     const linearAtMax = Math.pow(10, maxDb / 20);
     const linear = v * linearAtMax;
@@ -350,7 +352,10 @@
   // Hydrate sendsState from backend mixerState.flatOscCache when available
   $: if ($mixerState && $mixerState.flatOscCache) {
     const cache = $mixerState.flatOscCache || {};
-    const updated = { ...sendsState };
+    
+    // Completely rebuild updated state to clear any ghost elements from old sessions
+    const updated = {}; 
+    
     Object.entries(cache).forEach(([path, val]) => {
       // AUX level: /ch/01/mix/02/level
       let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
@@ -370,6 +375,7 @@
         const ch = parseInt(m[1], 10);
         const bus = parseInt(m[2], 10);
         const key = `in_${ch}_aux${bus}`;
+       
         updated[key] = {
           ...(updated[key] || { level: 0, prePost: 0, on: true }),
           on: !!parseInt(val, 10),
@@ -417,7 +423,8 @@
   }
 
   function completeSetup() {
-    scribbles = {}; // Flush constraints from older layouts completely
+    scribbles = {};
+    // Flush constraints from older layouts completely
     localStorage.setItem("openmix_setup", "true");
     localStorage.setItem("openmix_config", JSON.stringify(config));
     localStorage.setItem("openmix_mixer", JSON.stringify(mixerConfig));
@@ -476,6 +483,14 @@
             ? result
             : new TextDecoder().decode(result);
         const json = JSON.parse(text);
+        
+        // WIPE EXISTING STATE TO PREVENT LEFTOVERS FROM PREVIOUS SESSIONS
+        scribbles = {};
+        channelEqState = {};
+        mainOutAssign = {};
+        stereoLinks = {};
+        routingState = {};
+        sendsState = {};
 
         if (json.uiConfig) {
           if (json.uiConfig.config) config = json.uiConfig.config;
@@ -531,7 +546,6 @@
   ).sort((a, b) => a - b);
   $: dcaChannels = Array.from({ length: config.dcas || 8 }, (_, i) => i + 1);
   $: fxChannels = Array.from({ length: config.fx || 4 }, (_, i) => i + 1);
-
   $: currentChannels =
     activeView === "inputs"
       ? inputChannels
@@ -539,10 +553,11 @@
         ? outputChannels
         : dcaChannels;
   $: fohMeters = $rawMeters || [];
-
+  
   // Fluid Pagination Logic
   let containerWidth = 0;
-  const STRIP_WIDTH = 90; // Standard layout size
+  const STRIP_WIDTH = 90;
+  // Standard layout size
 
   $: channelsPerPage = stripsPerPage;
   $: totalPages = Math.ceil(
@@ -552,7 +567,6 @@
     currentPage * channelsPerPage,
     (currentPage + 1) * channelsPerPage,
   );
-
   // Musician pagination
   let musicianPage = 0;
   $: musicianTotalPages = Math.ceil(
@@ -562,7 +576,6 @@
     musicianPage * stripsPerPage,
     (musicianPage + 1) * stripsPerPage,
   );
-
   // Watch for layer switches to reset bank
   $: {
     if (activeView) currentPage = 0;
@@ -612,11 +625,11 @@
 
   <div class="content-wrapper" class:is-mixing={activeRole}>
     {#if requiresSetup}
-      <!-- First Time Setup Wizard -->
       <div class="setup-overlay fade-in">
         <div class="setup-card wide-setup">
           <div class="setup-col">
             <div class="setup-logo">OPENMIX</div>
+        
             <div class="step-header" style="text-align: left;">
               <h2 class="step-title">Console Setup</h2>
               <p class="step-desc">Configure your session I/O counts.</p>
@@ -624,6 +637,7 @@
             
             <div class="setup-grid">
               <div class="form-group" style="grid-column: 1 / -1;">
+  
                 <label for="preset">Hardware Architecture Preset</label>
                 <div class="select-wrapper">
                   <select id="preset" bind:value={config.presetId} on:change={applyPreset}>
@@ -643,17 +657,17 @@
               </div>
             </div>
 
-            <!-- Mixer Network Connection -->
             <div class="form-group mixer-connect-section" style="margin-top: 0.5rem;">
               <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Mixer Network Connection</div>
               <div class="discover-row">
                 <button class="btn-ghost" on:click={startDiscovery} disabled={discoveryStatus === "scanning"} style="width: 100%;">
-                  {#if discoveryStatus === "scanning"} <Search size={16} /> Scanning... {:else} <Radio size={16} /> Auto-Discover {/if}
+                  {#if discoveryStatus === "scanning"} <Search size={16} style="margin-right: 8px; vertical-align: bottom;" /> Scanning... {:else} <Radio size={16} style="margin-right: 8px; vertical-align: bottom;" /> Auto-Discover {/if}
                 </button>
+          
                 {#if discoveryStatus === "found"}
-                  <span class="discovery-badge found"><Check size={14} /> Found</span>
+                  <span class="discovery-badge found"><Check size={14} style="margin-right: 4px; vertical-align: bottom;" /> Found</span>
                 {:else if discoveryStatus === "notfound"}
-                  <span class="discovery-badge notfound"><X size={14} /> Not found</span>
+                  <span class="discovery-badge notfound"><X size={14} style="margin-right: 4px; vertical-align: bottom;" /> Not found</span>
                 {/if}
               </div>
               <div class="form-row split">
@@ -661,6 +675,7 @@
                   <label for="mixer-ip">IP Address</label>
                   <input id="mixer-ip" type="text" bind:value={mixerConfig.ip} placeholder="192.168.1.100" />
                 </div>
+ 
                 <div class="form-group flex-1">
                   <label for="mixer-port">Port</label>
                   <input id="mixer-port" type="number" bind:value={mixerConfig.port} min="1024" max="65535" />
@@ -676,7 +691,7 @@
               <div class="bus-grid">
                  {#each Array(config.outputs) as _, i}
                    <label class="bus-toggle">
-                      <input type="checkbox" bind:group={config.visibleBuses} value={i+1} />
+                       <input type="checkbox" bind:group={config.visibleBuses} value={i+1} />
                       AUX {i+1}
                    </label>
                  {/each}
@@ -692,7 +707,6 @@
 
 
     {:else if !activeRole}
-      <!-- Mode Selection Gate -->
       <div class="setup-overlay fade-in">
         <div class="setup-card">
           <div class="setup-logo">OPENMIX</div>
@@ -740,7 +754,6 @@
         </div>
       </div>
     {:else}
-      <!-- Musician Aux Selection Gate -->
       {#if activeRole === "musician" && !musicianAux}
         <div class="setup-overlay fade-in">
           <div class="setup-card">
@@ -773,14 +786,12 @@
 
         <div class="workspace">
           {#if activeTab === "mixer"}
-            <!-- EDGE-TO-EDGE MIXER ROUTING -->
             {#if activeRole === "musician"}
               <div class="musician-mix fade-in">
                 <div class="musician-header">
                   {#if scribbles[`out_${musicianAux}`]?.iconType}
                     <img
-                      src="/icons-bmp/{scribbles[`out_${musicianAux}`]
-                        .iconType}.bmp"
+                      src="/icons-bmp/{scribbles[`out_${musicianAux}`].iconType}.bmp"
                       alt=""
                       class="musician-header-icon"
                     />
@@ -788,8 +799,7 @@
                     <div class="musician-header-icon-empty"></div>
                   {/if}
                   <h2>
-                    {scribbles[`out_${musicianAux}`]?.name ||
-                      `AUX ${musicianAux} Monitor Mix`}
+                    {scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux} Monitor Mix`}
                   </h2>
                 </div>
                 <div class="musician-rack-container" style="display: flex; align-items: stretch; justify-content: flex-start; gap: 0.25rem; flex: 1; height: 100%;">
@@ -798,26 +808,22 @@
                     {#each musicianDisplayedChannels as chIndex}
                       <ChannelStrip
                         channelIndex={String(chIndex)}
-                      role="musician"
-                      stripType="input"
-                      name={scribbles[`in_${chIndex}`]?.name ||
-                        presetHardLinks[chIndex]?.defaultName ||
-                        `CH ${chIndex}`}
-                      iconType={scribbles[`in_${chIndex}`]?.iconType ||
-                        "icon_01"}
-                      color={isLinked(chIndex, stereoLinks)
-                        ? chIndex % 2 === 1
-                          ? "#3b82f6"
-                          : "#ef4444"
-                        : scribbles[`in_${chIndex}`]?.color || "#3f3f46"}
-                      level={auxSendLevelToDb(
-                        sendsState[`in_${chIndex}_aux${musicianAux}`]?.level ??
-                          0,
-                      )}
-                      peakLevel={fohMeters[chIndex - 1] || -60}
-                      on:nameClick={() => {}}
-                    />
-                  {/each}
+                        role="musician"
+                        stripType="input"
+                        name={scribbles[`in_${chIndex}`]?.name || presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`}
+                        iconType={scribbles[`in_${chIndex}`]?.iconType || "icon_01"}
+                        color={isLinked(chIndex, stereoLinks)
+                          ? chIndex % 2 === 1
+                            ? "#3b82f6"
+                            : "#ef4444"
+                          : scribbles[`in_${chIndex}`]?.color || "#3f3f46"}
+                        level={auxSendLevelToDb(
+                          sendsState[`in_${chIndex}_aux${musicianAux}`]?.level ?? 0,
+                        )}
+                        peakLevel={fohMeters[chIndex - 1] || -60}
+                        on:nameClick={() => {}}
+                      />
+                    {/each}
                   </div>
                   <button class="nav-icon-btn" style="align-self:center;" disabled={musicianPage >= musicianTotalPages - 1} on:click={() => musicianPage++}><ChevronRight size={24} /></button>
                   <div class="master-divider"></div>
@@ -825,16 +831,15 @@
                     channelIndex={musicianAux}
                     role="musician"
                     stripType="output"
-                    name={scribbles[`out_${musicianAux}`]?.name ||
-                      `AUX ${musicianAux}`}
-                    iconType={scribbles[`out_${musicianAux}`]?.iconType ||
-                      "icon_01"}
+                    name={scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux}`}
+                    iconType={scribbles[`out_${musicianAux}`]?.iconType || "icon_01"}
                     color={scribbles[`out_${musicianAux}`]?.color || "#8b5cf6"}
                     peakLevel={-60}
                     on:nameClick={() => {}}
                   />
                 </div>
               </div>
+          
             {:else}
               <div
                 class="console-view fade-in"
@@ -848,8 +853,6 @@
                         : activeView === "outputs"
                           ? `out_${chIndex}`
                           : `dca_${chIndex}`}
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <!-- svelte-ignore a11y-no-static-element-interactions -->
                     <div
                       class="strip-wrapper"
                       on:click={() => {
@@ -878,8 +881,7 @@
                           ? chIndex % 2 === 1
                             ? "#3b82f6"
                             : "#ef4444"
-                          : scribbles[sId]?.color ||
-                            (activeView === "inputs" ? "#3f3f46" : "#3b82f6")}
+                          : scribbles[sId]?.color || (activeView === "inputs" ? "#3f3f46" : "#3b82f6")}
                         peakLevel={activeView === "inputs"
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
@@ -950,8 +952,6 @@
                     <div class="master-divider"></div>
                     {#each fxChannels as fxIdx}
                       {@const fxSId = `fx_${fxIdx}`}
-                      <!-- svelte-ignore a11y-click-events-have-key-events -->
-                      <!-- svelte-ignore a11y-no-static-element-interactions -->
                       <div
                         class="strip-wrapper"
                         on:click={() => {
@@ -978,8 +978,6 @@
                       </div>
                     {/each}
                     <div class="master-divider"></div>
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <!-- svelte-ignore a11y-no-static-element-interactions -->
                     <div
                       class="strip-wrapper"
                       on:click={() => {
@@ -1012,8 +1010,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  EQ EDITOR: {scribbles[selectedChannel]?.name ||
-                    selectedChannel?.toUpperCase()}
+                  EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
                 </h2>
                 <div class="nav-group">
                   <button
@@ -1045,8 +1042,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  CHANNEL: {scribbles[selectedChannel]?.name ||
-                    selectedChannel?.toUpperCase()}
+                  CHANNEL: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
                 </h2>
                 <div class="nav-group">
                   <button
@@ -1064,9 +1060,6 @@
                 </div>
               </div>
               <div class="bento-grid">
-                <!-- Icon Preview -->
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div
                   class="bento-card bento-icon-preview"
                   class:is-editable={activeRole === "foh" && scribbleEditMode}
@@ -1082,8 +1075,7 @@
                   <div class="icon-preview-slot">
                     {#if scribbles[selectedChannel]?.iconType}
                       <img
-                        src="/icons-bmp/{scribbles[selectedChannel]
-                          .iconType}.bmp"
+                        src="/icons-bmp/{scribbles[selectedChannel].iconType}.bmp"
                         alt="Icon"
                         class="icon-lg"
                       />
@@ -1091,20 +1083,15 @@
                       <div class="icon-placeholder"></div>
                     {/if}
                     <span class="icon-name"
-                      >{scribbles[selectedChannel]?.name ||
-                        selectedChannel?.toUpperCase()}</span
+                      >{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span
                     >
                     <span
                       class="icon-color-dot"
-                      style="background: {scribbles[selectedChannel]?.color ||
-                        '#3f3f46'};"
+                      style="background: {scribbles[selectedChannel]?.color || '#3f3f46'};"
                     ></span>
                   </div>
                 </div>
-                <!-- Preamp -->
                 {#if selectedChannel && !selectedChannel.startsWith("out_")}
-                  <!-- svelte-ignore a11y-click-events-have-key-events -->
-                  <!-- svelte-ignore a11y-no-static-element-interactions -->
                   <div
                     class="bento-card bento-clickable"
                     on:click={() => {
@@ -1134,9 +1121,6 @@
                     </div>
                   </div>
                 {/if}
-                <!-- Gate -->
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div
                   class="bento-card bento-clickable"
                   on:click={() => {
@@ -1189,9 +1173,7 @@
                     /><span>50 ms</span>
                   </div>
                 </div>
-                <!-- Compressor -->
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
+  
                 <div
                   class="bento-card bento-clickable"
                   on:click={() => {
@@ -1254,16 +1236,12 @@
                     /><span>0 dB</span>
                   </div>
                 </div>
-                <!-- Mini EQ Preview -->
                 <div class="bento-card bento-eq-preview">
                   <h3>EQ Preview</h3>
                   <svg viewBox="0 0 100 40" class="bento-eq-curve"
                     ><path d={computeMiniEqPath(selectedChannel)} /></svg
                   >
                 </div>
-                <!-- Level -->
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div
                   class="bento-card bento-clickable"
                   on:click={() => {
@@ -1296,7 +1274,6 @@
                     /><span>0 dB</span>
                   </div>
                 </div>
-                <!-- Routing Send Section -->
                 {#if selectedChannel && selectedChannel.startsWith("in_")}
                   <div class="param-section">
                     <h3>FX Sends</h3>
@@ -1316,7 +1293,6 @@
                     </p>
                   </div>
                 {/if}
-                <!-- Main Out Assignment -->
                 {#if selectedChannel && !selectedChannel.startsWith("out_")}
                   <div class="bento-card">
                     <h3>Main Out</h3>
@@ -1336,7 +1312,6 @@
                     </p>
                   </div>
                 {/if}
-                <!-- Stereo Link -->
                 {#if selectedChannel.startsWith("in_")}
                   {@const chNum = parseInt(selectedChannel.replace("in_", ""))}
                   {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
@@ -1447,8 +1422,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  {activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]
-                    ?.name || selectedChannel.toUpperCase()}
+                  {activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}
                 </h2>
                 <div class="nav-group">
                   <button
@@ -2271,72 +2245,120 @@
   }
 
   /* ─── Setup & Connection Overlay ─── */
-  .setup-overlay { position: absolute; inset: 0; z-index: 1000; background: #09090b; display: flex; justify-content: center; align-items: center; padding: 1rem; }
-  .setup-card { background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 3rem 2.5rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 2rem; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-height: 90vh; overflow-y: auto; }
-  .setup-card::-webkit-scrollbar { width: 6px; } .setup-card::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-  .setup-logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.2em; color: #fafafa; text-align: center; }
+  .setup-overlay { position: absolute; inset: 0; z-index: 1000;
+ background: #09090b; display: flex; justify-content: center; align-items: center; padding: 1rem; }
+  .setup-card { background: #18181b; border: 1px solid #27272a;
+ border-radius: 8px; padding: 3rem 2.5rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 2rem;
+ box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-height: 90vh; overflow-y: auto; }
+  .setup-card::-webkit-scrollbar { width: 6px;
+ } .setup-card::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  .setup-logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.2em; color: #fafafa;
+ text-align: center; }
   .wide-setup { max-width: 800px; flex-direction: row; align-items: stretch; gap: 3rem; }
-  .setup-col { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; }
-  .setup-col-right { border-left: 1px solid #27272a; padding-left: 3rem; justify-content: space-between; }
+  .setup-col { flex: 1;
+ display: flex; flex-direction: column; gap: 1.5rem; }
+  .setup-col-right { border-left: 1px solid #27272a; padding-left: 3rem; justify-content: space-between;
+ }
   .step-header { display: flex; flex-direction: column; gap: 0.4rem; text-align: center; }
-  .step-title { font-size: 1.25rem; font-weight: 700; color: #fafafa; margin: 0; letter-spacing: -0.02em; }
-  .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0; }
+  .step-title { font-size: 1.25rem; font-weight: 700;
+ color: #fafafa; margin: 0; letter-spacing: -0.02em; }
+  .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0;
+ }
   
   .role-grid { display: flex; flex-direction: column; gap: 0.75rem; }
-  .role-card { background: #09090b; border: 1px solid #27272a; border-radius: 6px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; color: inherit; }
-  .role-card:hover { background: #1f1f22; border-color: #3b82f6; }
+  .role-card { background: #09090b;
+ border: 1px solid #27272a; border-radius: 6px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; cursor: pointer; text-align: left;
+ transition: background 0.15s, border-color 0.15s; color: inherit; }
+  .role-card:hover { background: #1f1f22; border-color: #3b82f6;
+ }
   .role-icon { font-size: 1.5rem; line-height: 1; margin-top: 2px; color: #fafafa; }
-  .role-info { display: flex; flex-direction: column; gap: 0.25rem; }
-  .role-info h3 { margin: 0; color: #fafafa; font-size: 0.95rem; font-weight: 600; }
-  .role-info p { margin: 0; color: #71717a; font-size: 0.8rem; line-height: 1.4; }
+  .role-info { display: flex; flex-direction: column;
+ gap: 0.25rem; }
+  .role-info h3 { margin: 0; color: #fafafa; font-size: 0.95rem; font-weight: 600;
+ }
+  .role-info p { margin: 0; color: #71717a; font-size: 0.8rem; line-height: 1.4;
+ }
   
   .setup-grid { display: flex; flex-direction: column; gap: 1rem; }
-  .form-row { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
+  .form-row { display: flex; flex-direction: column;
+ gap: 1rem; width: 100%; }
   .form-row.split { flex-direction: row; }
-  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem;
+ }
   .flex-1 { flex: 1; } .flex-2 { flex: 2; }
-  .form-group label { font-size: 0.7rem; font-weight: 600; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
-  .form-group input, .form-group select { background: #09090b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s; outline: none; width: 100%; box-sizing: border-box; }
-  .form-group input:focus, .form-group select:focus { border-color: #3b82f6; }
+  .form-group label { font-size: 0.7rem; font-weight: 600;
+ color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+  .form-group input, .form-group select { background: #09090b;
+ border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
+ outline: none; width: 100%; box-sizing: border-box; }
+  .form-group input:focus, .form-group select:focus { border-color: #3b82f6;
+ }
   .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
-  .select-wrapper { position: relative; }
-  .select-wrapper::after { content: '▼'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; font-size: 0.6rem; }
+  .select-wrapper { position: relative;
+ }
+  .select-wrapper::after { content: '▼'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; font-size: 0.6rem;
+ }
   .form-group select { appearance: none; -webkit-appearance: none; padding-right: 2.5rem; cursor: pointer; }
-  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .setup-grid { display: grid;
+ grid-template-columns: 1fr 1fr; gap: 1rem; }
   
-  .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
-  .btn-ghost, .btn-primary { padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: background 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; flex: 1; border: none; }
+  .action-row { display: flex; gap: 0.75rem; margin-top: 1rem;
+ }
+  .btn-ghost, .btn-primary { padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+ transition: background 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; flex: 1; border: none;
+ }
   .btn-ghost { background: transparent; color: #a1a1aa; border: 1px solid #27272a; }
-  .btn-ghost:hover { background: #27272a; color: #fafafa; }
+  .btn-ghost:hover { background: #27272a; color: #fafafa;
+ }
   .btn-primary { background: #fafafa; color: #09090b; }
   .btn-primary:hover:not(:disabled) { background: #e4e4e7; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:disabled { opacity: 0.5;
+ cursor: not-allowed; }
   
-  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem; }
-  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #09090b; padding: 0.6rem; border-radius: 6px; border: 1px solid #27272a; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
-  .bus-toggle:hover { border-color: #64748b; }
+  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem;
+ }
+  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #09090b;
+ padding: 0.6rem; border-radius: 6px; border: 1px solid #27272a; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
+  .bus-toggle:hover { border-color: #64748b;
+ }
   .bus-toggle input { cursor: pointer; width: 16px; height: 16px; margin: 0; }
-  .btn-text { background: transparent; border: none; color: #71717a; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 0.5rem; display: block; text-align: center; width: 100%; transition: color 0.1s; }
+  .btn-text { background: transparent;
+ border: none; color: #71717a; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 0.5rem; display: block; text-align: center; width: 100%;
+ transition: color 0.1s; }
   .btn-text:hover { color: #fafafa; }
 
   /* ─── Mixer Discovery UI ─────────────────────────────── */
-  .discover-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; width: 100%; }
-  .discover-btn { flex: 1; justify-content: center; display: flex; gap: 0.4rem; }
-  .discovery-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; display: flex; align-items: center; gap: 0.25rem; }
+  .discover-row { display: flex;
+ align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; width: 100%; }
+  .discover-btn { flex: 1; justify-content: center; display: flex; gap: 0.4rem;
+ }
+  .discovery-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; display: flex; align-items: center; gap: 0.25rem;
+ }
   .discovery-badge.found { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }
-  .discovery-badge.notfound { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
+  .discovery-badge.notfound { background: rgba(239,68,68,0.15); color: #ef4444;
+ border: 1px solid #ef4444; }
   .bento-clickable h3 { margin-bottom: 0.25rem; font-size: 0.8rem; }
-  .bento-clickable .param-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 0.15rem; align-items: center; color: #a1a1aa; }
-  .bento-clickable .param-row input[type="range"] { max-width: 45px; height: 3px; }
-  .bento-clickable .param-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bento-clickable .param-row { display: flex;
+ justify-content: space-between; font-size: 0.65rem; margin-bottom: 0.15rem; align-items: center; color: #a1a1aa; }
+  .bento-clickable .param-row input[type="range"] { max-width: 45px; height: 3px;
+ }
+  .bento-clickable .param-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+ }
 
   /* ─── Matrix Grid Styling ─── */
-  .matrix-table-container { overflow: auto; max-height: 60vh; border: 1px solid #1e293b; border-radius: 8px; background: #0b1120; }
-  .routing-matrix-grid { border-collapse: collapse; text-align: center; }
-  .routing-matrix-grid th, .routing-matrix-grid td { padding: 0.4rem; border: 1px solid #1e293b; font-size: 0.75rem; white-space: nowrap; }
-  .routing-matrix-grid th { background: #111827; position: sticky; top: 0; z-index: 10; color: #cbd5e1; font-weight: 600; }
-  .row-header { background: #111827; font-weight: 600; color: #cbd5e1; text-align: left; padding-left: 1rem !important; position: sticky; left: 0; z-index: 5; }
-  .matrix-dot { width: 14px; height: 14px; border-radius: 50%; background: #334155; border: none; cursor: pointer; transition: 0.2s; margin: 0 auto; display: block; }
+  .matrix-table-container { overflow: auto; max-height: 60vh; border: 1px solid #1e293b;
+ border-radius: 8px; background: #0b1120; }
+  .routing-matrix-grid { border-collapse: collapse; text-align: center;
+ }
+  .routing-matrix-grid th, .routing-matrix-grid td { padding: 0.4rem; border: 1px solid #1e293b; font-size: 0.75rem; white-space: nowrap;
+ }
+  .routing-matrix-grid th { background: #111827; position: sticky; top: 0; z-index: 10; color: #cbd5e1; font-weight: 600;
+ }
+  .row-header { background: #111827; font-weight: 600; color: #cbd5e1; text-align: left; padding-left: 1rem !important; position: sticky; left: 0;
+ z-index: 5; }
+  .matrix-dot { width: 14px; height: 14px; border-radius: 50%; background: #334155; border: none; cursor: pointer; transition: 0.2s;
+ margin: 0 auto; display: block; }
   .matrix-dot:hover { background: #64748b; }
-  .matrix-dot.active { background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+  .matrix-dot.active { background: #f59e0b;
+ box-shadow: 0 0 8px rgba(245,158,11,0.5); }
 </style>
