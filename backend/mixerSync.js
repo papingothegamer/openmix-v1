@@ -49,11 +49,36 @@ class MixerConnection extends EventEmitter {
     }
 
     sendOsc(address, args = []) {
-        try {
-            this.udpPort.send({ address, args }, this.mixerIp, this.mixerPort);
-        } catch (err) {
-            console.error('[MixerSync] Failed to send OSC command:', err);
+        if (!this.oscQueue) {
+            this.oscQueue = [];
+            this.isFlushing = false;
+            this.throttleDelayMs = 5; // 200 packets per second ceiling ensuring stability
         }
+        
+        this.oscQueue.push({ address, args });
+        
+        if (!this.isFlushing) {
+            this.flushQueue();
+        }
+    }
+
+    flushQueue() {
+        this.isFlushing = true;
+        const flushNext = () => {
+            if (this.oscQueue.length === 0) {
+                this.isFlushing = false;
+                return;
+            }
+            const packet = this.oscQueue.shift();
+            try {
+                this.udpPort.send({ address: packet.address, args: packet.args }, this.mixerIp, this.mixerPort);
+            } catch (err) {
+                console.error('[MixerSync] Failed to send OSC command:', err);
+            }
+            // Rapid single executions bypass UI lag, whereas massive payloads trickle nicely
+            setTimeout(flushNext, this.throttleDelayMs);
+        };
+        flushNext();
     }
 
     reconfigure(newIp, newPort = 10024) {

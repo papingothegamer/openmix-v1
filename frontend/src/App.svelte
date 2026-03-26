@@ -1,100 +1,145 @@
 <script>
-  import { onMount } from 'svelte';
-  import { socket, isConnected, mixerState, rawMeters, meterLight, setOsc } from './lib/socket';
-  import ChannelStrip from './lib/components/ChannelStrip.svelte';
-  import Navbar from './lib/components/Navbar.svelte';
-  import Sidebar from './lib/components/Sidebar.svelte';
-  import ScribbleEditor from './lib/components/ScribbleEditor.svelte';
-  import GlobalTabs from './lib/components/GlobalTabs.svelte';
-  import EqEditor from './lib/components/EqEditor.svelte';
-  import SendsPanel from './lib/components/SendsPanel.svelte';
-  import EffectsRack from './lib/components/EffectsRack.svelte';
-  import { MixerPresets, PredefinedMixersArray } from './lib/mixerPresets';
-  import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-svelte';
-  
+  import { onMount } from "svelte";
+  import {
+    socket,
+    isConnected,
+    mixerState,
+    rawMeters,
+    meterLight,
+    setOsc,
+  } from "./lib/socket";
+  import ChannelStrip from "./lib/components/ChannelStrip.svelte";
+  import Navbar from "./lib/components/Navbar.svelte";
+  import Sidebar from "./lib/components/Sidebar.svelte";
+  import ScribbleEditor from "./lib/components/ScribbleEditor.svelte";
+  import GlobalTabs from "./lib/components/GlobalTabs.svelte";
+  import EqEditor from "./lib/components/EqEditor.svelte";
+  import SendsPanel from "./lib/components/SendsPanel.svelte";
+  import EffectsRack from "./lib/components/EffectsRack.svelte";
+  import ChannelModal from "./lib/components/ChannelModal.svelte";
+  import { MixerPresets, PredefinedMixersArray } from "./lib/mixerPresets";
+  import {
+    ChevronLeft,
+    ChevronRight,
+    Edit3,
+    Settings,
+    Smartphone,
+    RotateCcw,
+    Search,
+    Radio,
+    Check,
+    X,
+    ArrowLeft,
+    Sliders,
+    Headphones,
+    Lock
+  } from "lucide-svelte";
+
   let fohMeters = new Array(16).fill(-60);
-  
+
   // Navigation / Focus State
   let activeRole = null; // 'foh' or null
-  let activeTab = 'mixer'; // 'mixer', 'channel', 'eq', 'sends', 'routing', 'fx'
-  let activeView = 'inputs'; // 'inputs', 'outputs', 'dcas'
+  let activeTab = "mixer"; // 'mixer', 'channel', 'eq', 'sends', 'routing', 'fx'
+  let routingSubTab = "busses"; // 'busses', 'aes50a', 'aes50b', 'usb', 'ultranet'
+  let activeView = "inputs"; // 'inputs', 'outputs', 'dcas'
   let currentPage = 1;
   let channelsPerPage = 8;
   let stripsPerPage = 8; // User-configurable visible strips
-  
+
   // Scribble Strip / Global Selectors
   let scribbleEditMode = false;
   let editingChannel = null;
-  let selectedChannel = 'in_1';
-  
+  let selectedChannel = "in_1";
+
   // Musician Monitor Mix — which aux bus they control
   let musicianAux = null;
 
+  // Channel Modal State
+  let channelModalState = { isOpen: false, channelId: "", section: "preamp" };
+
   function cycleChannel(dir) {
-    if (!selectedChannel || selectedChannel === 'main_LR') return;
-    const [type, numStr] = selectedChannel.split('_');
+    if (!selectedChannel || selectedChannel === "main_LR") return;
+    const [type, numStr] = selectedChannel.split("_");
     let num = parseInt(numStr, 10) + dir;
-    
-    if (type === 'in' && num >= 1 && num <= config.inputs) {
+
+    if (type === "in" && num >= 1 && num <= config.inputs) {
       selectedChannel = `in_${num}`;
-    } else if (type === 'out' && num >= 1 && num <= config.outputs) {
+    } else if (type === "out" && num >= 1 && num <= config.outputs) {
       selectedChannel = `out_${num}`;
-    } else if (type === 'dca' && num >= 1 && num <= config.dcas) {
+    } else if (type === "dca" && num >= 1 && num <= config.dcas) {
       selectedChannel = `dca_${num}`;
     }
   }
 
   // Chevron boundary detection
   $: isFirstChannel = (() => {
-    if (!selectedChannel || selectedChannel === 'main_LR') return true;
-    const [type, numStr] = selectedChannel.split('_');
+    if (!selectedChannel || selectedChannel === "main_LR") return true;
+    const [type, numStr] = selectedChannel.split("_");
     return parseInt(numStr, 10) <= 1;
   })();
   $: isLastChannel = (() => {
-    if (!selectedChannel || selectedChannel === 'main_LR') return true;
-    const [type, numStr] = selectedChannel.split('_');
+    if (!selectedChannel || selectedChannel === "main_LR") return true;
+    const [type, numStr] = selectedChannel.split("_");
     const num = parseInt(numStr, 10);
-    if (type === 'in') return num >= config.inputs;
-    if (type === 'out') return num >= config.outputs;
-    if (type === 'dca') return num >= (config.dcas || 8);
+    if (type === "in") return num >= config.inputs;
+    if (type === "out") return num >= config.outputs;
+    if (type === "dca") return num >= (config.dcas || 8);
     return true;
   })();
 
-  let requiresSetup = localStorage.getItem('openmix_setup') !== 'true';
-  let config = { inputs: 16, outputs: 6, dcas: 8, fx: 4, presetId: 'CUSTOM', visibleBuses: [1,2,3,4,5,6] };
+  let requiresSetup = localStorage.getItem("openmix_setup") !== "true";
+  let config = {
+    inputs: 16,
+    outputs: 6,
+    dcas: 8,
+    fx: 4,
+    presetId: "CUSTOM",
+    visibleBuses: [1, 2, 3, 4, 5, 6],
+  };
 
   // Mixer connection config
-  let mixerConfig = JSON.parse(localStorage.getItem('openmix_mixer') || '{"ip":"","port":10024}');
-  let discoveryStatus = 'idle'; // 'idle' | 'scanning' | 'found' | 'notfound'
+  let mixerConfig = JSON.parse(
+    localStorage.getItem("openmix_mixer") || '{"ip":"","port":10024}',
+  );
+  let discoveryStatus = "idle"; // 'idle' | 'scanning' | 'found' | 'notfound'
 
   function startDiscovery() {
-    discoveryStatus = 'scanning';
-    socket.emit('discoverMixer', null, (result) => {
+    discoveryStatus = "scanning";
+    socket.emit("discoverMixer", null, (result) => {
       if (result) {
         mixerConfig.ip = result.ip;
         mixerConfig.port = result.port;
         mixerConfig = { ...mixerConfig };
-        discoveryStatus = 'found';
+        discoveryStatus = "found";
       } else {
-        discoveryStatus = 'notfound';
+        discoveryStatus = "notfound";
       }
     });
   }
 
   // Main LR cannot route to sends/FX/routing
-  $: disabledTabs = selectedChannel === 'main_LR' ? ['sends', 'fx', 'routing'] : [];
-  $: if (disabledTabs.includes(activeTab)) { activeTab = 'channel'; }
-  
+  $: disabledTabs =
+    selectedChannel === "main_LR" ? ["sends", "fx", "routing"] : [];
+  $: if (disabledTabs.includes(activeTab)) {
+    activeTab = "channel";
+  }
+
   // Watch config outputs to expand visibleBuses if CUSTOM mode expands globally without setting explicit visibility
   $: {
-      if (config.outputs > 0 && (!config.visibleBuses || config.visibleBuses.length === 0)) {
-          config.visibleBuses = Array.from({length: config.outputs}, (_, i) => i + 1);
-      }
+    if (
+      config.outputs > 0 &&
+      (!config.visibleBuses || config.visibleBuses.length === 0)
+    ) {
+      config.visibleBuses = Array.from(
+        { length: config.outputs },
+        (_, i) => i + 1,
+      );
+    }
   }
-  
+
   // Scribble state array tracking
-  let scribbles = {}; 
-  
+  let scribbles = {};
+
   // Phase 13 Parametric Nodes Reference
   let eqComponent;
 
@@ -103,102 +148,124 @@
 
   // Sends tab: per-channel per-bus state { level: 0-1, prePost: 0|1 }
   let sendsState = {};
-  
+
   // Routing tab: per-channel per-bus on/off state (defaults to true = routed)
   let routingState = {};
 
   // Stereo link state: key = odd channel number, value = true if linked to next even channel
-  let stereoLinks = {};  // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
+  let stereoLinks = {}; // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
   function toggleStereoLink(ch) {
     const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
     const newState = !stereoLinks[oddCh];
     stereoLinks = { ...stereoLinks, [oddCh]: newState };
-    setOsc(`/config/chlink/${oddCh}-${oddCh+1}`, newState ? 1 : 0);
+    setOsc(`/config/chlink/${oddCh}-${oddCh + 1}`, newState ? 1 : 0);
   }
   function isLinked(ch, _stereoLinksDep) {
-    if (typeof ch !== 'number') return false;
+    if (typeof ch !== "number") return false;
     const oddCh = ch % 2 === 1 ? ch : ch - 1;
     return !!_stereoLinksDep[oddCh];
   }
 
   // Main output assignment per channel
-  let mainOutAssign = {};  // { 'in_1': true, 'in_2': true, ... }
+  let mainOutAssign = {}; // { 'in_1': true, 'in_2': true, ... }
   function toggleMainOut(chId) {
     const newState = !mainOutAssign[chId];
     mainOutAssign = { ...mainOutAssign, [chId]: newState };
-    
-    if (chId.startsWith('in_')) {
-      const num = chId.replace('in_', '').padStart(2, '0');
+
+    if (chId.startsWith("in_")) {
+      const num = chId.replace("in_", "").padStart(2, "0");
       setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
-    } else if (chId.startsWith('fx_')) {
-      const num = chId.replace('fx_', '');
+    } else if (chId.startsWith("fx_")) {
+      const num = chId.replace("fx_", "");
       setOsc(`/rtn/${num}/mix/lr`, newState ? 1 : 0);
     }
   }
 
   function handleBandsChange(chId, newBands) {
-      channelEqState[chId] = newBands.map(b => ({...b}));
-      channelEqState = {...channelEqState}; // trigger reactivity
-      
-      // Emit OSC for each band
-      if (chId.startsWith('in_')) {
-          const num = chId.replace('in_', '').padStart(2, '0');
-          newBands.forEach((band, i) => {
-              setOsc(`/ch/${num}/eq/${i+1}/f`, band.freq);
-              setOsc(`/ch/${num}/eq/${i+1}/g`, band.gain);
-              setOsc(`/ch/${num}/eq/${i+1}/q`, band.q);
-          });
-      }
+    channelEqState[chId] = newBands.map((b) => ({ ...b }));
+    channelEqState = { ...channelEqState }; // trigger reactivity
+
+    // Emit OSC for each band
+    if (chId.startsWith("in_")) {
+      const num = chId.replace("in_", "").padStart(2, "0");
+      newBands.forEach((band, i) => {
+        setOsc(`/ch/${num}/eq/${i + 1}/f`, band.freq);
+        setOsc(`/ch/${num}/eq/${i + 1}/g`, band.gain);
+        setOsc(`/ch/${num}/eq/${i + 1}/q`, band.q);
+      });
+    }
   }
 
   $: currentEqBands = channelEqState[selectedChannel] || null;
 
   // Mini EQ path computation for ChannelStrip previews
   function computeMiniEqPath(chId, w = 100, h = 40) {
-      const state = channelEqState[chId];
-      if (!state) return 'M0,20 L100,20'; // flat line default
-      const numPts = 32;
-      const logMin = Math.log10(20);
-      const logMax = Math.log10(22000);
-      let d = '';
-      for (let i = 0; i <= numPts; i++) {
-          const logFreq = logMin + (i / numPts) * (logMax - logMin);
-          const freq = Math.pow(10, logFreq);
-          let totalGain = 0;
-          for (const b of state) {
-              if (!b.enabled) continue;
-              const f0 = Math.pow(10, b.logVal);
-              const ratio = freq / f0;
-              const logR = Math.log2(ratio);
-              switch(b.type) {
-                  case 'hpf12': totalGain += ratio < 1 ? -12 * Math.log2(1/ratio) : 0; break;
-                  case 'hpf48': totalGain += ratio < 1 ? -48 * Math.log2(1/ratio) : 0; break;
-                  case 'lpf12': totalGain += ratio > 1 ? -12 * Math.log2(ratio) : 0; break;
-                  case 'lpf48': totalGain += ratio > 1 ? -48 * Math.log2(ratio) : 0; break;
-                  case 'loshelf': totalGain += b.gain / (1 + Math.pow(ratio, 2)); break;
-                  case 'hishelf': totalGain += b.gain * (1 - 1 / (1 + Math.pow(ratio, 2))); break;
-                  case 'notch': { const bw2 = 1/Math.max(b.q,0.1); const x2 = logR/bw2; totalGain += -15/(1+x2*x2); break; }
-                  default: { const bw = 1/Math.max(b.q,0.1); const x = logR/bw; totalGain += b.gain/(1+x*x*4); break; }
-              }
+    const state = channelEqState[chId];
+    if (!state) return "M0,20 L100,20"; // flat line default
+    const numPts = 32;
+    const logMin = Math.log10(20);
+    const logMax = Math.log10(22000);
+    let d = "";
+    for (let i = 0; i <= numPts; i++) {
+      const logFreq = logMin + (i / numPts) * (logMax - logMin);
+      const freq = Math.pow(10, logFreq);
+      let totalGain = 0;
+      for (const b of state) {
+        if (!b.enabled) continue;
+        const f0 = Math.pow(10, b.logVal);
+        const ratio = freq / f0;
+        const logR = Math.log2(ratio);
+        switch (b.type) {
+          case "hpf12":
+            totalGain += ratio < 1 ? -12 * Math.log2(1 / ratio) : 0;
+            break;
+          case "hpf48":
+            totalGain += ratio < 1 ? -48 * Math.log2(1 / ratio) : 0;
+            break;
+          case "lpf12":
+            totalGain += ratio > 1 ? -12 * Math.log2(ratio) : 0;
+            break;
+          case "lpf48":
+            totalGain += ratio > 1 ? -48 * Math.log2(ratio) : 0;
+            break;
+          case "loshelf":
+            totalGain += b.gain / (1 + Math.pow(ratio, 2));
+            break;
+          case "hishelf":
+            totalGain += b.gain * (1 - 1 / (1 + Math.pow(ratio, 2)));
+            break;
+          case "notch": {
+            const bw2 = 1 / Math.max(b.q, 0.1);
+            const x2 = logR / bw2;
+            totalGain += -15 / (1 + x2 * x2);
+            break;
           }
-          totalGain = Math.max(-15, Math.min(15, totalGain));
-          const x = (i / numPts) * w;
-          const y = h / 2 - (totalGain / 15) * (h / 2 - 4);
-          d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+          default: {
+            const bw = 1 / Math.max(b.q, 0.1);
+            const x = logR / bw;
+            totalGain += b.gain / (1 + x * x * 4);
+            break;
+          }
+        }
       }
-      return d;
+      totalGain = Math.max(-15, Math.min(15, totalGain));
+      const x = (i / numPts) * w;
+      const y = h / 2 - (totalGain / 15) * (h / 2 - 4);
+      d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+    }
+    return d;
   }
 
   onMount(() => {
     socket.connect();
     // Load local configuration
-    const saved = localStorage.getItem('openmix_config');
+    const saved = localStorage.getItem("openmix_config");
     if (saved) config = JSON.parse(saved);
 
     // Ensure FX slots exist in store for current config
     // (deferred import to avoid circular load issues)
-    import('./lib/fxState.js').then(mod => {
-      if (config && typeof config.fx === 'number') mod.ensureFxSlots(config.fx);
+    import("./lib/fxState.js").then((mod) => {
+      if (config && typeof config.fx === "number") mod.ensureFxSlots(config.fx);
     });
 
     return () => socket.disconnect();
@@ -215,7 +282,10 @@
         const ch = parseInt(m[1], 10);
         const bus = parseInt(m[2], 10);
         const key = `in_${ch}_aux${bus}`;
-        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), level: parseFloat(val) };
+        updated[key] = {
+          ...(updated[key] || { level: 0, prePost: 0, on: true }),
+          level: parseFloat(val),
+        };
         return;
       }
       // AUX on/off: /ch/01/mix/02/on
@@ -224,7 +294,10 @@
         const ch = parseInt(m[1], 10);
         const bus = parseInt(m[2], 10);
         const key = `in_${ch}_aux${bus}`;
-        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), on: !!parseInt(val, 10) };
+        updated[key] = {
+          ...(updated[key] || { level: 0, prePost: 0, on: true }),
+          on: !!parseInt(val, 10),
+        };
         return;
       }
       // AUX pre/post type: /ch/01/mix/02/type
@@ -233,7 +306,10 @@
         const ch = parseInt(m[1], 10);
         const bus = parseInt(m[2], 10);
         const key = `in_${ch}_aux${bus}`;
-        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), prePost: parseInt(val, 10) };
+        updated[key] = {
+          ...(updated[key] || { level: 0, prePost: 0, on: true }),
+          prePost: parseInt(val, 10),
+        };
         return;
       }
       // FX level: /ch/01/mix/fx/1/level or /ch/01/mix/fx/1/level (some mixers use different padding)
@@ -242,7 +318,10 @@
         const ch = parseInt(m[1], 10);
         const fx = parseInt(m[2], 10);
         const key = `in_${ch}_fx${fx}`;
-        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), level: parseFloat(val) };
+        updated[key] = {
+          ...(updated[key] || { level: 0, prePost: 0, on: true }),
+          level: parseFloat(val),
+        };
         return;
       }
       // FX type: /ch/01/mix/fx/1/type
@@ -251,7 +330,10 @@
         const ch = parseInt(m[1], 10);
         const fx = parseInt(m[2], 10);
         const key = `in_${ch}_fx${fx}`;
-        updated[key] = { ...(updated[key] || { level: 0, prePost: 0, on: true }), prePost: parseInt(val, 10) };
+        updated[key] = {
+          ...(updated[key] || { level: 0, prePost: 0, on: true }),
+          prePost: parseInt(val, 10),
+        };
         return;
       }
     });
@@ -260,36 +342,44 @@
 
   function completeSetup() {
     scribbles = {}; // Flush constraints from older layouts completely
-    localStorage.setItem('openmix_setup', 'true');
-    localStorage.setItem('openmix_config', JSON.stringify(config));
-    localStorage.setItem('openmix_mixer', JSON.stringify(mixerConfig));
+    localStorage.setItem("openmix_setup", "true");
+    localStorage.setItem("openmix_config", JSON.stringify(config));
+    localStorage.setItem("openmix_mixer", JSON.stringify(mixerConfig));
     if (mixerConfig.ip) {
-      socket.emit('configureMixer', { ip: mixerConfig.ip, port: mixerConfig.port || 10024 });
+      socket.emit("configureMixer", {
+        ip: mixerConfig.ip,
+        port: mixerConfig.port || 10024,
+      });
     }
     requiresSetup = false;
   }
 
   function handleExportScene() {
-    if (!$mixerState || !Object.keys($mixerState).length || !$mixerState.flatOscCache) {
-      alert('No mixer state available to export yet. Please connect first.');
+    if (
+      !$mixerState ||
+      !Object.keys($mixerState).length ||
+      !$mixerState.flatOscCache
+    ) {
+      alert("No mixer state available to export yet. Please connect first.");
       return;
     }
     const sceneLayout = {
-        name: 'OpenMix Export',
-        timestamp: Date.now(),
-        state: { flatOscCache: $mixerState.flatOscCache },
-        uiConfig: {
-            config,
-            scribbles,
-            channelEqState,
-            mainOutAssign,
-            stereoLinks
-        }
+      name: "OpenMix Export",
+      timestamp: Date.now(),
+      state: { flatOscCache: $mixerState.flatOscCache },
+      uiConfig: {
+        config,
+        scribbles,
+        channelEqState,
+        mainOutAssign,
+        stereoLinks,
+        routingState,
+      },
     };
     const sceneData = JSON.stringify(sceneLayout, null, 2);
-    const blob = new Blob([sceneData], { type: 'application/json' });
+    const blob = new Blob([sceneData], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `openmix-scene-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
@@ -305,668 +395,1797 @@
     reader.onload = (ev) => {
       try {
         const result = ev.target.result;
-        const text = typeof result === 'string' ? result : new TextDecoder().decode(result);
+        const text =
+          typeof result === "string"
+            ? result
+            : new TextDecoder().decode(result);
         const json = JSON.parse(text);
-        
+
         if (json.uiConfig) {
-           if (json.uiConfig.config) config = json.uiConfig.config;
-           if (json.uiConfig.scribbles) scribbles = json.uiConfig.scribbles;
-           if (json.uiConfig.channelEqState) channelEqState = json.uiConfig.channelEqState;
-           if (json.uiConfig.mainOutAssign) mainOutAssign = json.uiConfig.mainOutAssign;
-           if (json.uiConfig.stereoLinks) stereoLinks = json.uiConfig.stereoLinks;
-           
-           localStorage.setItem('openmix_config', JSON.stringify(config));
+          if (json.uiConfig.config) config = json.uiConfig.config;
+          if (json.uiConfig.scribbles) scribbles = json.uiConfig.scribbles;
+          if (json.uiConfig.channelEqState)
+            channelEqState = json.uiConfig.channelEqState;
+          if (json.uiConfig.mainOutAssign)
+            mainOutAssign = json.uiConfig.mainOutAssign;
+          if (json.uiConfig.stereoLinks)
+            stereoLinks = json.uiConfig.stereoLinks;
+          if (json.uiConfig.routingState)
+            routingState = json.uiConfig.routingState;
+
+          localStorage.setItem("openmix_config", JSON.stringify(config));
         }
 
-        if (json.state && json.state.flatOscCache && Object.keys(json.state.flatOscCache).length > 0) {
-            socket.emit('pushState', json, (res) => {
-              if (res && res.error) alert('Error: ' + res.error);
-              else alert(`Session Loaded! (${res ? res.sentCount : 'Unknown'} paths successfully dispatched to mixer)`);
-            });
+        if (
+          json.state &&
+          json.state.flatOscCache &&
+          Object.keys(json.state.flatOscCache).length > 0
+        ) {
+          socket.emit("pushState", json, (res) => {
+            if (res && res.error) alert("Error: " + res.error);
+            else
+              alert(
+                `Session Loaded! (${res ? res.sentCount : "Unknown"} paths successfully dispatched to mixer)`,
+              );
+          });
         } else {
-            alert('UI Configuration loaded successfully! (No OSC state found in file)');
+          alert(
+            "UI Configuration loaded successfully! (No OSC state found in file)",
+          );
         }
-      } catch(err) {
-        alert('Invalid JSON file.');
+      } catch (err) {
+        alert("Invalid JSON file.");
       }
     };
     reader.readAsText(file);
   }
 
   // Derived channels layout arrays depending on user config
-  $: presetHardLinks = config.presetId !== 'CUSTOM' ? (MixerPresets[config.presetId]?.hardLinks?.inputs || {}) : {};
-  $: inputChannels = Array.from({length: config.inputs}, (_, i) => i + 1).filter(ch => !presetHardLinks[ch]?.hidden);
-  $: outputChannels = (config.visibleBuses || Array.from({length: config.outputs}, (_, i) => i + 1)).sort((a,b) => a-b);
-  $: dcaChannels = Array.from({length: config.dcas || 8}, (_, i) => i + 1);
-  $: fxChannels = Array.from({length: config.fx || 4}, (_, i) => i + 1);
-  
-  $: currentChannels = activeView === 'inputs' ? inputChannels : (activeView === 'outputs' ? outputChannels : dcaChannels);
+  $: presetHardLinks =
+    config.presetId !== "CUSTOM"
+      ? MixerPresets[config.presetId]?.hardLinks?.inputs || {}
+      : {};
+  $: inputChannels = Array.from(
+    { length: config.inputs },
+    (_, i) => i + 1,
+  ).filter((ch) => !presetHardLinks[ch]?.hidden);
+  $: outputChannels = (
+    config.visibleBuses ||
+    Array.from({ length: config.outputs }, (_, i) => i + 1)
+  ).sort((a, b) => a - b);
+  $: dcaChannels = Array.from({ length: config.dcas || 8 }, (_, i) => i + 1);
+  $: fxChannels = Array.from({ length: config.fx || 4 }, (_, i) => i + 1);
+
+  $: currentChannels =
+    activeView === "inputs"
+      ? inputChannels
+      : activeView === "outputs"
+        ? outputChannels
+        : dcaChannels;
   $: fohMeters = $rawMeters || [];
 
   // Fluid Pagination Logic
   let containerWidth = 0;
   const STRIP_WIDTH = 90; // Standard layout size
-  
+
   $: channelsPerPage = stripsPerPage;
-  $: totalPages = Math.ceil(currentChannels.length / Math.max(1, channelsPerPage));
-  $: displayedChannels = currentChannels.slice(currentPage * channelsPerPage, (currentPage + 1) * channelsPerPage);
+  $: totalPages = Math.ceil(
+    currentChannels.length / Math.max(1, channelsPerPage),
+  );
+  $: displayedChannels = currentChannels.slice(
+    currentPage * channelsPerPage,
+    (currentPage + 1) * channelsPerPage,
+  );
 
   // Musician pagination
   let musicianPage = 0;
-  $: musicianTotalPages = Math.ceil(inputChannels.length / Math.max(1, stripsPerPage));
-  $: musicianDisplayedChannels = inputChannels.slice(musicianPage * stripsPerPage, (musicianPage + 1) * stripsPerPage);
+  $: musicianTotalPages = Math.ceil(
+    inputChannels.length / Math.max(1, stripsPerPage),
+  );
+  $: musicianDisplayedChannels = inputChannels.slice(
+    musicianPage * stripsPerPage,
+    (musicianPage + 1) * stripsPerPage,
+  );
 
   // Watch for layer switches to reset bank
-  $: { if (activeView) currentPage = 0; }
-  
+  $: {
+    if (activeView) currentPage = 0;
+  }
+
   function applyPreset() {
-      if (config.presetId !== 'CUSTOM') {
-         const preset = MixerPresets[config.presetId];
-         if (preset) {
-            config.inputs = preset.inputs;
-            config.outputs = preset.outputs;
-            config.dcas = preset.dcas || 8;
-            config.fx = preset.fx || 4;
-            config.visibleBuses = Array.from({length: preset.outputs}, (_, i) => i + 1);
-         }
+    if (config.presetId !== "CUSTOM") {
+      const preset = MixerPresets[config.presetId];
+      if (preset) {
+        config.inputs = preset.inputs;
+        config.outputs = preset.outputs;
+        config.dcas = preset.dcas || 8;
+        config.fx = preset.fx || 4;
+        config.visibleBuses = Array.from(
+          { length: preset.outputs },
+          (_, i) => i + 1,
+        );
       }
+    }
   }
 
   function handleSaveScribble(e) {
-      scribbles[editingChannel] = e.detail;
-      // Triggers reactive update mapping on strips
-      scribbles = {...scribbles}; 
-      editingChannel = null;
+    scribbles[editingChannel] = e.detail;
+    // Triggers reactive update mapping on strips
+    scribbles = { ...scribbles };
+    editingChannel = null;
   }
 </script>
 
 <div class="portrait-warning">
-  <div class="rotate-icon">📱 <span>🔄</span></div>
+  <div class="rotate-icon"><Smartphone size={64} /><RotateCcw size={48} /></div>
   <h2>Rotate Your Device</h2>
-  <p>OpenMix is designed explicitly for landscape usage to mimic a real digital console.</p>
+  <p>
+    OpenMix is designed explicitly for landscape usage to mimic a real digital
+    console.
+  </p>
 </div>
 
 <main class="app-container" class:scribble-mode={scribbleEditMode}>
-      <Navbar {activeRole} onExitRole={() => activeRole = null} onExportScene={handleExportScene} onFileLoad={handleFileUpload} onScribbleEdit={() => scribbleEditMode = !scribbleEditMode} />
+  <Navbar
+    {activeRole}
+    onExitRole={() => (activeRole = null)}
+    onExportScene={handleExportScene}
+    onFileLoad={handleFileUpload}
+    onScribbleEdit={() => (scribbleEditMode = !scribbleEditMode)}
+  />
 
   <div class="content-wrapper" class:is-mixing={activeRole}>
     {#if requiresSetup}
       <!-- First Time Setup Wizard -->
-      <section class="card setup-wizard fade-in">
-        <h2>FOH Initial Setup</h2>
-        <p>Configure OpenMix bounds for your digital live mixer.</p>
-        
-        <div class="form-group">
-          <label for="preset">Hardware Architecture Preset</label>
-          <select id="preset" bind:value={config.presetId} on:change={applyPreset}>
-            {#each PredefinedMixersArray as preset}
-              <option value={preset.id}>{preset.name}</option>
-            {/each}
-          </select>
-        </div>
+      <div class="setup-overlay fade-in">
+        <div class="setup-card wide-setup">
+          <div class="setup-col">
+            <div class="setup-logo">OPENMIX</div>
+            <div class="step-header" style="text-align: left;">
+              <h2 class="step-title">Console Setup</h2>
+              <p class="step-desc">Configure your session I/O counts.</p>
+            </div>
+            
+            <div class="setup-grid">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="preset">Hardware Architecture Preset</label>
+                <div class="select-wrapper">
+                  <select id="preset" bind:value={config.presetId} on:change={applyPreset}>
+                    {#each PredefinedMixersArray as preset}
+                      <option value={preset.id}>{preset.name}</option>
+                    {/each}
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="inp">Inputs</label>
+                <input id="inp" type="number" bind:value={config.inputs} min="1" max="128" disabled={config.presetId !== "CUSTOM"} />
+              </div>
+              <div class="form-group">
+                <label for="out">Outputs (Aux)</label>
+                <input id="out" type="number" bind:value={config.outputs} min="1" max="64" disabled={config.presetId !== "CUSTOM"} />
+              </div>
+            </div>
 
-        <div class="form-group">
-          <label for="inp">Total Input Channels</label>
-          <input id="inp" type="number" bind:value={config.inputs} min="1" max="128" disabled={config.presetId !== 'CUSTOM'} />
-        </div>
-        <div class="form-group">
-          <label for="out">Total Output Buses</label>
-          <input id="out" type="number" bind:value={config.outputs} min="1" max="64" disabled={config.presetId !== 'CUSTOM'} />
-        </div>
-        
-        {#if config.presetId !== 'CUSTOM' || config.outputs > 0}
-        <div class="form-group">
-          <p class="label">Visible Buses / Outputs (Sandbox Access)</p>
-          <div class="bus-grid">
-             {#each Array(config.outputs) as _, i}
-               <label class="bus-toggle">
-                  <input type="checkbox" bind:group={config.visibleBuses} value={i+1} />
-                  AUX {i+1}
-               </label>
-             {/each}
+            <!-- Mixer Network Connection -->
+            <div class="form-group mixer-connect-section" style="margin-top: 0.5rem;">
+              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Mixer Network Connection</div>
+              <div class="discover-row">
+                <button class="btn-ghost" on:click={startDiscovery} disabled={discoveryStatus === "scanning"} style="width: 100%;">
+                  {#if discoveryStatus === "scanning"} <Search size={16} /> Scanning... {:else} <Radio size={16} /> Auto-Discover {/if}
+                </button>
+                {#if discoveryStatus === "found"}
+                  <span class="discovery-badge found"><Check size={14} /> Found</span>
+                {:else if discoveryStatus === "notfound"}
+                  <span class="discovery-badge notfound"><X size={14} /> Not found</span>
+                {/if}
+              </div>
+              <div class="form-row split">
+                <div class="form-group flex-2">
+                  <label for="mixer-ip">IP Address</label>
+                  <input id="mixer-ip" type="text" bind:value={mixerConfig.ip} placeholder="192.168.1.100" />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="mixer-port">Port</label>
+                  <input id="mixer-port" type="number" bind:value={mixerConfig.port} min="1024" max="65535" />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        {/if}
-
-        <!-- Mixer Network Connection -->
-        <div class="form-group mixer-connect-section">
-          <p class="label" style="margin-bottom: 0.75rem;">Mixer Network Connection</p>
-          <div class="discover-row">
-            <button class="action-btn discover-btn" on:click={startDiscovery} disabled={discoveryStatus === 'scanning'}>
-              {#if discoveryStatus === 'scanning'} 🔍 Scanning... {:else} 📡 Auto-Discover Mixer {/if}
-            </button>
-            {#if discoveryStatus === 'found'}
-              <span class="discovery-badge found">✓ Found</span>
-            {:else if discoveryStatus === 'notfound'}
-              <span class="discovery-badge notfound">✗ Not found</span>
+          
+          <div class="setup-col setup-col-right">
+            {#if config.presetId !== "CUSTOM" || config.outputs > 0}
+            <div class="form-group" style="flex: 1;">
+              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Visible Buses / Outputs (Sandbox Access)</div>
+              <div class="bus-grid">
+                 {#each Array(config.outputs) as _, i}
+                   <label class="bus-toggle">
+                      <input type="checkbox" bind:group={config.visibleBuses} value={i+1} />
+                      AUX {i+1}
+                   </label>
+                 {/each}
+              </div>
+            </div>
             {/if}
-          </div>
-          <div class="ip-fields">
-            <div class="ip-field">
-              <label for="mixer-ip">Mixer IP Address</label>
-              <input id="mixer-ip" type="text" bind:value={mixerConfig.ip} placeholder="e.g. 192.168.1.100" />
-            </div>
-            <div class="ip-field ip-port">
-              <label for="mixer-port">Port</label>
-              <input id="mixer-port" type="number" bind:value={mixerConfig.port} min="1024" max="65535" />
+            <div class="action-row" style="margin-top: auto;">
+              <button class="btn-primary" on:click={completeSetup}>Save Configuration &amp; Enter App</button>
             </div>
           </div>
         </div>
+      </div>
 
-        <button class="action-btn" on:click={completeSetup}>Save Configuration &amp; Enter App</button>
-      </section>
 
     {:else if !activeRole}
       <!-- Mode Selection Gate -->
-      <section class="card role-selector fade-in">
-        <h2>Select Sandbox Role</h2>
-        <div class="role-grid">
-          <button class="role-btn foh" on:click={() => activeRole = 'foh'}>
-            <h3>FOH Master Control</h3>
-            <p>Access high-res meters, processing graphs, and full routing console.</p>
-          </button>
-          <button class="role-btn musician" on:click={() => { activeRole = 'musician'; musicianAux = null; selectedChannel = null; activeTab = 'mixer'; }}>
-            <h3>Musician Monitor Sandbox</h3>
-            <p>Fader-only responsive view. Protected by strict backend auxiliary routing.</p>
-          </button>
+      <div class="setup-overlay fade-in">
+        <div class="setup-card">
+          <div class="setup-logo">OPENMIX</div>
+          <div class="step-header">
+            <h2 class="step-title">Select Your Role</h2>
+            <p class="step-desc">Choose your operating mode to get started.</p>
+          </div>
+          
+          <div class="role-grid">
+            <button class="role-card" on:click={() => activeRole = "foh"}>
+              <span class="role-icon"><Sliders size={24} /></span>
+              <div class="role-info">
+                <h3>FOH Engineer</h3>
+                <p>Full control over inputs, outputs, and routing.</p>
+              </div>
+            </button>
+            <button class="role-card" on:click={() => { activeRole = "musician"; musicianAux = null; selectedChannel = null; activeTab = "mixer"; }}>
+              <span class="role-icon"><Headphones size={24} /></span>
+              <div class="role-info">
+                <h3>Musician</h3>
+                <p>Control your personal monitor mix securely.</p>
+              </div>
+            </button>
+          </div>
+          <button class="btn-text" on:click={() => requiresSetup = true}>Re-run Console Setup</button>
         </div>
-        <button class="btn-text" on:click={() => requiresSetup = true}>Re-run I/O Setup Wizard</button>
-      </section>
-
+      </div>
     {:else}
       <!-- Musician Aux Selection Gate -->
-      {#if activeRole === 'musician' && !musicianAux}
-        <section class="card aux-selector fade-in">
-          <h2>Select Your Monitor Mix</h2>
-          <p>Choose the AUX output bus assigned to your in-ear or wedge monitor.</p>
-          <div class="aux-grid">
-            {#each (config.visibleBuses || []) as auxNum}
-              <button class="aux-btn" on:click={() => musicianAux = auxNum}>
-                <span class="aux-num">AUX {auxNum}</span>
-                <span class="aux-label">{scribbles[`out_${auxNum}`]?.name || `Output ${auxNum}`}</span>
-              </button>
-            {/each}
+      {#if activeRole === "musician" && !musicianAux}
+        <div class="setup-overlay fade-in">
+          <div class="setup-card">
+            <div class="setup-logo">OPENMIX</div>
+            <div class="step-header">
+              <h2 class="step-title">Select Monitor Mix</h2>
+              <p class="step-desc">Choose the AUX output bus assigned to you.</p>
+            </div>
+            <div class="aux-grid" style="margin-top: 0.5rem; margin-bottom: 0;">
+              {#each config.visibleBuses || [] as auxNum}
+                <button class="aux-btn" on:click={() => musicianAux = auxNum}>
+                  <span class="aux-num">AUX {auxNum}</span>
+                  <span class="aux-label">{scribbles[`out_${auxNum}`]?.name || `Output ${auxNum}`}</span>
+                </button>
+              {/each}
+            </div>
+            <div class="action-row" style="margin-top:1.5rem;">
+              <button class="btn-ghost" on:click={() => activeRole = null} style="width: 100%;"><ArrowLeft size={16} style="margin-right: 0.5rem;"/> Back to Roles</button>
+            </div>
           </div>
-          <button class="btn-text" on:click={() => activeRole = null}>← Back to Role Select</button>
-        </section>
-
+        </div>
       {:else}
-      {#if activeRole === 'foh'}
+        {#if activeRole === "foh"}
           <GlobalTabs bind:activeTab {disabledTabs} />
-      {/if}
+        {/if}
 
-      <div class="workspace">
-        {#if activeTab === 'mixer'}
-          <!-- EDGE-TO-EDGE MIXER ROUTING -->
-          {#if activeRole === 'musician'}
-            <div class="musician-mix fade-in">
-              <div class="musician-header">
-                {#if scribbles[`out_${musicianAux}`]?.iconType}
-                  <img src="/icons-bmp/{scribbles[`out_${musicianAux}`].iconType}.bmp" alt="" class="musician-header-icon" />
-                {:else}
-                  <div class="musician-header-icon-empty"></div>
-                {/if}
-                <h2>{scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux} Monitor Mix`}</h2>
-              </div>
-              <div class="musician-rack">
-                {#each inputChannels as chIndex}
-                  <ChannelStrip 
-                    channelIndex={String(chIndex)} 
+        <div class="workspace">
+          {#if activeTab === "mixer"}
+            <!-- EDGE-TO-EDGE MIXER ROUTING -->
+            {#if activeRole === "musician"}
+              <div class="musician-mix fade-in">
+                <div class="musician-header">
+                  {#if scribbles[`out_${musicianAux}`]?.iconType}
+                    <img
+                      src="/icons-bmp/{scribbles[`out_${musicianAux}`]
+                        .iconType}.bmp"
+                      alt=""
+                      class="musician-header-icon"
+                    />
+                  {:else}
+                    <div class="musician-header-icon-empty"></div>
+                  {/if}
+                  <h2>
+                    {scribbles[`out_${musicianAux}`]?.name ||
+                      `AUX ${musicianAux} Monitor Mix`}
+                  </h2>
+                </div>
+                <div class="musician-rack-container" style="display: flex; align-items: stretch; justify-content: flex-start; gap: 0.25rem; flex: 1; height: 100%;">
+                  <button class="nav-icon-btn" style="align-self:center;" disabled={musicianPage === 0} on:click={() => musicianPage--}><ChevronLeft size={24} /></button>
+                  <div class="musician-rack" style="flex:1;">
+                    {#each musicianDisplayedChannels as chIndex}
+                      <ChannelStrip
+                        channelIndex={String(chIndex)}
+                      role="musician"
+                      stripType="input"
+                      name={scribbles[`in_${chIndex}`]?.name ||
+                        presetHardLinks[chIndex]?.defaultName ||
+                        `CH ${chIndex}`}
+                      iconType={scribbles[`in_${chIndex}`]?.iconType ||
+                        "icon_01"}
+                      color={isLinked(chIndex, stereoLinks)
+                        ? chIndex % 2 === 1
+                          ? "#3b82f6"
+                          : "#ef4444"
+                        : scribbles[`in_${chIndex}`]?.color || "#3f3f46"}
+                      peakLevel={fohMeters[chIndex - 1] || -60}
+                      on:nameClick={() => {}}
+                    />
+                  {/each}
+                  </div>
+                  <button class="nav-icon-btn" style="align-self:center;" disabled={musicianPage >= musicianTotalPages - 1} on:click={() => musicianPage++}><ChevronRight size={24} /></button>
+                  <div class="master-divider"></div>
+                  <ChannelStrip
+                    channelIndex={musicianAux}
                     role="musician"
-                    stripType="input"
-                    name={scribbles[`in_${chIndex}`]?.name || (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`)}
-                    iconType={scribbles[`in_${chIndex}`]?.iconType || 'icon_01'}
-                    color={isLinked(chIndex, stereoLinks) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[`in_${chIndex}`]?.color || '#3f3f46')}
-                    peakLevel={fohMeters[chIndex - 1] || -60}
+                    stripType="output"
+                    name={scribbles[`out_${musicianAux}`]?.name ||
+                      `AUX ${musicianAux}`}
+                    iconType={scribbles[`out_${musicianAux}`]?.iconType ||
+                      "icon_01"}
+                    color={scribbles[`out_${musicianAux}`]?.color || "#8b5cf6"}
+                    peakLevel={-60}
                     on:nameClick={() => {}}
                   />
-                {/each}
-                <div class="master-divider"></div>
-                <ChannelStrip 
-                  channelIndex={musicianAux}
-                  role="musician"
-                  stripType="output"
-                  name={scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux}`}
-                  iconType={scribbles[`out_${musicianAux}`]?.iconType || 'icon_01'}
-                  color={scribbles[`out_${musicianAux}`]?.color || '#8b5cf6'}
-                  peakLevel={-60}
-                  on:nameClick={() => {}}
-                />
+                </div>
               </div>
-            </div>
-          {:else}
-            <div class="console-view fade-in" bind:clientWidth={containerWidth}>
-              <div class="channels-track">
-                {#each displayedChannels as chIndex}
-                  {@const sId = activeView === 'inputs' ? `in_${chIndex}` : (activeView === 'outputs' ? `out_${chIndex}` : `dca_${chIndex}`)}
-                  <!-- svelte-ignore a11y-click-events-have-key-events -->
-                  <!-- svelte-ignore a11y-no-static-element-interactions -->
-                  <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = sId; }}>
-                    <ChannelStrip 
-                      channelIndex={String(chIndex)} 
-                      role={activeRole}
-                      stripType={activeView === 'outputs' ? 'output' : (activeView === 'dcas' ? 'dca' : 'input')}
-                      name={scribbles[sId]?.name || (activeView === 'inputs' ? (presetHardLinks[chIndex]?.defaultName || `CH ${chIndex}`) : (activeView === 'outputs' ? `AUX ${chIndex}` : `DCA ${chIndex}`))}
-                      iconType={scribbles[sId]?.iconType || 'icon_01'}
-                      color={activeView === 'inputs' && isLinked(chIndex, stereoLinks) ? (chIndex % 2 === 1 ? '#3b82f6' : '#ef4444') : (scribbles[sId]?.color || (activeView === 'inputs' ? '#3f3f46' : '#3b82f6'))}
-                      peakLevel={activeView === 'inputs' ? (fohMeters[chIndex - 1] || -60) : -60}
-                      eqCurvePath={computeMiniEqPath(sId)}
-                      stereoLink={activeView === 'inputs' ? isLinked(chIndex, stereoLinks) : false}
-                      on:toggleLink={() => toggleStereoLink(chIndex)}
-                        on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = sId; activeTab = 'channel'; } }}
-                    />
-                  </div>
-                {/each}
-                
-                {#if activeView === 'outputs'}
-                  <div class="master-divider"></div>
-                  {#each fxChannels as fxIdx}
-                    {@const fxSId = `fx_${fxIdx}`}
+            {:else}
+              <div
+                class="console-view fade-in"
+                bind:clientWidth={containerWidth}
+              >
+                <div class="channels-track">
+                  {#each displayedChannels as chIndex}
+                    {@const sId =
+                      activeView === "inputs"
+                        ? `in_${chIndex}`
+                        : activeView === "outputs"
+                          ? `out_${chIndex}`
+                          : `dca_${chIndex}`}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <!-- svelte-ignore a11y-no-static-element-interactions -->
-                      <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = fxSId; }}>
+                    <div
+                      class="strip-wrapper"
+                      on:click={() => {
+                        if (activeRole === "foh" && scribbleEditMode)
+                          editingChannel = sId;
+                      }}
+                    >
                       <ChannelStrip
-                        channelIndex={String(fxIdx)}
+                        channelIndex={String(chIndex)}
                         role={activeRole}
-                        stripType="fx"
-                        name={scribbles[fxSId]?.name || `FX ${fxIdx}`}
-                        iconType={scribbles[fxSId]?.iconType || 'icon_01'}
-                        color={scribbles[fxSId]?.color || '#f59e0b'}
-                        peakLevel={-60}
-                        eqCurvePath={computeMiniEqPath(fxSId)}
-                        on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = fxSId; activeTab = 'channel'; } }}
+                        stripType={activeView === "outputs"
+                          ? "output"
+                          : activeView === "dcas"
+                            ? "dca"
+                            : "input"}
+                        name={scribbles[sId]?.name ||
+                          (activeView === "inputs"
+                            ? presetHardLinks[chIndex]?.defaultName ||
+                              `CH ${chIndex}`
+                            : activeView === "outputs"
+                              ? `AUX ${chIndex}`
+                              : `DCA ${chIndex}`)}
+                        iconType={scribbles[sId]?.iconType || "icon_01"}
+                        color={activeView === "inputs" &&
+                        isLinked(chIndex, stereoLinks)
+                          ? chIndex % 2 === 1
+                            ? "#3b82f6"
+                            : "#ef4444"
+                          : scribbles[sId]?.color ||
+                            (activeView === "inputs" ? "#3f3f46" : "#3b82f6")}
+                        peakLevel={activeView === "inputs"
+                          ? fohMeters[chIndex - 1] || -60
+                          : -60}
+                        eqCurvePath={computeMiniEqPath(sId)}
+                        stereoLink={activeView === "inputs"
+                          ? isLinked(chIndex, stereoLinks)
+                          : false}
+                        on:toggleLink={() => toggleStereoLink(chIndex)}
+                        on:nameClick={() => {
+                          if (activeRole === "foh") {
+                            selectedChannel = sId;
+                            activeTab = "channel";
+                          }
+                        }}
                       />
                     </div>
                   {/each}
-                  <div class="master-divider"></div>
-                  <!-- svelte-ignore a11y-click-events-have-key-events -->
-                  <!-- svelte-ignore a11y-no-static-element-interactions -->
-                  <div class="strip-wrapper" on:click={() => { if (activeRole==='foh' && scribbleEditMode) editingChannel = 'main_LR'; }}>
-                    <ChannelStrip 
-                      channelIndex="LR"
-                      role={activeRole}
-                      stripType="main"
-                      name={scribbles['main_LR']?.name || "MAIN LR"}
-                      iconType={scribbles['main_LR']?.iconType || 'icon_01'}
-                      color={scribbles['main_LR']?.color || "#ef4444"}
-                      peakLevel={-60}
-                      eqCurvePath={computeMiniEqPath('main_LR')}
-                      on:nameClick={() => { if (activeRole === 'foh') { selectedChannel = 'main_LR'; activeTab = 'channel'; } }}
-                    />
-                  </div>
-                {/if}
-              </div>
-            </div>
-          {/if}
-                   
-        {:else if activeTab === 'eq'}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
-              </div>
-            </div>
-            <div style="flex: 1; width: 100%; display: flex; flex-direction: column;">
-                <EqEditor bind:this={eqComponent} channelId={selectedChannel} eqBands={currentEqBands} onBandsChange={handleBandsChange} />
-            </div>
-          </div>
 
-        {:else if activeTab === 'channel'}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">CHANNEL: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
-              </div>
-            </div>
-            <div class="bento-grid">
-              <!-- Icon Preview -->
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <!-- svelte-ignore a11y-no-static-element-interactions -->
-              <div class="bento-card bento-icon-preview"
-                   class:is-editable={activeRole === 'foh' && scribbleEditMode}
-                   on:click={() => { if (activeRole === 'foh' && scribbleEditMode) editingChannel = selectedChannel; }}>
-                <h3>Channel Icon</h3>
-                {#if activeRole === 'foh' && scribbleEditMode}
-                   <div class="edit-badge"><Edit3 size={14} /></div>
-                {/if}
-                <div class="icon-preview-slot">
-                  {#if scribbles[selectedChannel]?.iconType}
-                    <img src="/icons-bmp/{scribbles[selectedChannel].iconType}.bmp" alt="Icon" class="icon-lg" />
-                  {:else}
-                    <div class="icon-placeholder"></div>
-                  {/if}
-                  <span class="icon-name">{scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</span>
-                  <span class="icon-color-dot" style="background: {scribbles[selectedChannel]?.color || '#3f3f46'};"></span>
-                </div>
-              </div>
-              <!-- Preamp -->
-              <div class="bento-card">
-                <h3>Preamp</h3>
-                <div class="param-row"><span>Gain</span><input type="range" min="0" max="60" value="30" /><span>30 dB</span></div>
-                <div class="param-row"><span>48V</span><button class="toggle-sm">OFF</button></div>
-                <div class="param-row"><span>Phase</span><button class="toggle-sm">0°</button></div>
-              </div>
-              <!-- Gate -->
-              <div class="bento-card">
-                <h3>Gate</h3>
-                <div class="param-row"><span>Threshold</span><input type="range" min="-80" max="0" value="-40" /><span>-40 dB</span></div>
-                <div class="param-row"><span>Range</span><input type="range" min="0" max="60" value="20" /><span>20 dB</span></div>
-                <div class="param-row"><span>Attack</span><input type="range" min="0" max="120" value="5" /><span>5 ms</span></div>
-                <div class="param-row"><span>Hold</span><input type="range" min="0" max="500" value="50" /><span>50 ms</span></div>
-              </div>
-              <!-- Compressor -->
-              <div class="bento-card">
-                <h3>Compressor</h3>
-                <div class="param-row"><span>Threshold</span><input type="range" min="-60" max="0" value="-20" /><span>-20 dB</span></div>
-                <div class="param-row"><span>Ratio</span><input type="range" min="1" max="20" value="4" /><span>4:1</span></div>
-                <div class="param-row"><span>Attack</span><input type="range" min="0" max="100" value="10" /><span>10 ms</span></div>
-                <div class="param-row"><span>Release</span><input type="range" min="5" max="500" value="100" /><span>100 ms</span></div>
-                <div class="param-row"><span>Makeup</span><input type="range" min="0" max="24" value="0" /><span>0 dB</span></div>
-              </div>
-              <!-- Mini EQ Preview -->
-              <div class="bento-card bento-eq-preview">
-                <h3>EQ Preview</h3>
-                <svg viewBox="0 0 100 40" class="bento-eq-curve"><path d="{computeMiniEqPath(selectedChannel)}" /></svg>
-              </div>
-              <!-- Level -->
-              <div class="bento-card">
-                <h3>Output</h3>
-                <div class="param-row"><span>Pan</span><input type="range" min="-100" max="100" value="0" /><span>C</span></div>
-                <div class="param-row"><span>Level</span><input type="range" min="-90" max="10" value="0" /><span>0 dB</span></div>
-              </div>
-              <!-- Main Out Assignment -->
-              {#if !selectedChannel.startsWith('out_')}
-                <div class="bento-card">
-                  <h3>Main Out</h3>
-                  <div class="param-row">
-                    <span>Assign to LR</span>
-                    <button class="toggle-sm" class:active={mainOutAssign[selectedChannel]} on:click={() => toggleMainOut(selectedChannel)}>
-                      {mainOutAssign[selectedChannel] ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                  <p class="bento-hint">Route this channel to the Main LR output bus. Disable for talkback or monitor-only channels.</p>
-                </div>
-              {/if}
-              <!-- Stereo Link -->
-              {#if selectedChannel.startsWith('in_')}
-                {@const chNum = parseInt(selectedChannel.replace('in_', ''))}
-                {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
-                {@const partnerCh = chNum % 2 === 1 ? chNum + 1 : chNum - 1}
-                <div class="bento-card">
-                  <h3>Stereo Link</h3>
-                  <div class="param-row">
-                    <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
-                    <button class="toggle-sm" class:active-yellow={stereoLinks[oddCh]} on:click={() => toggleStereoLink(chNum)}>
-                      {stereoLinks[oddCh] ? 'LINKED' : 'OFF'}
-                    </button>
-                  </div>
-                  <p class="bento-hint">Links odd→even channel pair. Both channels share gain, pan, EQ, and dynamics.</p>
-                </div>
-              {/if}
-            </div>
-          </div>
-
-        {:else if activeTab === 'sends'}
-          <SendsPanel bind:sendsState bind:selectedChannel {config} {scribbles} {cycleChannel} {isFirstChannel} {isLastChannel} />
-
-        {:else if activeTab === 'fx'}
-          <EffectsRack {config} {scribbles} bind:selectedChannel {cycleChannel} {isFirstChannel} {isLastChannel} />
-
-        {:else if activeTab === 'routing'}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">ROUTING: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
-              </div>
-            </div>
-            <div class="tab-content-body">
-              <div class="param-section">
-                <h3>Bus Routing Matrix</h3>
-                <p style="color:#94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">Toggle which output buses this channel is sent to.</p>
-                <div class="routing-matrix">
-                  {#each outputChannels as busNum}
-                    {@const rKey = `${selectedChannel}_bus${busNum}`}
-                    <button class="routing-cell"
-                      class:active={routingState[rKey] !== false}
+                  {#if activeView === "outputs"}
+                    <div class="master-divider"></div>
+                    {#each fxChannels as fxIdx}
+                      {@const fxSId = `fx_${fxIdx}`}
+                      <!-- svelte-ignore a11y-click-events-have-key-events -->
+                      <!-- svelte-ignore a11y-no-static-element-interactions -->
+                      <div
+                        class="strip-wrapper"
+                        on:click={() => {
+                          if (activeRole === "foh" && scribbleEditMode)
+                            editingChannel = fxSId;
+                        }}
+                      >
+                        <ChannelStrip
+                          channelIndex={String(fxIdx)}
+                          role={activeRole}
+                          stripType="fx"
+                          name={scribbles[fxSId]?.name || `FX ${fxIdx}`}
+                          iconType={scribbles[fxSId]?.iconType || "icon_01"}
+                          color={scribbles[fxSId]?.color || "#f59e0b"}
+                          peakLevel={-60}
+                          eqCurvePath={computeMiniEqPath(fxSId)}
+                          on:nameClick={() => {
+                            if (activeRole === "foh") {
+                              selectedChannel = fxSId;
+                              activeTab = "channel";
+                            }
+                          }}
+                        />
+                      </div>
+                    {/each}
+                    <div class="master-divider"></div>
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                    <!-- svelte-ignore a11y-no-static-element-interactions -->
+                    <div
+                      class="strip-wrapper"
                       on:click={() => {
-                        const cur = routingState[rKey] !== false;
-                        routingState[rKey] = !cur;
-                        routingState = { ...routingState };
-                        if (selectedChannel.startsWith('in_')) {
-                          const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-                          const bus = String(busNum).padStart(2, '0');
-                          setOsc(`/ch/${ch}/mix/${bus}/on`, !cur ? 1 : 0);
-                        }
+                        if (activeRole === "foh" && scribbleEditMode)
+                          editingChannel = "main_LR";
                       }}
                     >
-                      <span class="routing-bus-name">{scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}</span>
-                      <span class="routing-status">{routingState[rKey] !== false ? '●' : '○'}</span>
-                    </button>
-                  {/each}
+                      <ChannelStrip
+                        channelIndex="LR"
+                        role={activeRole}
+                        stripType="main"
+                        name={scribbles["main_LR"]?.name || "MAIN LR"}
+                        iconType={scribbles["main_LR"]?.iconType || "icon_01"}
+                        color={scribbles["main_LR"]?.color || "#ef4444"}
+                        peakLevel={-60}
+                        eqCurvePath={computeMiniEqPath("main_LR")}
+                        on:nameClick={() => {
+                          if (activeRole === "foh") {
+                            selectedChannel = "main_LR";
+                            activeTab = "channel";
+                          }
+                        }}
+                      />
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+          {:else if activeTab === "eq"}
+            <div class="macro-view fade-in">
+              <div class="view-header-inline">
+                <h2 class="title-left">
+                  EQ EDITOR: {scribbles[selectedChannel]?.name ||
+                    selectedChannel?.toUpperCase()}
+                </h2>
+                <div class="nav-group">
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isFirstChannel}
+                    on:click={() => cycleChannel(-1)}
+                    ><ChevronLeft size={20} /></button
+                  >
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isLastChannel}
+                    on:click={() => cycleChannel(1)}
+                    ><ChevronRight size={20} /></button
+                  >
+                </div>
+              </div>
+              <div
+                style="flex: 1; width: 100%; display: flex; flex-direction: column;"
+              >
+                <EqEditor
+                  bind:this={eqComponent}
+                  channelId={selectedChannel}
+                  eqBands={currentEqBands}
+                  onBandsChange={handleBandsChange}
+                />
+              </div>
+            </div>
+          {:else if activeTab === "channel"}
+            <div class="macro-view fade-in">
+              <div class="view-header-inline">
+                <h2 class="title-left">
+                  CHANNEL: {scribbles[selectedChannel]?.name ||
+                    selectedChannel?.toUpperCase()}
+                </h2>
+                <div class="nav-group">
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isFirstChannel}
+                    on:click={() => cycleChannel(-1)}
+                    ><ChevronLeft size={20} /></button
+                  >
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isLastChannel}
+                    on:click={() => cycleChannel(1)}
+                    ><ChevronRight size={20} /></button
+                  >
+                </div>
+              </div>
+              <div class="bento-grid">
+                <!-- Icon Preview -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="bento-card bento-icon-preview"
+                  class:is-editable={activeRole === "foh" && scribbleEditMode}
+                  on:click={() => {
+                    if (activeRole === "foh" && scribbleEditMode)
+                      editingChannel = selectedChannel;
+                  }}
+                >
+                  <h3>Channel Icon</h3>
+                  {#if activeRole === "foh" && scribbleEditMode}
+                    <div class="edit-badge"><Edit3 size={14} /></div>
+                  {/if}
+                  <div class="icon-preview-slot">
+                    {#if scribbles[selectedChannel]?.iconType}
+                      <img
+                        src="/icons-bmp/{scribbles[selectedChannel]
+                          .iconType}.bmp"
+                        alt="Icon"
+                        class="icon-lg"
+                      />
+                    {:else}
+                      <div class="icon-placeholder"></div>
+                    {/if}
+                    <span class="icon-name"
+                      >{scribbles[selectedChannel]?.name ||
+                        selectedChannel?.toUpperCase()}</span
+                    >
+                    <span
+                      class="icon-color-dot"
+                      style="background: {scribbles[selectedChannel]?.color ||
+                        '#3f3f46'};"
+                    ></span>
+                  </div>
+                </div>
+                <!-- Preamp -->
+                {#if selectedChannel && !selectedChannel.startsWith("out_")}
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div
+                    class="bento-card bento-clickable"
+                    on:click={() => {
+                      channelModalState = {
+                        isOpen: true,
+                        channelId: selectedChannel,
+                        section: "preamp",
+                      };
+                    }}
+                  >
+                    <h3>Preamp</h3>
+                    <div class="param-row">
+                      <span>Gain</span><input
+                        type="range"
+                        class="visual-only"
+                        min="0"
+                        max="60"
+                        value="30"
+                        disabled
+                      /><span>30 dB</span>
+                    </div>
+                    <div class="param-row">
+                      <span>48V</span><button class="toggle-sm">OFF</button>
+                    </div>
+                    <div class="param-row">
+                      <span>Phase</span><button class="toggle-sm">0°</button>
+                    </div>
+                  </div>
+                {/if}
+                <!-- Gate -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="bento-card bento-clickable"
+                  on:click={() => {
+                    channelModalState = {
+                      isOpen: true,
+                      channelId: selectedChannel,
+                      section: "gate",
+                    };
+                  }}
+                >
+                  <h3 style="display: flex; justify-content: space-between;">Gate <Settings size={14} style="color:#f59e0b; opacity:0.5;"/></h3>
+                  <div class="param-row">
+                    <span>Threshold</span><input
+                      type="range"
+                      class="visual-only"
+                      min="-80"
+                      max="0"
+                      value="-40"
+                      disabled
+                    /><span>-40 dB</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Range</span><input
+                      type="range"
+                      class="visual-only"
+                      min="0"
+                      max="60"
+                      value="20"
+                      disabled
+                    /><span>20 dB</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Attack</span><input
+                      type="range"
+                      class="visual-only"
+                      min="0"
+                      max="120"
+                      value="5"
+                      disabled
+                    /><span>5 ms</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Hold</span><input
+                      type="range"
+                      class="visual-only"
+                      min="0"
+                      max="500"
+                      value="50"
+                      disabled
+                    /><span>50 ms</span>
+                  </div>
+                </div>
+                <!-- Compressor -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="bento-card bento-clickable"
+                  on:click={() => {
+                    channelModalState = {
+                      isOpen: true,
+                      channelId: selectedChannel,
+                      section: "compressor",
+                    };
+                  }}
+                >
+                  <h3 style="display: flex; justify-content: space-between;">Compressor <Settings size={14} style="color:#f59e0b; opacity:0.5;"/></h3>
+                  <div class="param-row">
+                    <span>Threshold</span><input
+                      type="range"
+                      class="visual-only"
+                      min="-60"
+                      max="0"
+                      value="-20"
+                      disabled
+                    /><span>-20 dB</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Ratio</span><input
+                      type="range"
+                      class="visual-only"
+                      min="1"
+                      max="20"
+                      value="4"
+                      disabled
+                    /><span>4:1</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Attack</span><input
+                      type="range"
+                      class="visual-only"
+                      min="0"
+                      max="100"
+                      value="10"
+                      disabled
+                    /><span>10 ms</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Release</span><input
+                      type="range"
+                      class="visual-only"
+                      min="5"
+                      max="500"
+                      value="100"
+                      disabled
+                    /><span>100 ms</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Makeup</span><input
+                      type="range"
+                      class="visual-only"
+                      min="0"
+                      max="24"
+                      value="0"
+                      disabled
+                    /><span>0 dB</span>
+                  </div>
+                </div>
+                <!-- Mini EQ Preview -->
+                <div class="bento-card bento-eq-preview">
+                  <h3>EQ Preview</h3>
+                  <svg viewBox="0 0 100 40" class="bento-eq-curve"
+                    ><path d={computeMiniEqPath(selectedChannel)} /></svg
+                  >
+                </div>
+                <!-- Level -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="bento-card bento-clickable"
+                  on:click={() => {
+                    channelModalState = {
+                      isOpen: true,
+                      channelId: selectedChannel,
+                      section: "output",
+                    };
+                  }}
+                >
+                  <h3>Output</h3>
+                  <div class="param-row">
+                    <span>Pan</span><input
+                      type="range"
+                      class="visual-only"
+                      min="-100"
+                      max="100"
+                      value="0"
+                      disabled
+                    /><span>C</span>
+                  </div>
+                  <div class="param-row">
+                    <span>Level</span><input
+                      type="range"
+                      class="visual-only"
+                      min="-90"
+                      max="10"
+                      value="0"
+                      disabled
+                    /><span>0 dB</span>
+                  </div>
+                </div>
+                <!-- Routing Send Section -->
+                {#if selectedChannel && selectedChannel.startsWith("in_")}
+                  <div class="param-section">
+                    <h3>FX Sends</h3>
+                    <div class="param-row">
+                      <span>Assign to LR</span>
+                      <button
+                        class="toggle-sm"
+                        class:active={mainOutAssign[selectedChannel]}
+                        on:click={() => toggleMainOut(selectedChannel)}
+                      >
+                        {mainOutAssign[selectedChannel] ? "ON" : "OFF"}
+                      </button>
+                    </div>
+                    <p class="bento-hint">
+                      Route this channel to the Main LR output bus. Disable for
+                      talkback or monitor-only channels.
+                    </p>
+                  </div>
+                {/if}
+                <!-- Main Out Assignment -->
+                {#if selectedChannel && !selectedChannel.startsWith("out_")}
+                  <div class="bento-card">
+                    <h3>Main Out</h3>
+                    <div class="param-row">
+                      <span>Assign to LR</span>
+                      <button
+                        class="toggle-sm"
+                        class:active={mainOutAssign[selectedChannel]}
+                        on:click={() => toggleMainOut(selectedChannel)}
+                      >
+                        {mainOutAssign[selectedChannel] ? "ON" : "OFF"}
+                      </button>
+                    </div>
+                    <p class="bento-hint">
+                      Route this channel to the Main LR output bus. Disable for
+                      talkback or monitor-only channels.
+                    </p>
+                  </div>
+                {/if}
+                <!-- Stereo Link -->
+                {#if selectedChannel.startsWith("in_")}
+                  {@const chNum = parseInt(selectedChannel.replace("in_", ""))}
+                  {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
+                  {@const partnerCh = chNum % 2 === 1 ? chNum + 1 : chNum - 1}
+                  <div class="bento-card">
+                    <h3>Stereo Link</h3>
+                    <div class="param-row">
+                      <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
+                      <button
+                        class="toggle-sm"
+                        class:active-yellow={stereoLinks[oddCh]}
+                        on:click={() => toggleStereoLink(chNum)}
+                      >
+                        {stereoLinks[oddCh] ? "LINKED" : "OFF"}
+                      </button>
+                    </div>
+                    <p class="bento-hint">
+                      Links odd→even channel pair. Both channels share gain,
+                      pan, EQ, and dynamics.
+                    </p>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {:else if activeTab === "sends"}
+            <SendsPanel
+              bind:sendsState
+              bind:selectedChannel
+              {config}
+              {scribbles}
+              {cycleChannel}
+              {isFirstChannel}
+              {isLastChannel}
+            />
+          {:else if activeTab === "fx"}
+            <EffectsRack
+              {config}
+              {scribbles}
+              bind:selectedChannel
+              {cycleChannel}
+              {isFirstChannel}
+              {isLastChannel}
+            />
+          {:else if activeTab === "routing"}
+            <div class="macro-view fade-in" style="overflow-x: auto;">
+              <div class="view-header-inline">
+                <h2 class="title-left">
+                  GLOBAL ROUTING MATRIX
+                </h2>
+              </div>
+              <div class="view-header-inline" style="border-top: 1px solid #1e293b; padding-top: 1rem; margin-top: 1rem;">
+                <div class="nav-group" style="margin-bottom: 0;">
+                  <button class="nav-btn" class:active={routingSubTab === 'busses'} on:click={() => routingSubTab = 'busses'}>Busses</button>
+                  <button class="nav-btn" class:active={routingSubTab === 'aes50a'} on:click={() => routingSubTab = 'aes50a'}>AES50-A</button>
+                  <button class="nav-btn" class:active={routingSubTab === 'aes50b'} on:click={() => routingSubTab = 'aes50b'}>AES50-B</button>
+                  <button class="nav-btn" class:active={routingSubTab === 'usb'} on:click={() => routingSubTab = 'usb'}>USB/Card</button>
+                  {#if config.presetId === 'X32'}
+                    <button class="nav-btn" class:active={routingSubTab === 'ultranet'} on:click={() => routingSubTab = 'ultranet'}>Ultranet</button>
+                  {/if}
+                </div>
+              </div>
+              <div class="tab-content-body" style="padding: 1rem;">
+                <div class="param-section">
+                  <h3 style="text-transform: uppercase;">{routingSubTab} Routing Matrix</h3>
+                  <p style="color:#94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">
+                    Patch inputs directly from the corresponding protocol blocks.
+                  </p>
+                  
+                  <div class="matrix-table-container" style="max-height: none;">
+                    <table class="routing-matrix-grid" style="width: 100%;">
+                      <thead>
+                        <tr>
+                          <th>SRC \\ DEST</th>
+                          {#each Array(config.outputs) as _, j}
+                            <th class="col-header">AUX {j+1}</th>
+                          {/each}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {#each Array(config.inputs) as _, i}
+                          <tr>
+                            <td class="row-header">CH {i+1}</td>
+                            {#each Array(config.outputs) as _, j}
+                              {@const rKey = `in_${i+1}_bus${j+1}`}
+                              <td class="cell-toggle">
+                                <button class="matrix-dot" 
+                                  aria-label="Toggle CH {i+1} to AUX {j+1}"
+                                  class:active={routingState[rKey]} 
+                                  on:click={() => {
+                                      routingState[rKey] = !routingState[rKey];
+                                      routingState = { ...routingState };
+                                      const ch = String(i+1).padStart(2, "0");
+                                      const bus = String(j+1).padStart(2, "0");
+                                      setOsc(`/ch/${ch}/mix/${bus}/on`, routingState[rKey] ? 1 : 0);
+                                  }}
+                                ></button>
+                              </td>
+                            {/each}
+                          </tr>
+                        {/each}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-        {:else}
-          <div class="macro-view fade-in">
-            <div class="view-header-inline">
-              <h2 class="title-left">{activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}</h2>
-              <div class="nav-group">
-                  <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={20} /></button>
-                  <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={20} /></button>
+          {:else}
+            <div class="macro-view fade-in">
+              <div class="view-header-inline">
+                <h2 class="title-left">
+                  {activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]
+                    ?.name || selectedChannel.toUpperCase()}
+                </h2>
+                <div class="nav-group">
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isFirstChannel}
+                    on:click={() => cycleChannel(-1)}
+                    ><ChevronLeft size={20} /></button
+                  >
+                  <button
+                    class="nav-icon-btn"
+                    disabled={isLastChannel}
+                    on:click={() => cycleChannel(1)}
+                    ><ChevronRight size={20} /></button
+                  >
+                </div>
               </div>
+              <div class="wireframe-content"></div>
             </div>
-            <div class="wireframe-content"></div>
-          </div>
-        {/if}
+          {/if}
 
-        {#if activeRole === 'foh'}
-          <Sidebar {activeTab} bind:activeView bind:currentPage {totalPages} {stripsPerPage}
-                   onPageChange={(p) => currentPage = p} 
-                   onViewChange={(v) => activeView = v}
-                   onStripsChange={(n) => stripsPerPage = n}
-                   onResetEq={() => { if (eqComponent) eqComponent.resetFlat(); }} />
-        {/if}
-      </div>
+          {#if activeRole === "foh"}
+            <Sidebar
+              {activeTab}
+              bind:activeView
+              bind:currentPage
+              {totalPages}
+              {stripsPerPage}
+              onPageChange={(p) => (currentPage = p)}
+              onViewChange={(v) => (activeView = v)}
+              onStripsChange={(n) => (stripsPerPage = n)}
+              onResetEq={() => {
+                if (eqComponent) eqComponent.resetFlat();
+              }}
+            />
+          {/if}
+        </div>
       {/if}
     {/if}
 
-    
-    {#if activeRole === 'foh' && editingChannel}
-      <ScribbleEditor 
-        channelIndex={typeof editingChannel === 'string' ? editingChannel.replace('in_','CH ').replace('out_','AUX ').toUpperCase() : editingChannel}
-        currentName={scribbles[editingChannel]?.name || (editingChannel || '').toUpperCase()}
-        currentIcon={scribbles[editingChannel]?.iconType || 'icon_01'}
-        currentColor={scribbles[editingChannel]?.color || '#3f3f46'}
+    {#if activeRole === "foh" && editingChannel}
+      <ScribbleEditor
+        channelIndex={typeof editingChannel === "string"
+          ? editingChannel
+              .replace("in_", "CH ")
+              .replace("out_", "AUX ")
+              .toUpperCase()
+          : editingChannel}
+        currentName={scribbles[editingChannel]?.name ||
+          (editingChannel || "").toUpperCase()}
+        currentIcon={scribbles[editingChannel]?.iconType || "icon_01"}
+        currentColor={scribbles[editingChannel]?.color || "#3f3f46"}
         on:save={handleSaveScribble}
-        on:close={() => editingChannel = null}
+        on:close={() => (editingChannel = null)}
+      />
+    {/if}
+
+    {#if channelModalState.isOpen}
+      <ChannelModal
+        channelId={channelModalState.channelId}
+        channelName={scribbles[channelModalState.channelId]?.name}
+        initialSection={channelModalState.section}
+        {scribbles}
+        on:close={() => (channelModalState.isOpen = false)}
       />
     {/if}
   </div>
 </main>
 
 <style>
-  :global(#app) { max-width: 80% !important; margin: 0 auto; padding: 0 !important; height: 100vh; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
-  :global(body) {
-    margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #0b0d12; color: #e2e8f0; overflow: hidden; /* Prevent body scroll, constrain to app-container */
+  :global(#app) {
+    max-width: 80% !important;
+    margin: 0 auto;
+    padding: 0 !important;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
   }
-  
-  .app-container { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif,
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol";
+    background-color: #0b0d12;
+    color: #e2e8f0;
+    overflow: hidden; /* Prevent body scroll, constrain to app-container */
+  }
 
-  .content-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-  .content-wrapper:not(.is-mixing) { padding: 1.5rem; }
+  .app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-  .card { background: linear-gradient(180deg, rgba(30,41,59,0.7) 0%, rgba(30,41,59,0.4) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2.5rem; box-shadow: 0 8px 32px rgba(0,0,0,0.3); max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-  
-  .setup-wizard .form-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .setup-wizard label { font-size: 0.85rem; font-weight: 600; color: #a1a1aa; }
-  .setup-wizard input { background: #000; border: 1px solid #27272a; color: #fff; padding: 0.8rem; border-radius: 6px; outline: none; transition: border 0.2s; font-family: 'JetBrains Mono', monospace; }
-  .setup-wizard input[type="number"]:focus { border-color: #3b82f6; }
-  
-  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem; }
-  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #1e293b; padding: 0.6rem; border-radius: 6px; border: 1px solid #334155; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
-  .bus-toggle:hover { background: #334155; border-color: #64748b; }
-  .bus-toggle input { cursor: pointer; width: 16px; height: 16px; accent-color: #3b82f6; margin: 0; }
-  
-  .action-btn { background: #3b82f6; color: white; border: none; padding: 1rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: block; width: 100%; transition: background 0.2s; font-size: 1rem; box-shadow: 0 4px 12px rgba(59,130,246,0.4); margin-top: 1rem; }
-  .action-btn:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.5); }
+  .content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .content-wrapper:not(.is-mixing) {
+    padding: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+  }
 
-  .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; margin-bottom: 1rem; }
-  .role-btn { background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; text-align: left; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); color: inherit; height: 100%; }
-  .role-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.3); background: rgba(30,41,59,0.8); }
-  .role-btn.foh { border-top: 3px solid #3b82f6; }
-  .role-btn.musician { border-top: 3px solid #8b5cf6; }
-  
-  .btn-text { background: transparent; border: none; color: #94a3b8; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 1.5rem; display: block; text-align: center; width: 100%; transition: color 0.1s; }
-  .btn-text:hover { color: #e2e8f0; }
+  .bus-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  .bus-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    background: #1e293b;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    transition: 0.2s;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .bus-toggle:hover {
+    background: #334155;
+    border-color: #64748b;
+  }
+  .bus-toggle input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: #3b82f6;
+    margin: 0;
+  }
 
-  h2 { margin-top: 0; color: #f8fafc; font-size: 1.75rem; letter-spacing: -0.5px; }
-  h3 { margin-top: 0; color: #f8fafc; font-size: 1.1rem; }
-  p { color: #94a3b8; line-height: 1.5; font-size: 0.95rem; }
+  .action-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    transition: background 0.2s;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    margin-top: 1rem;
+  }
+  .action-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+  }
+
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .role-btn {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: inherit;
+    height: 100%;
+  }
+  .role-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(30, 41, 59, 0.8);
+  }
+  .role-btn.foh {
+    border-top: 3px solid #3b82f6;
+  }
+  .role-btn.musician {
+    border-top: 3px solid #8b5cf6;
+  }
+
+  .btn-text {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 1.5rem;
+    display: block;
+    text-align: center;
+    width: 100%;
+    transition: color 0.1s;
+  }
+  .btn-text:hover {
+    color: #e2e8f0;
+  }
+
+  h2 {
+    margin-top: 0;
+    color: #f8fafc;
+    font-size: 1.75rem;
+    letter-spacing: -0.5px;
+    text-align: center;
+  }
+  h3 {
+    margin-top: 0;
+    color: #f8fafc;
+    font-size: 1.1rem;
+  }
+  p {
+    color: #94a3b8;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
 
   /* Ableton mixer scroll view (Horizontal scroll container) */
-  .workspace { display: flex; flex: 1; overflow: hidden; }
-  .console-view { flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; background: #0b0d12; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
-  .console-view::-webkit-scrollbar { height: 12px; }
-  .console-view::-webkit-scrollbar-track { background: #0b0d12; border-top: 1px solid #27272a; }
-  .console-view::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 6px; border: 3px solid #0b0d12; }
-  .console-view::-webkit-scrollbar-thumb:hover { background: #52525b; }
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .console-view {
+    flex: 1;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #0b0d12;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .console-view::-webkit-scrollbar {
+    height: 12px;
+  }
+  .console-view::-webkit-scrollbar-track {
+    background: #0b0d12;
+    border-top: 1px solid #27272a;
+  }
+  .console-view::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 6px;
+    border: 3px solid #0b0d12;
+  }
+  .console-view::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
 
-  .channels-track { display: flex; gap: 4px; height: 100%; align-items: flex-end; padding: 0 1rem 8px 1rem; }
-  .master-divider { width: 2px; height: 100%; background: #1e293b; margin: 0 1rem; border-radius: 1px; box-shadow: 0 0 8px rgba(0,0,0,0.5); }
-  
-  .strip-wrapper { cursor: default; }
-  .scribble-mode .strip-wrapper { cursor: pointer; border: 2px dashed #10b981; border-radius: 8px; transition: 0.2s; }
-  .scribble-mode .strip-wrapper:hover { background: rgba(16, 185, 129, 0.1); }
+  .channels-track {
+    display: flex;
+    gap: 4px;
+    height: 100%;
+    align-items: flex-end;
+    padding: 0 1rem 8px 1rem;
+  }
+  .master-divider {
+    width: 2px;
+    height: 100%;
+    background: #1e293b;
+    margin: 0 1rem;
+    border-radius: 1px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .strip-wrapper {
+    cursor: default;
+  }
+  .scribble-mode .strip-wrapper {
+    cursor: pointer;
+    border: 2px dashed #10b981;
+    border-radius: 8px;
+    transition: 0.2s;
+  }
+  .scribble-mode .strip-wrapper:hover {
+    background: rgba(16, 185, 129, 0.1);
+  }
 
   /* Macro Views Styling */
-  .macro-view { padding: 0.5rem; width: 100%; max-width: 1400px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-  
-  .view-header-inline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0 0.5rem; flex-shrink: 0; }
-  .title-left { margin: 0; color: #f8fafc; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-  .nav-group { display: flex; gap: 0.5rem; }
-  .nav-icon-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; border-radius: 6px; padding: 0.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  .nav-icon-btn:hover:not(:disabled) { color: #fff; background: #3b82f6; border-color: #60a5fa; box-shadow: 0 2px 8px rgba(59,130,246,0.4); transform: scale(1.05); }
-  .nav-icon-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-  
-  .wireframe-content { flex: 1; border: 2px dashed #3f3f46; border-radius: 12px; opacity: 0.5; min-height: 60px; }
+  .macro-view {
+    padding: 0.5rem;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .view-header-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0 0.5rem;
+    flex-shrink: 0;
+  }
+  .title-left {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  .nav-group {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .nav-icon-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    border-radius: 6px;
+    padding: 0.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .nav-icon-btn:hover:not(:disabled) {
+    color: #fff;
+    background: #3b82f6;
+    border-color: #60a5fa;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    transform: scale(1.05);
+  }
+  .nav-icon-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .wireframe-content {
+    flex: 1;
+    border: 2px dashed #3f3f46;
+    border-radius: 12px;
+    opacity: 0.5;
+    min-height: 60px;
+  }
 
   /* Tab Content Body */
-  .tab-content-body { flex: 1; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; padding: 0.5rem 0; }
-  .tab-content-body::-webkit-scrollbar { width: 6px; }
-  .tab-content-body::-webkit-scrollbar-track { background: transparent; }
-  .tab-content-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-  .param-section { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; }
-  .param-section h3 { margin: 0 0 0.8rem 0; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
-  .param-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; border-bottom: 1px solid #1e293b; }
-  .param-row:last-child { border-bottom: none; }
-  .param-row span { font-size: 0.8rem; color: #cbd5e1; min-width: 70px; font-weight: 600; }
-  .param-row span:last-child { min-width: 55px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #94a3b8; }
-  .param-row input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; background: #1e293b; border-radius: 3px; outline: none; margin: 0; }
-  .param-row input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; }
-  .param-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 3px; background: #3b82f6; cursor: pointer; margin-top: -5px; border: none; transition: background 0.15s; }
-  .param-row input[type="range"]::-webkit-slider-thumb:hover { background: #60a5fa; }
-  .param-row input[type="range"]::-moz-range-track { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; border: none; }
-  .param-row input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 3px; background: #3b82f6; cursor: pointer; border: none; }
-  .toggle-sm { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
-  .toggle-sm:hover { background: #334155; color: #fff; }
-  .toggle-sm.active { background: #3b82f6; color: white; border-color: #60a5fa; }
-  .toggle-sm.active-yellow { background: #eab308; color: #1c1917; border-color: #fde047; }
+  .tab-content-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+  }
+  .tab-content-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  .tab-content-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .tab-content-body::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  .param-section {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .param-section h3 {
+    margin: 0 0 0.8rem 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #1e293b;
+  }
+  .param-row:last-child {
+    border-bottom: none;
+  }
+  .param-row span {
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    min-width: 70px;
+    font-weight: 600;
+  }
+  .param-row span:last-child {
+    min-width: 55px;
+    text-align: right;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+  .param-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+    outline: none;
+    margin: 0;
+  }
+  .param-row input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+  }
+  .param-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: #3b82f6;
+    cursor: pointer;
+    margin-top: -5px;
+    border: none;
+    transition: background 0.15s;
+  }
+  .param-row input[type="range"]::-webkit-slider-thumb:hover {
+    background: #60a5fa;
+  }
+  .param-row input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+    border: none;
+  }
+  .param-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+  }
+  .param-row input[type="range"].visual-only::-webkit-slider-thumb {
+    display: none;
+  }
+  .param-row input[type="range"].visual-only::-moz-range-thumb {
+    display: none;
+  }
+  .toggle-sm {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .toggle-sm:hover {
+    background: #334155;
+    color: #fff;
+  }
+  .toggle-sm.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #60a5fa;
+  }
+  .toggle-sm.active-yellow {
+    background: #eab308;
+    color: #1c1917;
+    border-color: #fde047;
+  }
 
   /* Musician Aux Selector */
-  .aux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; margin-top: 1.5rem; margin-bottom: 1rem; }
-  .aux-btn { background: rgba(15,23,42,0.6); border: 2px solid rgba(139,92,246,0.3); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); color: inherit; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
-  .aux-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(139,92,246,0.3); border-color: #8b5cf6; background: rgba(139,92,246,0.15); }
-  .aux-num { font-size: 1.5rem; font-weight: 800; color: #8b5cf6; }
-  .aux-label { font-size: 0.8rem; color: #94a3b8; }
+  .aux-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .aux-btn {
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .aux-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(139, 92, 246, 0.3);
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.15);
+  }
+  .aux-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #8b5cf6;
+  }
+  .aux-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
 
   /* Bento Grid for Channel Tab */
-  .bento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; flex: 1; overflow-y: auto; padding: 0.5rem 0; align-content: start; }
-  .bento-grid::-webkit-scrollbar { width: 0; }
-  .bento-card { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem; }
-  .bento-card h3 { margin: 0 0 0.5rem 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; }
-  .bento-icon-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: 0.2s; }
-  .bento-icon-preview.is-editable { cursor: pointer; border-color: #10b981; background: rgba(16,185,129,0.05); }
-  .bento-icon-preview.is-editable:hover { background: rgba(16,185,129,0.1); }
-  .edit-badge { position: absolute; top: 0.5rem; right: 0.5rem; color: #10b981; }
-  .icon-preview-slot { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.5rem 0; }
-  .icon-lg { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; border-radius: 4px; border: 2px solid #334155; }
-  .icon-placeholder { width: 48px; height: 48px; border-radius: 4px; border: 2px dashed #334155; background: #0f172a; }
-  .icon-name { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; }
-  .icon-color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); }
-  .bento-eq-preview { display: flex; flex-direction: column; }
-  .bento-eq-curve { width: 100%; height: 50px; background: #0b0f19; border-radius: 4px; border: 1px solid #1e293b; }
-  .bento-eq-curve path { fill: none; stroke: #38bdf8; stroke-width: 1.5; }
-  .bento-hint { font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0 0; line-height: 1.4; border-top: 1px dashed #1e293b; padding-top: 0.5rem; }
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+    align-content: start;
+  }
+  .bento-grid::-webkit-scrollbar {
+    width: 0;
+  }
+  .bento-card {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 0.75rem;
+  }
+  .bento-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .bento-icon-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: 0.2s;
+  }
+  .bento-icon-preview.is-editable {
+    cursor: pointer;
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+  }
+  .bento-icon-preview.is-editable:hover {
+    background: rgba(16, 185, 129, 0.1);
+  }
+  .edit-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: #10b981;
+  }
+  .icon-preview-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+  .icon-lg {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    border-radius: 4px;
+    border: 2px solid #334155;
+  }
+  .icon-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    border: 2px dashed #334155;
+    background: #0f172a;
+  }
+  .icon-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .icon-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .bento-eq-preview {
+    display: flex;
+    flex-direction: column;
+  }
+  .bento-eq-curve {
+    width: 100%;
+    height: 50px;
+    background: #0b0f19;
+    border-radius: 4px;
+    border: 1px solid #1e293b;
+  }
+  .bento-eq-curve path {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 1.5;
+  }
+  .bento-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0.5rem 0 0 0;
+    line-height: 1.4;
+    border-top: 1px dashed #1e293b;
+    padding-top: 0.5rem;
+  }
+
+  .bento-clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .bento-clickable:hover {
+    background: #1f2937;
+    transform: translateY(-2px);
+    border-color: #374151;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
 
   /* Musician Monitor Mix */
-  .musician-mix { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .musician-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: #0b0f19; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
-  .musician-header h2 { margin: 0; font-size: 1.1rem; color: #f8fafc; font-weight: 800; letter-spacing: -0.3px; }
-  .musician-header-icon { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; border-radius: 4px; border: 2px solid #8b5cf6; }
-  .musician-header-icon-empty { width: 32px; height: 32px; border-radius: 4px; border: 2px solid #334155; background: #18181b; }
-  .musician-rack { display: flex; flex-direction: row; align-items: stretch; gap: 2px; padding: 0.5rem; overflow-x: auto; flex: 1; }
-  .musician-rack::-webkit-scrollbar { height: 6px; }
-  .musician-rack::-webkit-scrollbar-track { background: #0b0f19; }
-  .musician-rack::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-  .musician-rack::-webkit-scrollbar-thumb:hover { background: #475569; }
+  .musician-mix {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .musician-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #0b0f19;
+    border-bottom: 1px solid #1e293b;
+    flex-shrink: 0;
+  }
+  .musician-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #f8fafc;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+  .musician-header-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    border-radius: 4px;
+    border: 2px solid #8b5cf6;
+  }
+  .musician-header-icon-empty {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 2px solid #334155;
+    background: #18181b;
+  }
+  .musician-rack {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 2px;
+    padding: 0.5rem;
+    overflow-x: auto;
+    flex: 1;
+  }
+  .musician-rack::-webkit-scrollbar {
+    height: 6px;
+  }
+  .musician-rack::-webkit-scrollbar-track {
+    background: #0b0f19;
+  }
+  .musician-rack::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  .musician-rack::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
 
-  .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   /* Mobile & Tablet Responsiveness */
   .portrait-warning {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: #0b0d12; color: #f8fafc; z-index: 9999;
-    flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 2rem;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0b0d12;
+    color: #f8fafc;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
   }
-  .portrait-warning h2 { margin-bottom: 0.5rem; font-size: 1.5rem; }
-  .portrait-warning p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; max-width: 300px; }
-  .rotate-icon { font-size: 4rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; }
-  
+  .portrait-warning h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+  }
+  .portrait-warning p {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 300px;
+  }
+  .rotate-icon {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
   @media (max-width: 1400px) {
-    :global(#app) { max-width: 95% !important; }
+    :global(#app) {
+      max-width: 95% !important;
+    }
   }
   @media (min-width: 1600px) {
-    .macro-view { max-width: 1800px; padding: 1rem 2rem; }
+    .macro-view {
+      max-width: 1800px;
+      padding: 1rem 2rem;
+    }
   }
-    @media (max-width: 1100px) {
-    :global(#app) { max-width: 100% !important; }
-    .card { padding: 1.5rem; border-radius: 0; border-left: none; border-right: none; }
+  @media (max-width: 1100px) {
+    :global(#app) {
+      max-width: 100% !important;
+    }
   }
   @media (max-width: 900px) and (orientation: portrait) {
-    .app-container { display: none !important; }
-    .portrait-warning { display: flex; }
+    .app-container {
+      display: none !important;
+    }
+    .portrait-warning {
+      display: flex;
+    }
   }
 
   /* ─── Mixer Discovery UI ─────────────────────────────── */
-  .mixer-connect-section { border-top: 1px solid #1e293b; margin-top: 1.25rem; padding-top: 1.25rem; }
-  .discover-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
-  .discover-btn { padding: 0.5rem 1rem; font-size: 0.85rem; background: #0ea5e9; border-color: #0ea5e9; }
-  .discover-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .discovery-badge { font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; }
+  .mixer-connect-section {
+    border-top: 1px solid #1e293b;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+  .discover-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .discovery-badge {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+  }
+  .discovery-badge.found {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid #10b981;
+  }
+  .discovery-badge.notfound {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+  }
+
+  /* ─── Setup & Connection Overlay ─── */
+  .setup-overlay { position: absolute; inset: 0; z-index: 1000; background: #09090b; display: flex; justify-content: center; align-items: center; padding: 1rem; }
+  .setup-card { background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 3rem 2.5rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 2rem; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-height: 90vh; overflow-y: auto; }
+  .setup-card::-webkit-scrollbar { width: 6px; } .setup-card::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  .setup-logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.2em; color: #fafafa; text-align: center; }
+  .wide-setup { max-width: 800px; flex-direction: row; align-items: stretch; gap: 3rem; }
+  .setup-col { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+  .setup-col-right { border-left: 1px solid #27272a; padding-left: 3rem; justify-content: space-between; }
+  .step-header { display: flex; flex-direction: column; gap: 0.4rem; text-align: center; }
+  .step-title { font-size: 1.25rem; font-weight: 700; color: #fafafa; margin: 0; letter-spacing: -0.02em; }
+  .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0; }
+  
+  .role-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+  .role-card { background: #09090b; border: 1px solid #27272a; border-radius: 6px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; color: inherit; }
+  .role-card:hover { background: #1f1f22; border-color: #3b82f6; }
+  .role-icon { font-size: 1.5rem; line-height: 1; margin-top: 2px; color: #fafafa; }
+  .role-info { display: flex; flex-direction: column; gap: 0.25rem; }
+  .role-info h3 { margin: 0; color: #fafafa; font-size: 0.95rem; font-weight: 600; }
+  .role-info p { margin: 0; color: #71717a; font-size: 0.8rem; line-height: 1.4; }
+  
+  .setup-grid { display: flex; flex-direction: column; gap: 1rem; }
+  .form-row { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
+  .form-row.split { flex-direction: row; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .flex-1 { flex: 1; } .flex-2 { flex: 2; }
+  .form-group label { font-size: 0.7rem; font-weight: 600; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+  .form-group input, .form-group select { background: #09090b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s; outline: none; width: 100%; box-sizing: border-box; }
+  .form-group input:focus, .form-group select:focus { border-color: #3b82f6; }
+  .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
+  .select-wrapper { position: relative; }
+  .select-wrapper::after { content: '▼'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; font-size: 0.6rem; }
+  .form-group select { appearance: none; -webkit-appearance: none; padding-right: 2.5rem; cursor: pointer; }
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  
+  .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+  .btn-ghost, .btn-primary { padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: background 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; flex: 1; border: none; }
+  .btn-ghost { background: transparent; color: #a1a1aa; border: 1px solid #27272a; }
+  .btn-ghost:hover { background: #27272a; color: #fafafa; }
+  .btn-primary { background: #fafafa; color: #09090b; }
+  .btn-primary:hover:not(:disabled) { background: #e4e4e7; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem; }
+  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #09090b; padding: 0.6rem; border-radius: 6px; border: 1px solid #27272a; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
+  .bus-toggle:hover { border-color: #64748b; }
+  .bus-toggle input { cursor: pointer; width: 16px; height: 16px; margin: 0; }
+  .btn-text { background: transparent; border: none; color: #71717a; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 0.5rem; display: block; text-align: center; width: 100%; transition: color 0.1s; }
+  .btn-text:hover { color: #fafafa; }
+
+  /* ─── Mixer Discovery UI ─────────────────────────────── */
+  .discover-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; width: 100%; }
+  .discover-btn { flex: 1; justify-content: center; display: flex; gap: 0.4rem; }
+  .discovery-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; display: flex; align-items: center; gap: 0.25rem; }
   .discovery-badge.found { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }
   .discovery-badge.notfound { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
-  .ip-fields { display: flex; gap: 0.75rem; }
-  .ip-field { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-  .ip-field label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
-  .ip-port { max-width: 120px; }
+  .bento-clickable h3 { margin-bottom: 0.25rem; font-size: 0.8rem; }
+  .bento-clickable .param-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 0.15rem; align-items: center; color: #a1a1aa; }
+  .bento-clickable .param-row input[type="range"] { max-width: 45px; height: 3px; }
+  .bento-clickable .param-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ─── Routing Matrix ─────────────────────────────────── */
-  .routing-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
-  .routing-cell { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.15s ease; font-size: 0.8rem; color: #64748b; }
-  .routing-cell:hover { border-color: #334155; color: #94a3b8; }
-  .routing-cell.active { background: rgba(14,165,233,0.08); border-color: #0ea5e9; color: #e2e8f0; }
-  .routing-bus-name { font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 70px; }
-  .routing-status { font-size: 1rem; color: #0ea5e9; }
-  .routing-cell:not(.active) .routing-status { color: #334155; }
+  /* ─── Matrix Grid Styling ─── */
+  .matrix-table-container { overflow: auto; max-height: 60vh; border: 1px solid #1e293b; border-radius: 8px; background: #0b1120; }
+  .routing-matrix-grid { border-collapse: collapse; text-align: center; }
+  .routing-matrix-grid th, .routing-matrix-grid td { padding: 0.4rem; border: 1px solid #1e293b; font-size: 0.75rem; white-space: nowrap; }
+  .routing-matrix-grid th { background: #111827; position: sticky; top: 0; z-index: 10; color: #cbd5e1; font-weight: 600; }
+  .row-header { background: #111827; font-weight: 600; color: #cbd5e1; text-align: left; padding-left: 1rem !important; position: sticky; left: 0; z-index: 5; }
+  .matrix-dot { width: 14px; height: 14px; border-radius: 50%; background: #334155; border: none; cursor: pointer; transition: 0.2s; margin: 0 auto; display: block; }
+  .matrix-dot:hover { background: #64748b; }
+  .matrix-dot.active { background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
 </style>

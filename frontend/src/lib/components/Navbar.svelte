@@ -1,6 +1,6 @@
 <script>
   import { isConnected } from '../socket';
-  import { UploadCloud, DownloadCloud, Maximize, Edit3 } from 'lucide-svelte';
+  import { UploadCloud, DownloadCloud, Maximize, Tag } from 'lucide-svelte';
 
   export let activeRole = null;
   export let scribbleEditMode = false;
@@ -25,7 +25,7 @@
     
     {#if activeRole === 'foh'}
       <button class="btn-sm scribble-btn" class:active={scribbleEditMode} on:click={onScribbleEdit}>
-        <Edit3 size={14} /> Scribble Strips
+        <Tag size={14} /> Scribble Strips
       </button>
       <button class="btn-sm export-btn" on:click={onExportScene}>
         <DownloadCloud size={14} /> Export Scene
@@ -46,28 +46,28 @@
 
 <style>
   .glass-header {
-    background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: #020617;
+    border-bottom: 1px solid #1e293b;
     padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 100;
   }
   .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
   .highlight { color: #3b82f6; }
 
   .toolbar { display: flex; align-items: center; gap: 1rem; }
-  .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; }
+  .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #1e293b; }
   .status-indicator.connected { color: #10b981; }
   .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
   .connected .ping-dot { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
-  .btn-sm { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; transition: background 0.2s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-  .btn-sm:hover { background: rgba(255,255,255,0.2); }
-  .upload-btn { background: #3b82f6; border-color: #3b82f6; color: white; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
-  .upload-btn:hover { background: #2563eb; }
-  .export-btn { background: #8b5cf6; border-color: #8b5cf6; color: white; box-shadow: 0 2px 8px rgba(139,92,246,0.3); }
-  .export-btn:hover { background: #7c3aed; }
-  .scribble-btn { background: #10b981; border-color: #10b981; color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
-  .scribble-btn:hover { background: #059669; }
-  .scribble-btn.active { background: #047857; border-color: #047857; box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
-  .exit-btn { border-color: #ef4444; color: #fca5a5; }
+  .btn-sm { background: transparent; color: #cbd5e1; border: 1px solid #334155; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; transition: 0.15s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+  .btn-sm:hover { background: #1e293b; color: #f8fafc; }
+  .upload-btn { color: #38bdf8; border-color: #0c4a6e; background: rgba(14, 165, 233, 0.1); }
+  .upload-btn:hover { background: rgba(14, 165, 233, 0.2); }
+  .export-btn { color: #a78bfa; border-color: #4c1d95; background: rgba(139, 92, 246, 0.1); }
+  .export-btn:hover { background: rgba(139, 92, 246, 0.2); }
+  .scribble-btn { color: #34d399; border-color: #064e3b; background: rgba(16, 185, 129, 0.1); }
+  .scribble-btn:hover { background: rgba(16, 185, 129, 0.2); }
+  .scribble-btn.active { background: #047857; color: white; }
+  .exit-btn { border-color: #7f1d1d; color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
   .exit-btn:hover { background: #ef4444; color: white; }
 </style>

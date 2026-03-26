@@ -5,7 +5,7 @@
   /** Parent-managed bands array. If provided, EqEditor uses and mutates this. */
   export let eqBands = null;
   /** Callback fired whenever bands change, so parent can persist state */
-  export let onBandsChange = () => {};
+  export let onBandsChange = (id, newBands) => {};
   
   let canvas;
   let ctx;
@@ -15,14 +15,14 @@
   let mounted = false;
 
   const defaultBands = () => [
-    { id: 1, type: 'hpf12', freq: 80,  gain: 0, q: 0.71, logVal: 1.903, enabled: true },
+    { id: 1, type: 'hpf12', freq: 20,  gain: 0, q: 0.71, logVal: 1.301, enabled: false }, // Flat by default
     { id: 2, type: 'loshelf', freq: 200, gain: 0, q: 0.71, logVal: 2.301, enabled: true },
     { id: 3, type: 'peq',  freq: 500, gain: 0, q: 1.0,  logVal: 2.699, enabled: true },
     { id: 4, type: 'peq',  freq: 1000,gain: 0, q: 1.0,  logVal: 3.0,   enabled: true },
     { id: 5, type: 'peq',  freq: 2000,gain: 0, q: 1.0,  logVal: 3.301, enabled: true },
     { id: 6, type: 'peq',  freq: 4000,gain: 0, q: 1.0,  logVal: 3.602, enabled: true },
     { id: 7, type: 'hishelf', freq: 8000,gain: 0, q: 0.71, logVal: 3.903, enabled: true },
-    { id: 8, type: 'lpf12',  freq: 18000,gain: 0, q: 0.71, logVal: 4.255, enabled: true },
+    { id: 8, type: 'lpf12',  freq: 20000,gain: 0, q: 0.71, logVal: 4.301, enabled: false }, // Flat by default
   ];
 
   // Use parent-provided bands or fall back to defaults.
@@ -58,6 +58,80 @@
 
   function getGainDisplay(g) { return g > 0 ? '+' + g.toFixed(1) : g.toFixed(1); }
 
+  // --- Drag and Drop State ---
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragStartLogVal = 0;
+  let dragStartGain = 0;
+
+  function handleMouseDown(e) {
+      if (!bands || !bands.length) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      let closestId = -1;
+      let minDist = 20; 
+      
+      for (let i = 0; i < bands.length; i++) {
+          const b = bands[i];
+          if (!b.enabled) continue;
+          const bx = freqToX(Math.pow(10, b.logVal));
+          
+          let totalGain = 0;
+          const freq = Math.pow(10, b.logVal);
+          for (const ob of bands) totalGain += computeBandResponse(ob, freq);
+          totalGain = Math.max(-15, Math.min(15, totalGain));
+          const by = gainToY(totalGain);
+          
+          const dist = Math.sqrt((x - bx) ** 2 + (y - by) ** 2);
+          if (dist < minDist) {
+              minDist = dist;
+              closestId = i;
+          }
+      }
+      
+      if (closestId !== -1) {
+          selectedBandIndex = closestId;
+          isDragging = true;
+          dragStartX = x;
+          dragStartY = y;
+          dragStartLogVal = bands[closestId].logVal;
+          dragStartGain = bands[closestId].gain;
+      }
+  }
+
+  function handleMouseMove(e) {
+      if (!isDragging || selectedBandIndex === -1) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const b = bands[selectedBandIndex];
+      if (!b) return;
+      
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(22000);
+      const logDelta = ((x - dragStartX) / width) * (logMax - logMin);
+      b.logVal = Math.max(logMin, Math.min(logMax, dragStartLogVal + logDelta));
+      b.enabled = true; // Auto-enable on user drag if dragging flat band
+      
+      const gainDelta = ((dragStartY - y) / (height / 2 - 30)) * 15;
+      
+      // HPF/LPF should only drag horizontally, disabling vertical gain changes.
+      if (!b.type.startsWith('hpf') && !b.type.startsWith('lpf')) {
+          b.gain = Math.max(-15, Math.min(15, dragStartGain + gainDelta));
+      }
+      
+      updateBands();
+  }
+
+  function handleMouseUp() {
+      isDragging = false;
+  }
+
   // --- Canvas Rendering ---
   function freqToX(f) {
       const logMin = Math.log10(20);
@@ -76,10 +150,10 @@
       const logR = Math.log2(ratio);
 
       switch(band.type) {
-          case 'hpf12': return ratio < 1 ? -12 * Math.log2(1/ratio) : 0;
-          case 'hpf48': return ratio < 1 ? -48 * Math.log2(1/ratio) : 0;
-          case 'lpf12': return ratio > 1 ? -12 * Math.log2(ratio) : 0;
-          case 'lpf48': return ratio > 1 ? -48 * Math.log2(ratio) : 0;
+          case 'hpf12': return ratio < 1 ? -6 * Math.log2(1/ratio) : 0;
+          case 'hpf48': return ratio < 1 ? -24 * Math.log2(1/ratio) : 0;
+          case 'lpf12': return ratio > 1 ? -6 * Math.log2(ratio) : 0;
+          case 'lpf48': return ratio > 1 ? -24 * Math.log2(ratio) : 0;
           case 'loshelf': return band.gain / (1 + Math.pow(ratio, 2));
           case 'hishelf': return band.gain * (1 - 1 / (1 + Math.pow(ratio, 2)));
           case 'notch': {
@@ -215,11 +289,11 @@
       drawEQ();
   }
 
-  onMount(async () => {
+  onMount(() => {
       ctx = canvas.getContext('2d');
       mounted = true;
-      // Defer first draw to ensure the container has laid out
-      await tick();
+      // Defer first draw
+      tick().then(() => {
       requestAnimationFrame(() => {
           const rect = canvas.parentElement.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
@@ -234,6 +308,7 @@
               onBandsChange(channelId, initBands);
           }
           drawEQ();
+      });
       });
 
       const ro = new ResizeObserver(entries => {
@@ -333,7 +408,12 @@
 
     <!-- Center Canvas Engine -->
     <div class="canvas-wrapper">
-        <canvas bind:this={canvas} {width} {height}></canvas>
+        <canvas bind:this={canvas} {width} {height}
+                on:mousedown={handleMouseDown}
+                on:mousemove={handleMouseMove}
+                on:mouseup={handleMouseUp}
+                on:mouseleave={handleMouseUp}
+                style="cursor: {isDragging ? 'grabbing' : 'auto'}"></canvas>
     </div>
 </div>
 

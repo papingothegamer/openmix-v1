@@ -1,0 +1,79 @@
+{
+  "name": "OpenMix Matrix Testing Profile",
+  "timestamp": 1699999999999,
+  "state": {
+    "flatOscCache": {
+      "/ch/01/preamp/gain": 0.5,
+      "/ch/01/mix/on": 1,
+      "/ch/01/mix/fader": 0.8,
+      "/ch/01/gate/on": 1,
+      "/ch/01/gate/thr": 0.35,
+      "/ch/01/gate/range": 0.2,
+      "/ch/01/dyn/on": 1,
+      "/ch/01/dyn/thr": 0.6,
+      "/ch/01/dyn/ratio": 4.0,
+      "/ch/03/mix/fader": 0.75,
+      "/ch/03/preamp/phantom": 1,
+      "/ch/03/eq/on": 1,
+      "/ch/03/eq/1/f": 0.2,
+      "/ch/03/eq/1/g": 0.6,
+      "/fx/1/type": 0,
+      "/fx/1/par/01": 0.5,
+      "/fx/1/par/02": 0.75,
+      "/fx/2/type": 4,
+      "/fx/2/par/01": 0.3,
+      "/main/st/mix/fader": 0.8
+    }
+  },
+  "uiConfig": {
+    "config": {
+      "presetId": "X32",
+      "inputs": 32,
+      "outputs": 16,
+      "visibleBuses": [1, 2, 3, 4]
+    },
+    "scribbles": {
+      "in_1": { "name": "KICK DRUM", "color": "#ef4444", "iconType": "icon_05" },
+      "in_2": { "name": "SNARE TOP", "color": "#f97316", "iconType": "icon_06" },
+      "in_16": { "name": "LEAD VOCAL", "color": "#a855f7", "iconType": "icon_73" },
+      "out_1": { "name": "DRUM WEDGE", "color": "#14b8a6", "iconType": "icon_01" }
+    },
+    "routingState": {
+      "in_1_bus1": true,
+      "in_2_bus1": true,
+      "in_16_bus4": true,
+      "in_16_bus1": false
+    },
+    "channelEqState": {
+      "in_16": [
+        { "id": 1, "type": "hpf12", "freq": 120, "gain": 0, "q": 0.71, "logVal": 2.079, "enabled": true },
+        { "id": 2, "type": "loshelf", "freq": 200, "gain": -2.0, "q": 0.71, "logVal": 2.301, "enabled": true },
+        { "id": 3, "type": "peq", "freq": 500, "gain": 0, "q": 1.0, "logVal": 2.699, "enabled": true },
+        { "id": 4, "type": "peq", "freq": 3000, "gain": 3.5, "q": 1.5, "logVal": 3.477, "enabled": true },
+        { "id": 5, "type": "peq", "freq": 2000, "gain": 0, "q": 1.0, "logVal": 3.301, "enabled": true },
+        { "id": 6, "type": "peq", "freq": 5000, "gain": 0, "q": 1.0, "logVal": 3.699, "enabled": true },
+        { "id": 7, "type": "hishelf", "freq": 8000, "gain": 0, "q": 0.71, "logVal": 3.903, "enabled": true },
+        { "id": 8, "type": "lpf12", "freq": 16000, "gain": 0, "q": 0.71, "logVal": 4.204, "enabled": true }
+      ],
+      "in_1": [
+        { "id": 1, "type": "hpf12", "freq": 20, "gain": 0, "q": 0.71, "logVal": 1.301, "enabled": false },
+        { "id": 2, "type": "loshelf", "freq": 200, "gain": 0, "q": 0.71, "logVal": 2.301, "enabled": true },
+        { "id": 3, "type": "peq", "freq": 60, "gain": 6.5, "q": 1.2, "logVal": 1.778, "enabled": true },
+        { "id": 4, "type": "peq", "freq": 1000, "gain": 0, "q": 1.0, "logVal": 3.0, "enabled": true },
+        { "id": 5, "type": "peq", "freq": 2000, "gain": 0, "q": 1.0, "logVal": 3.301, "enabled": true },
+        { "id": 6, "type": "peq", "freq": 5000, "gain": 4.0, "q": 2.0, "logVal": 3.699, "enabled": true },
+        { "id": 7, "type": "hishelf", "freq": 8000, "gain": 0, "q": 0.71, "logVal": 3.903, "enabled": true },
+        { "id": 8, "type": "lpf12", "freq": 20000, "gain": 0, "q": 0.71, "logVal": 4.301, "enabled": false }
+      ]
+    },
+    "mainOutAssign": {
+      "1": true,
+      "2": true,
+      "16": true
+    },
+    "stereoLinks": {
+      "1": false,
+      "3": true
+    }
+  }
+}

@@ -6,6 +6,9 @@ export const MixerPresets = {
         outputs: 6,
         dcas: 8,
         fx: 4,
+        hasAES50: true,
+        hasUltranet: true,
+        hasUSB: true,
         hardLinks: { inputs: {} }
     },
     XR18: {
@@ -15,6 +18,9 @@ export const MixerPresets = {
         outputs: 6,
         dcas: 4,
         fx: 4,
+        hasAES50: false,
+        hasUltranet: true,
+        hasUSB: true,
         hardLinks: {
             inputs: {
                 17: { linkedTo: 18, defaultName: 'AUX', mappedIcon: 'music' },
@@ -29,6 +35,9 @@ export const MixerPresets = {
         outputs: 16, // Mix buses
         dcas: 8,
         fx: 8, // Stereo FX Sends
+        hasAES50: true,
+        hasUltranet: true,
+        hasUSB: true,
         hardLinks: { inputs: {} } 
     },
     WING: {
@@ -38,6 +47,9 @@ export const MixerPresets = {
         outputs: 16, // 16 Stereo mix buses
         dcas: 16, // DCA Groups
         fx: 16, // True stereo engines
+        hasAES50: true,
+        hasUltranet: false,
+        hasUSB: true,
         hardLinks: { inputs: {} }
     },
     MACKIE_DL32S: {
@@ -47,6 +59,9 @@ export const MixerPresets = {
         outputs: 10, // Assignable XLR outputs
         dcas: 6, // 6 VCA groups
         fx: 4,
+        hasAES50: false,
+        hasUltranet: false,
+        hasUSB: true,
         hardLinks: { inputs: {} }
     },
     SOUNDCRAFT_UI24R: {
@@ -56,6 +71,9 @@ export const MixerPresets = {
         outputs: 8, // XLR Aux Outs
         dcas: 6, // VCA/DCA groups
         fx: 4,
+        hasAES50: false,
+        hasUltranet: false,
+        hasUSB: true,
         hardLinks: {
             inputs: {
                 21: { linkedTo: 22, defaultName: 'Line In L' },
@@ -70,6 +88,9 @@ export const MixerPresets = {
         outputs: 6, // Independent Aux
         dcas: 4, // Representing mute groups contextually
         fx: 4,
+        hasAES50: false,
+        hasUltranet: false,
+        hasUSB: true,
         hardLinks: {
             inputs: {
                 17: { linkedTo: 18, defaultName: 'Stereo 1' },
