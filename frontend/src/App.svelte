@@ -18,6 +18,7 @@
   import SendsPanel from "./lib/components/SendsPanel.svelte";
   import EffectsRack from "./lib/components/EffectsRack.svelte";
   import ChannelModal from "./lib/components/ChannelModal.svelte";
+  import MonitorModal from "./lib/components/MonitorModal.svelte";
   import { MixerPresets, PredefinedMixersArray } from "./lib/mixerPresets";
   import {
     ChevronLeft,
@@ -49,6 +50,7 @@
 
   // Scribble Strip / Global Selectors
   let scribbleEditMode = false;
+  let showMonitorModal = false;
   let editingChannel = null;
   let selectedChannel = "in_1";
 
@@ -203,15 +205,38 @@
 
   // Routing tab: per-channel per-bus on/off state (defaults to true = routed)
   let routingState = {};
+  let routingSourceFilter = 'all'; // 'all' | 'inputs' | 'aux' | 'fx' | 'bus'
+
+  $: routingSources = [
+    ...Array.from({ length: config.inputs }, (_, i) => ({ id: `in_${i+1}`, type: 'in', num: i+1, name: scribbles[`in_${i+1}`]?.name || `CH ${i+1}` })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `auxin_${i+1}`, type: 'aux', num: i+1, name: scribbles[`auxin_${i+1}`]?.name || `AUX ${i+1}` })),
+    ...Array.from({ length: config.fx || 4 }, (_, i) => ({ id: `fxrn_${i+1}`, type: 'fx', num: i+1, name: `FX RTN ${i+1}` })),
+    ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, type: 'bus', num: i+1, name: `BUS ${i+1}` }))
+  ];
+
+  $: filteredRoutingSources = (() => {
+    if (routingSourceFilter === 'all') return routingSources;
+    return routingSources.filter(s => s.type === (routingSourceFilter === 'bus' ? 'bus' : (routingSourceFilter === 'aux' ? 'aux' : (routingSourceFilter === 'fx' ? 'fx' : 'in'))));
+  })();
 
   // Stereo link state: key = odd channel number, value = true if linked to next even channel
   let stereoLinks = {}; // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
+  let outputLinks = {}; 
+
 
   function toggleStereoLink(ch) {
     const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
     const newState = !stereoLinks[oddCh];
     stereoLinks = { ...stereoLinks, [oddCh]: newState };
     setOsc(`/config/chlink/${oddCh}-${oddCh + 1}`, newState ? 1 : 0);
+  }
+
+  function toggleOutputLink(ch) {
+    const num = typeof ch === 'string' ? parseInt(ch.replace('bus_', '')) : ch;
+    const oddCh = num % 2 === 1 ? num : num - 1;
+    const newState = !outputLinks[oddCh];
+    outputLinks = { ...outputLinks, [oddCh]: newState };
+    setOsc(`/config/buslink/${oddCh}-${oddCh + 1}`, newState ? 1 : 0);
   }
   
   function isLinked(ch, _stereoLinksDep) {
@@ -222,6 +247,39 @@
 
   // Main output assignment per channel
   let mainOutAssign = {}; // { 'in_1': true, 'in_2': true, ... }
+  
+  // Monitor / Phones Source
+  let monitorSource = "LR"; // Fallback
+  $: soloSources = (() => {
+    const base = [
+      ...(config.monitorSources || [
+        { id: "LR", name: "Main LR" },
+        { id: "PFL", name: "Inputs PFL" },
+        { id: "AFL", name: "Inputs AFL" },
+      ]),
+    ];
+
+    const busSources = [];
+    // Pre-list all potential stereo pairs first as explicitly requested by user
+    for (let i = 1; i <= config.outputs; i += 2) {
+      if (i + 1 <= config.outputs) {
+        busSources.push({ id: `BUS${i}-${i+1}`, name: `Bus ${i}/${i + 1} (Stereo)` });
+      }
+    }
+    
+    // Then list individual ones
+    for (let i = 1; i <= config.outputs; i++) {
+        busSources.push({ id: `BUS${i}`, name: `Bus ${i}` });
+    }
+    
+    return [...base, ...busSources];
+  })();
+
+  function setMonitorSource(src) {
+    monitorSource = src;
+    // Map to OSC: X32 has specific enum indices
+    setOsc('/config/solo/source', src);
+  }
   
   function toggleMainOut(chId) {
     const newState = !mainOutAssign[chId];
@@ -457,6 +515,7 @@
         mainOutAssign,
         stereoLinks,
         routingState,
+        sendsState,
       },
     };
     const sceneData = JSON.stringify(sceneLayout, null, 2);
@@ -503,6 +562,8 @@
             stereoLinks = json.uiConfig.stereoLinks;
           if (json.uiConfig.routingState)
             routingState = json.uiConfig.routingState;
+          if (json.uiConfig.sendsState)
+            sendsState = json.uiConfig.sendsState;
 
           localStorage.setItem("openmix_config", JSON.stringify(config));
         }
@@ -585,6 +646,7 @@
     if (config.presetId !== "CUSTOM") {
       const preset = MixerPresets[config.presetId];
       if (preset) {
+        console.log(`[OpenMix] Applying Mixer Preset: ${preset.name}`, preset);
         config.inputs = preset.inputs;
         config.outputs = preset.outputs;
         config.dcas = preset.dcas || 8;
@@ -593,8 +655,25 @@
           { length: preset.outputs },
           (_, i) => i + 1,
         );
+
+        // Reset routing sub-tab if the new mixer doesn't support the current one
+        if (routingSubTab === 'aes50a' || routingSubTab === 'aes50b') {
+          if (!preset.hasAES50) (routingSubTab = 'busses');
+        }
+        if (routingSubTab === 'ultranet' && !preset.hasUltranet) {
+          routingSubTab = 'busses';
+        }
+
+        // --- ADDED RESET LOGIC ---
+        activeView = "inputs";
+        currentPage = 0;
+        musicianPage = 0;
+        // -------------------------
       }
+    } else {
+      console.log("[OpenMix] Switched to Custom Mixer Configuration");
     }
+    config = { ...config };
   }
 
   function handleSaveScribble(e) {
@@ -617,10 +696,23 @@
 <main class="app-container" class:scribble-mode={scribbleEditMode}>
   <Navbar
     {activeRole}
+    scribbleEditMode={scribbleEditMode}
+    monitorMode={showMonitorModal}
+    selectedChannel={selectedChannel}
+    outputLinkMode={selectedChannel?.startsWith("bus_") ? (() => { 
+      const n = parseInt(selectedChannel.replace("bus_", ""), 10); 
+      return !!outputLinks[n % 2 === 1 ? n : n - 1]; 
+    })() : false}
     onExitRole={exitRole}
     onExportScene={handleExportScene}
     onFileLoad={handleFileUpload}
     onScribbleEdit={() => (scribbleEditMode = !scribbleEditMode)}
+    onToggleMonitor={() => (showMonitorModal = !showMonitorModal)}
+    onToggleOutputLink={() => {
+      if (selectedChannel?.startsWith("bus_")) {
+        toggleOutputLink(selectedChannel);
+      }
+    }}
   />
 
   <div class="content-wrapper" class:is-mixing={activeRole}>
@@ -851,7 +943,7 @@
                       activeView === "inputs"
                         ? `in_${chIndex}`
                         : activeView === "outputs"
-                          ? `out_${chIndex}`
+                          ? `bus_${chIndex}`
                           : `dca_${chIndex}`}
                     <div
                       class="strip-wrapper"
@@ -936,8 +1028,16 @@
                         }
                         stereoLink={activeView === "inputs"
                           ? isLinked(chIndex, stereoLinks)
-                          : false}
-                        on:toggleLink={() => toggleStereoLink(chIndex)}
+                          : activeView === "outputs"
+                            ? isLinked(chIndex, outputLinks)
+                            : false}
+                        on:toggleLink={() => {
+                          if (activeView === "outputs") {
+                            toggleOutputLink(chIndex);
+                          } else {
+                            toggleStereoLink(chIndex);
+                          }
+                        }}
                         on:nameClick={() => {
                           if (activeRole === "foh") {
                             selectedChannel = sId;
@@ -1091,7 +1191,7 @@
                     ></span>
                   </div>
                 </div>
-                {#if selectedChannel && !selectedChannel.startsWith("out_")}
+                {#if selectedChannel?.startsWith("in_")}
                   <div
                     class="bento-card bento-clickable"
                     on:click={() => {
@@ -1274,25 +1374,7 @@
                     /><span>0 dB</span>
                   </div>
                 </div>
-                {#if selectedChannel && selectedChannel.startsWith("in_")}
-                  <div class="param-section">
-                    <h3>FX Sends</h3>
-                    <div class="param-row">
-                      <span>Assign to LR</span>
-                      <button
-                        class="toggle-sm"
-                        class:active={mainOutAssign[selectedChannel]}
-                        on:click={() => toggleMainOut(selectedChannel)}
-                      >
-                        {mainOutAssign[selectedChannel] ? "ON" : "OFF"}
-                      </button>
-                    </div>
-                    <p class="bento-hint">
-                      Route this channel to the Main LR output bus. Disable for
-                      talkback or monitor-only channels.
-                    </p>
-                  </div>
-                {/if}
+
                 {#if selectedChannel && !selectedChannel.startsWith("out_")}
                   <div class="bento-card">
                     <h3>Main Out</h3>
@@ -1365,10 +1447,17 @@
               <div class="view-header-inline" style="border-top: 1px solid #1e293b; padding-top: 1rem; margin-top: 1rem;">
                 <div class="nav-group" style="margin-bottom: 0;">
                   <button class="nav-btn" class:active={routingSubTab === 'busses'} on:click={() => routingSubTab = 'busses'}>Busses</button>
-                  <button class="nav-btn" class:active={routingSubTab === 'aes50a'} on:click={() => routingSubTab = 'aes50a'}>AES50-A</button>
-                  <button class="nav-btn" class:active={routingSubTab === 'aes50b'} on:click={() => routingSubTab = 'aes50b'}>AES50-B</button>
-                  <button class="nav-btn" class:active={routingSubTab === 'usb'} on:click={() => routingSubTab = 'usb'}>USB/Card</button>
-                  {#if config.presetId === 'X32'}
+                  
+                  {#if MixerPresets[config.presetId]?.hasAES50}
+                    <button class="nav-btn" class:active={routingSubTab === 'aes50a'} on:click={() => routingSubTab = 'aes50a'}>AES50-A</button>
+                    <button class="nav-btn" class:active={routingSubTab === 'aes50b'} on:click={() => routingSubTab = 'aes50b'}>AES50-B</button>
+                  {/if}
+
+                  {#if MixerPresets[config.presetId]?.hasUSB}
+                    <button class="nav-btn" class:active={routingSubTab === 'usb'} on:click={() => routingSubTab = 'usb'}>USB/Card</button>
+                  {/if}
+
+                  {#if MixerPresets[config.presetId]?.hasUltranet}
                     <button class="nav-btn" class:active={routingSubTab === 'ultranet'} on:click={() => routingSubTab = 'ultranet'}>Ultranet</button>
                   {/if}
                 </div>
@@ -1379,41 +1468,53 @@
                   <p style="color:#94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">
                     Patch inputs directly from the corresponding protocol blocks.
                   </p>
-                  
-                  <div class="matrix-table-container" style="max-height: none;">
-                    <table class="routing-matrix-grid" style="width: 100%;">
-                      <thead>
-                        <tr>
-                          <th>SRC \\ DEST</th>
-                          {#each Array(config.outputs) as _, j}
-                            <th class="col-header">AUX {j+1}</th>
-                          {/each}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {#each Array(config.inputs) as _, i}
+                          <div class="routing-layout" style="display: flex; gap: 1rem; height: calc(100vh - 300px);">
+                    <!-- Sidebar Filtering -->
+                    <div class="routing-sidebar" style="width: 150px; flex-shrink: 0; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                      <h4 style="font-size: 0.65rem; color: #64748b; text-transform: uppercase; margin: 0.5rem 0.25rem;">Sources</h4>
+                      <button class="side-filter-btn" class:active={routingSourceFilter === 'all'} on:click={() => routingSourceFilter = 'all'}>All Inputs</button>
+                      <button class="side-filter-btn" class:active={routingSourceFilter === 'inputs'} on:click={() => routingSourceFilter = 'inputs'}>Local In</button>
+                      <button class="side-filter-btn" class:active={routingSourceFilter === 'aux'} on:click={() => routingSourceFilter = 'aux'}>Aux In</button>
+                      <button class="side-filter-btn" class:active={routingSourceFilter === 'fx'} on:click={() => routingSourceFilter = 'fx'}>FX Return</button>
+                      <button class="side-filter-btn" class:active={routingSourceFilter === 'bus'} on:click={() => routingSourceFilter = 'bus'}>Mix Busses</button>
+                    </div>
+
+                    <div class="matrix-table-container" style="flex: 1; overflow: auto; border: 1px solid #1e293b; border-radius: 8px; background: #0b1120; position: relative;">
+                      <table class="routing-matrix-grid" style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; z-index: 10; background: #111827;">
                           <tr>
-                            <td class="row-header">CH {i+1}</td>
+                            <th style="padding: 0.5rem; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem;">SRC \\ DEST</th>
                             {#each Array(config.outputs) as _, j}
-                              {@const rKey = `in_${i+1}_bus${j+1}`}
-                              <td class="cell-toggle">
-                                <button class="matrix-dot" 
-                                  aria-label="Toggle CH {i+1} to AUX {j+1}"
-                                  class:active={routingState[rKey]} 
-                                  on:click={() => {
-                                      routingState[rKey] = !routingState[rKey];
-                                      routingState = { ...routingState };
-                                      const ch = String(i+1).padStart(2, "0");
-                                      const bus = String(j+1).padStart(2, "0");
-                                      setOsc(`/ch/${ch}/mix/${bus}/on`, routingState[rKey] ? 1 : 0);
-                                  }}
-                                ></button>
-                              </td>
+                              <th class="col-header" style="padding: 0.5rem; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem;">AUX {j+1}</th>
                             {/each}
                           </tr>
-                        {/each}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {#each filteredRoutingSources as src, i (src.id)}
+                            <tr>
+                              <td class="row-header" style="position: sticky; left: 0; background: #111827; z-index: 5; padding: 0.5rem; border: 1px solid #1e293b; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; text-align: left;">{src.name}</td>
+                              {#each Array(config.outputs) as _, j}
+                                {@const rKey = `${src.id}_bus${j+1}`}
+                                <td class="cell-toggle" style="padding: 0.4rem; border: 1px solid #1e293b; text-align: center;">
+                                  <button class="matrix-dot" 
+                                    aria-label="Toggle {src.name} to AUX {j+1}"
+                                    class:active={routingState[rKey]} 
+                                    on:click={() => {
+                                        routingState[rKey] = !routingState[rKey];
+                                        routingState = { ...routingState };
+                                        const ch = src.num.toString().padStart(2, "0");
+                                        const bus = String(j+1).padStart(2, "0");
+                                        const prefix = src.type === 'in' ? 'ch' : (src.type === 'aux' ? 'auxin' : (src.type === 'fx' ? 'rtn' : 'bus'));
+                                        setOsc(`/${prefix}/${ch}/mix/${bus}/on`, routingState[rKey] ? 1 : 0);
+                                    }}
+                                  ></button>
+                                </td>
+                              {/each}
+                            </tr>
+                          {/each}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1489,6 +1590,13 @@
       />
     {/if}
   </div>
+  <MonitorModal 
+    show={showMonitorModal} 
+    currentSource={monitorSource}
+    sources={soloSources}
+    on:select={(e) => { setMonitorSource(e.detail); }}
+    on:close={() => showMonitorModal = false}
+  />
 </main>
 
 <style>
@@ -2361,4 +2469,26 @@
   .matrix-dot:hover { background: #64748b; }
   .matrix-dot.active { background: #f59e0b;
  box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+
+  .side-filter-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .side-filter-btn:hover {
+    background: #334155;
+    color: #f8fafc;
+  }
+  .side-filter-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #60a5fa;
+  }
 </style>

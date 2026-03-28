@@ -9,6 +9,11 @@ export const MixerPresets = {
         hasAES50: true,
         hasUltranet: true,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'PFL', name: 'Inputs PFL' },
+            { id: 'AFL', name: 'Inputs AFL' }
+        ],
         hardLinks: { inputs: {} }
     },
     XR18: {
@@ -21,6 +26,12 @@ export const MixerPresets = {
         hasAES50: false,
         hasUltranet: true,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'PFL', name: 'Inputs PFL' },
+            { id: 'AFL', name: 'Inputs AFL' },
+            { id: 'LR+M', name: 'Main LR + Mono' }
+        ],
         hardLinks: {
             inputs: {
                 17: { linkedTo: 18, defaultName: 'AUX', mappedIcon: 'music' },
@@ -38,6 +49,12 @@ export const MixerPresets = {
         hasAES50: true,
         hasUltranet: true,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'PFL', name: 'Inputs PFL' },
+            { id: 'AFL', name: 'Inputs AFL' },
+            { id: 'LR+C', name: 'Main LR + Center' }
+        ],
         hardLinks: { inputs: {} } 
     },
     WING: {
@@ -50,6 +67,11 @@ export const MixerPresets = {
         hasAES50: true,
         hasUltranet: false,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'PFL', name: 'Inputs PFL' },
+            { id: 'AFL', name: 'Inputs AFL' }
+        ],
         hardLinks: { inputs: {} }
     },
     MACKIE_DL32S: {
@@ -62,6 +84,11 @@ export const MixerPresets = {
         hasAES50: false,
         hasUltranet: false,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'PFL', name: 'Inputs PFL' },
+            { id: 'AFL', name: 'Inputs AFL' }
+        ],
         hardLinks: { inputs: {} }
     },
     SOUNDCRAFT_UI24R: {
@@ -74,6 +101,10 @@ export const MixerPresets = {
         hasAES50: false,
         hasUltranet: false,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'SOLO', name: 'Solo Bus' }
+        ],
         hardLinks: {
             inputs: {
                 21: { linkedTo: 22, defaultName: 'Line In L' },
@@ -91,6 +122,10 @@ export const MixerPresets = {
         hasAES50: false,
         hasUltranet: false,
         hasUSB: true,
+        monitorSources: [
+            { id: 'LR', name: 'Main LR' },
+            { id: 'AFL', name: 'AFL Bus' }
+        ],
         hardLinks: {
             inputs: {
                 17: { linkedTo: 18, defaultName: 'Stereo 1' },

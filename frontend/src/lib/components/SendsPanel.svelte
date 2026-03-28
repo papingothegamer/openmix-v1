@@ -32,9 +32,9 @@
   }
 
   function toDb(val) {
-    if (val <= 0.001) return '-\u221e';
+    if (val <= 0.005) return '-\u221e';
     const db = 40 * Math.log10(val / 0.75);
-    if (db < -60) return '-\u221e';
+    if (db < -80) return '-\u221e';
     return (db >= 0 ? '+' : '') + db.toFixed(1);
   }
 

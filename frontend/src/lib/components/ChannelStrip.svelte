@@ -59,26 +59,51 @@
   }
 
   function emitFaderChange() {
-    // 1) Input strip fader (FOH + musician). Musicians are sandboxed server-side by token guards.
+    const idx = parseInt(channelIndex, 10);
+    const idxStr = String(idx).padStart(2, '0');
+    
+    // 1) Input strip fader
     if (stripType === 'input') {
       if (role !== 'foh' && role !== 'musician') return;
-      const ch = parseInt(channelIndex, 10);
-      if (!Number.isFinite(ch) || ch < 1) return;
-      const chStr = String(ch).padStart(2, '0');
-      // The backend's musician guard rewrites any `/mix/fader` to
-      // `/mix/<targetBus>/level` for safe AUX-only control.
-      setOsc(`/ch/${chStr}/mix/fader`, dbToFader(level));
+      if (!Number.isFinite(idx) || idx < 1) return;
+      setOsc(`/ch/${idxStr}/mix/fader`, dbToFader(level));
       return;
     }
 
-    // 2) Output strip fader (FOH only). Musicians should not touch master output levels.
+    // 2) Output strip fader
     if (stripType === 'output') {
       if (role !== 'foh') return;
-      const outNum = parseInt(channelIndex, 10);
-      if (!Number.isFinite(outNum) || outNum < 1) return;
-      setOsc(`/out/${outNum}/mix/fader`, dbToFader(level));
+      if (!Number.isFinite(idx) || idx < 1) return;
+      setOsc(`/bus/${idxStr}/mix/fader`, dbToFader(level));
       return;
     }
+
+    // 3) DCA fader
+    if (stripType === 'dca') {
+      if (role !== 'foh') return;
+      if (!Number.isFinite(idx) || idx < 1) return;
+      // Note: WING uses /ae_data/dca/N/fdr, X32/XR18 uses /dca/N/fader
+      // The backend OSC bridge usually aliases these, but we'll try standard path first.
+      setOsc(`/dca/${idx}/fader`, dbToFader(level));
+      return;
+    }
+  }
+
+  function handleMute() {
+    muted = !muted;
+    const idx = parseInt(channelIndex, 10);
+    const idxStr = String(idx).padStart(2, '0');
+    const val = muted ? 0 : 1; // 0=Mute ON, 1=Mute OFF (ON) for X32
+
+    if (stripType === 'input') {
+      setOsc(`/ch/${idxStr}/mix/on`, val);
+    } else if (stripType === 'output') {
+      setOsc(`/bus/${idxStr}/mix/on`, val);
+    } else if (stripType === 'dca') {
+      setOsc(`/dca/${idx}/on`, val);
+    }
+    
+    dispatchStatus('mute', muted);
   }
 
   // --- Dynamic EQ Mini-Chart Generator ---
@@ -305,7 +330,7 @@
   </div>
 
   <div class="routing-switches">
-    <button class="mute-btn" class:active={muted} on:click={() => { muted = !muted; dispatchStatus('mute', muted); }}>M</button>
+    <button class="mute-btn" class:active={muted} on:click={handleMute}>M</button>
     <button class="solo-btn" class:active={soloed} on:click={() => { soloed = !soloed; dispatchStatus('solo', soloed); }}>S</button>
   </div>
 

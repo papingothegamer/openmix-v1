@@ -1,13 +1,18 @@
 <script>
   import { isConnected } from '../socket';
-  import { UploadCloud, DownloadCloud, Maximize, Tag } from 'lucide-svelte';
+  import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2 } from 'lucide-svelte';
 
   export let activeRole = null;
   export let scribbleEditMode = false;
+  export let monitorMode = false;
+  export let outputLinkMode = false;
+  export let selectedChannel = null;
   export let onExitRole = () => {};
   export let onFileLoad = () => {};
   export let onExportScene = () => {};
   export let onScribbleEdit = () => {};
+  export let onToggleMonitor = () => {};
+  export let onToggleOutputLink = () => {};
   
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
@@ -24,6 +29,16 @@
     </div>
     
     {#if activeRole === 'foh'}
+      <button class="btn-sm" class:active={monitorMode} on:click={onToggleMonitor} title="Monitor/Phones Settings">
+        <Headphones size={14} /> Monitor
+      </button>
+      
+      {#if selectedChannel?.startsWith('bus_')}
+        <button class="btn-sm" class:active={outputLinkMode} on:click={onToggleOutputLink} title="Link Stereo Output">
+          <Link2 size={14} /> Link Stereo
+        </button>
+      {/if}
+
       <button class="btn-sm scribble-btn" class:active={scribbleEditMode} on:click={onScribbleEdit}>
         <Tag size={14} /> Scribble Strips
       </button>

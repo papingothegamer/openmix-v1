@@ -159,12 +159,17 @@
 <div class="modal-backdrop fade-in" on:click={close}>
   <div class="modal-content" on:click|stopPropagation>
     <div class="modal-header">
-      <div style="display: flex; gap: 1rem; align-items: center;">
+      <div class="header-info">
         {#if scribbles[channelId]}
-          <img src="/icons-bmp/{scribbles[channelId].iconType || 'icon_01'}.bmp" alt="" style="width: 48px; border-radius: 6px; border: 2px solid {scribbles[channelId].color || '#374151'};" />
+          <div class="header-icon-box">
+             <img src="/icons-bmp/{scribbles[channelId].iconType || 'icon_01'}.bmp" alt="" />
+          </div>
         {/if}
-        <div>
-          <h2 class="modal-title">{channelName || channelId.toUpperCase()} <span class="badge">{activeSection.toUpperCase()}</span></h2>
+        <div class="header-text">
+          <div class="title-row">
+            <h2 class="modal-title">{channelName || channelId.toUpperCase()}</h2>
+            <span class="badge">{activeSection.toUpperCase()}</span>
+          </div>
           <div class="modal-subtitle">Direct Parameter Control</div>
         </div>
       </div>
@@ -426,9 +431,14 @@
   .modal-content { background: #0b1120; border: 1px solid #1e293b; border-radius: 12px; width: 95%; max-width: 900px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); overflow: hidden; display: flex; flex-direction: column; }
   
   .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #1e293b; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); }
-  .modal-title { margin: 0; color: #f8fafc; font-size: 1.5rem; letter-spacing: -0.5px; display: flex; align-items: center; gap: 0.75rem; }
-  .badge { font-size: 0.65rem; background: #3b82f6; padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 1px; }
-  .modal-subtitle { color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem; }
+  .header-info { display: flex; gap: 1rem; align-items: center; min-width: 0; flex: 1; }
+  .header-icon-box { flex-shrink: 0; }
+  .header-icon-box img { width: 44px; height: 44px; border-radius: 6px; border: 2px solid #334155; object-fit: contain; image-rendering: pixelated; }
+  .header-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .title-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: nowrap; overflow: hidden; }
+  .modal-title { margin: 0; color: #f8fafc; font-size: 1.5rem; letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 0.6rem; background: #3b82f6; padding: 0.2rem 0.6rem; border-radius: 4px; letter-spacing: 1px; font-weight: 800; flex-shrink: 0; text-transform: uppercase; color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
+  .modal-subtitle { color: #94a3b8; font-size: 0.75rem; margin-top: -2px; }
   
   .nav-tab { background: rgba(255,255,255,0.05); border: 1px solid transparent; color: #94a3b8; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; transition: 0.2s; }
   .nav-tab:hover { background: rgba(255,255,255,0.1); color: #f8fafc; }
