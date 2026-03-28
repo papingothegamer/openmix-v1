@@ -6,14 +6,19 @@
   export let scribbleEditMode = false;
   export let monitorMode = false;
   export let outputLinkMode = false;
+
+  /** @type {string | null} */
   export let selectedChannel = null;
+  
   export let onExitRole = () => {};
   export let onFileLoad = () => {};
+
   export let onExportScene = () => {};
   export let onScribbleEdit = () => {};
+
   export let onToggleMonitor = () => {};
   export let onToggleOutputLink = () => {};
-  
+
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     else if (document.exitFullscreen) document.exitFullscreen();
@@ -33,7 +38,7 @@
         <Headphones size={14} /> Monitor
       </button>
       
-      {#if selectedChannel?.startsWith('bus_')}
+      {#if typeof selectedChannel === 'string' && selectedChannel.startsWith('bus_')}
         <button class="btn-sm" class:active={outputLinkMode} on:click={onToggleOutputLink} title="Link Stereo Output">
           <Link2 size={14} /> Link Stereo
         </button>
@@ -69,20 +74,29 @@
   .highlight { color: #3b82f6; }
 
   .toolbar { display: flex; align-items: center; gap: 1rem; }
-  .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #1e293b; }
+  .status-indicator { display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #1e293b; }
   .status-indicator.connected { color: #10b981; }
   .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
-  .connected .ping-dot { background-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+  .connected .ping-dot { background-color: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
-  .btn-sm { background: transparent; color: #cbd5e1; border: 1px solid #334155; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; transition: 0.15s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+  .btn-sm { background: transparent; color: #cbd5e1; border: 1px solid #334155;
+    padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; transition: 0.15s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;
+  }
   .btn-sm:hover { background: #1e293b; color: #f8fafc; }
-  .upload-btn { color: #38bdf8; border-color: #0c4a6e; background: rgba(14, 165, 233, 0.1); }
+  .upload-btn { color: #38bdf8; border-color: #0c4a6e;
+    background: rgba(14, 165, 233, 0.1); }
   .upload-btn:hover { background: rgba(14, 165, 233, 0.2); }
-  .export-btn { color: #a78bfa; border-color: #4c1d95; background: rgba(139, 92, 246, 0.1); }
-  .export-btn:hover { background: rgba(139, 92, 246, 0.2); }
-  .scribble-btn { color: #34d399; border-color: #064e3b; background: rgba(16, 185, 129, 0.1); }
+  .export-btn { color: #a78bfa;
+    border-color: #4c1d95; background: rgba(139, 92, 246, 0.1); }
+  .export-btn:hover { background: rgba(139, 92, 246, 0.2);
+  }
+  .scribble-btn { color: #34d399; border-color: #064e3b; background: rgba(16, 185, 129, 0.1);
+  }
   .scribble-btn:hover { background: rgba(16, 185, 129, 0.2); }
-  .scribble-btn.active { background: #047857; color: white; }
+  .scribble-btn.active { background: #047857; color: white;
+  }
   .exit-btn { border-color: #7f1d1d; color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
   .exit-btn:hover { background: #ef4444; color: white; }
 </style>
