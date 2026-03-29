@@ -100,6 +100,12 @@
     try {
       socket.disconnect();
     } catch (_) {}
+    
+    // Phase 5: Deep Sync Trigger
+    socket.once("connect", () => {
+      socket.emit("requestSync", { presetId: config.presetId });
+    });
+    
     socket.connect();
   }
 
@@ -308,7 +314,17 @@
         break;
       case 'AUX_OUT':
         path = `/config/routing/aux/${destIdx.toString().padStart(2, '0')}`;
-        value = srcIdx - 1;
+        if (src.id === 'off') value = 24;
+        else if (src.id.startsWith('in_')) value = srcIdx - 1;
+        else if (src.id.startsWith('bus_')) value = 16 + (srcIdx - 1);
+        else if (src.id === 'main_l') value = 22;
+        else if (src.id === 'main_r') value = 23;
+        break;
+      case 'MAIN_OUT':
+        path = `/config/routing/main/${destIdx.toString().padStart(2, '0')}`;
+        if (src.id === 'off') value = 8;
+        else if (src.id === 'main_l' || src.id === 'main_r') value = src.id === 'main_l' ? 0 : 1;
+        else if (src.id.startsWith('bus_')) value = 2 + (srcIdx - 1);
         break;
     }
 
@@ -360,6 +376,33 @@
           routingState[`in_${i}`] = srcId; 
         }
       }
+
+      // Hydrate AUX OUT Mode
+      for (let i = 1; i <= 6; i++) {
+        const path = `/config/routing/aux/${i.toString().padStart(2, '0')}`;
+        const val = cache[path]?.[0]?.value;
+        if (val !== undefined) {
+          let srcId = 'off';
+          if (val < 16) srcId = `in_${val + 1}`;
+          else if (val < 22) srcId = `bus_${val - 15}`;
+          else if (val === 22) srcId = 'main_l';
+          else if (val === 23) srcId = 'main_r';
+          routingState[`sock_out_${i}`] = srcId;
+        }
+      }
+
+      // Hydrate MAIN OUT Mode
+      for (let i = 1; i <= 2; i++) {
+        const path = `/config/routing/main/${i.toString().padStart(2, '0')}`;
+        const val = cache[path]?.[0]?.value;
+        if (val !== undefined) {
+          let srcId = 'off';
+          if (val < 2) srcId = val === 0 ? 'main_l' : 'main_r';
+          else if (val < 8) srcId = `bus_${val - 1}`;
+          routingState[i === 1 ? 'sock_main_l' : 'sock_main_r'] = srcId;
+        }
+      }
+
       routingState = { ...routingState };
     }
   }

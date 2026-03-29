@@ -43,16 +43,23 @@ class MixerConnection extends EventEmitter {
                 { address: '/config/routing/card', count: 18, start: 1, suffix: true },
                 { address: '/config/routing/p16', count: 16, start: 1, suffix: true },
                 { address: '/config/routing/aux', count: 6, start: 1, suffix: true },
+                { address: '/config/routing/main', count: 2, start: 1, suffix: true },
+                { address: '/config/chlink', count: 1 },
                 // Strips (Config/Preamps)
                 { address: '/ch/01-16/config/name', pattern: '/ch/{N}/config/name', count: 16 },
                 { address: '/ch/01-16/config/color', pattern: '/ch/{N}/config/color', count: 16 },
                 { address: '/ch/01-16/config/icon', pattern: '/ch/{N}/config/icon', count: 16 },
+                { address: '/bus/01-06/config/name', pattern: '/bus/{N}/config/name', count: 6 },
+                { address: '/bus/01-06/config/color', pattern: '/bus/{N}/config/color', count: 6 },
+                { address: '/bus/01-06/config/icon', pattern: '/bus/{N}/config/icon', count: 6 },
                 { address: '/headamp/00-15/gain', pattern: '/headamp/{N}', count: 16, start: 0, pad: 2 },
                 { address: '/headamp/00-15/phantom', pattern: '/headamp/{N}/phantom', count: 16, start: 0, pad: 2 },
                 // EQ/Dyn/Gate
                 { address: '/ch/01-16/eq', pattern: '/ch/{N}/eq', count: 16 },
                 { address: '/ch/01-16/gate', pattern: '/ch/{N}/gate', count: 16 },
-                { address: '/ch/01-16/dyn', pattern: '/ch/{N}/dyn', count: 16 }
+                { address: '/ch/01-16/dyn', pattern: '/ch/{N}/dyn', count: 16 },
+                // FX
+                { address: '/fx/1-4/type', pattern: '/fx/{N}/type', count: 4 }
             ],
             'X32RACK': [
                 { address: '/config/routing/user/in', count: 32, start: 1, suffix: true, pad: 2 },
@@ -127,8 +134,7 @@ class MixerConnection extends EventEmitter {
         // Handshake
         this.sendOsc('/xremote', []);
         
-        // Auto-request sync on first connection
-        setTimeout(() => this.requestFullSync('XR18'), 500);
+        // Note: requestFullSync used to be here, now triggered by server.js via socket.emit('requestSync')
     }
 
     sendOsc(address, args = []) {

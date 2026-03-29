@@ -149,6 +149,9 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 | 52    | Real-Time Hardware OSC Control & Hydration           | ✅ Done |
 | 53    | Navbar Sync Status Progress Indicator              | ✅ Done |
 | 54    | X32 Individual User Patching Integration            | ✅ Done |
+| 55    | MR18/XR18 Full Sync Polish (FX, Links, Bus Names)  | ✅ Done |
+| 56    | Main/Aux Physical Output Patching Logic            | ✅ Done |
+| 57    | Auto-Sync Handshake on Connection                  | ✅ Done |
 
 ---
 
@@ -349,3 +352,10 @@ Implemented a robust deep-sync engine that aligns the OpenMix 'Virtual Mixer' wi
 - **OSC Control Pipeline**: The PatchingBay now emits actual `/config/routing/` commands to the hardware, enabling professional remote control.
 - **Sync Visuals**: Added a pulsing `Loader2` progress indicator in the Navbar showing a live percentage of the state-pull process.
 - **Scene Export Alignment**: Verified that state serialization captures the entire `flatOscCache`, allowing full restoration of complex routing and processing states from saved JSON files.
+
+### 14.7 Field-Test Readiness (Preliminary Audit)
+Completed a 'Pre-Flight' audit to ensure 100% compatibility with MR18/XR18 hardware.
+- **Deep Metadata Pull**: Initial sync now includes **Stereo Links**, **FX Slot Types**, and **Bus Metadata** (names/icons), providing a seamless login experience.
+- **Output Matrix Mapping**: Completed the OSC mapping for physical **XLR Main L/R** and **Aux 1-6** sockets, allowing for complete physical output re-patching.
+- **Handshake Optimization**: Handled the auto-sync trigger via an explicit frontend request, ensuring the backend pulls the correct parameter set for the target mixer model.
+- **Scene Fidelity**: Verified that the serialization engine captures the expanded state, including routing blocks and link pairs.

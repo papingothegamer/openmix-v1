@@ -60,6 +60,13 @@ io.on('connection', (socket) => {
         mixer.reconfigure(ip, newPort);
         socket.emit('mixerConfigured', { ip, port: newPort });
     });
+
+    socket.on('requestSync', ({ presetId }) => {
+        // Map preset IDs to sync templates
+        let mixerType = 'XR18';
+        if (presetId && presetId.includes('X32')) mixerType = 'X32RACK';
+        mixer.requestFullSync(mixerType);
+    });
 });
 
 // ── Port binding ─────────────────────────────────────────────────────────────
