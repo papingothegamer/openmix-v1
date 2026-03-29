@@ -143,10 +143,8 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 | 42    | Main Assign Prop/Cache Sync Fix                   | ✅ Done |
 | 43    | Non-Interactive Logarithmic Knob Variant           | ✅ Done |
 | 44    | Channel Modal Header Responsive Layout             | ✅ Done |
-| 45    | X-AIR Style Routing Patchbay (Nested Modes)      | ✅ Done |
-| 46    | Zero Vertical Scroll Grid Architecture             | ✅ Done |
-| 47    | Non-Interactive Knob Cursor Fix                    | ✅ Done |
-| 48    | Signal Tap Legend & Global Selector                | ✅ Done |
+| 49    | Matrix Axis Correction (Dest=Rows, Src=Cols)      | ✅ Done |
+| 50    | Patching Logic Unpatched State Fix                 | ✅ Done |
 
 ---
 
@@ -336,10 +334,10 @@ Moved from numbered bands to a color-coded identifier system (8 colors).
 ### 14.5 X-AIR Style Routing Patchbay
 The Routing tab has been completely rebuilt to provide a professional, hardware-parity experience matching the **Behringer X-AIR Edit** workflow.
 - **Top Icon Mode Bar**: Provides instant access to `Input`, `USB Returns`, `USB Sends`, `Ultranet`, `Aux Out`, and `Main Out` (with `AES50` for X32/WING).
-- **Zero-Scroll Vertical Constraint**: Implements a nested **Sub-Tab** system (e.g., `Ch 1-16`, `Bus`, `FX`) that buckets the matrix rows/columns. This ensures the Patching Matrix always fits the vertical viewport, eliminating vertical page scrolling.
-- **High-Fidelity Matrix**: Features a cyan-on-black color scheme with radio-style selection dots.
-- **Signal Tap Legend**: Includes a professional, color-coded legend at the bottom (Analog, Pre/Post EQ, Pre/Post Fader) and a "Default Signal Tap" dropdown for professional output patching.
-- **"Off" Mode**: Integrated un-patching support for compatible hardware consoles.
+- **Corrected Axis Orientation**: Rows now represent **Destinations** (Channels/Busses) and Columns represent **Sources** (Sockets/Inputs), perfectly mirroring the X-AIR Edit layout.
+- **Improved Patch Logic**: Clicking an active dot now correctly "Unpatches" the channel, with updated toast notifications reflecting the new state.
+- **Zero-Scroll Vertical Constraint**: Matrix handles Destinations as Rows, fitting them vertically within the viewport.
+- **Ultranet (P16)**: Added 16 dedicated output destinations with professional sub-tab categorization for internal digital sources.
 
 ```
 ```

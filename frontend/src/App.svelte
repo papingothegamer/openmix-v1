@@ -298,7 +298,7 @@
     if (routingMode === 'USB_SEND') routingSubTab = "CH1-16";
   }
 
-  // Reactive Matrix Sets
+  // Reactive Matrix Sets (Phase 3.8.2: DEST=ROWS, SRC=COLS)
   $: patchSet = (() => {
     const preset = MixerPresets[config.presetId] || MixerPresets.CUSTOM;
     let srcs = [];
@@ -308,12 +308,15 @@
     switch(routingMode) {
       case 'INPUT':
         subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i * 16 < config.inputs || i === 2);
+        // ROWS are Destinations (Ch 1-16...)
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
           const id = i + offset + 1;
           if (id > config.inputs) return null;
           return { id: `in_${id}`, name: scribbles[`in_${id}`]?.name || `CH ${id}` };
         }).filter(d => d);
+        
+        // COLS are Sources (Sockets)
         srcs = [
           ...Array.from({ length: 16 }, (_, i) => ({ id: `sock_in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
           { id: `sock_aux_l`, name: '17' },
@@ -332,39 +335,67 @@
         }).filter(d => d);
         srcs = [
           ...Array.from({ length: 16 }, (_, i) => ({ id: `usb_in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
-          { id: 'off', name: 'Off (Analog)' }
+          { id: `usb_aux_l`, name: '17' },
+          { id: `usb_aux_r`, name: '18' },
+          { id: 'off', name: 'Off (USB 1-18)' }
         ];
         break;
 
       case 'USB_SEND':
-        subTabs = ["CH1-16", "AUX/BUS", "FX", "MAIN"];
-        dests = Array.from({ length: 16 }, (_, i) => ({ id: `usb_out_${i+1}`, name: `USB ${i+1}` }));
-        srcs = routingSubTab === "CH1-16" 
-          ? Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` }))
-          : (routingSubTab === "AUX/BUS" 
-              ? Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` }))
-              : [{ id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }]);
+        subTabs = ["USB 1-16", "USB 17-32"];
+        dests = Array.from({ length: 16 }, (_, i) => {
+          const offset = routingSubTab === "USB 1-16" ? 0 : 16;
+          return { id: `usb_out_${i+offset+1}`, name: `USB ${i+offset+1}` };
+        });
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
+        ];
+        break;
+
+      case 'ULTRANET':
+        subTabs = ["P16 1-16"];
+        dests = Array.from({ length: 16 }, (_, i) => ({ id: `p16_${i+1}`, name: `P16 ${i+1}` }));
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' },
+          { id: 'off', name: 'Off' }
+        ];
         break;
 
       case 'AUX_OUT':
-        subTabs = ["CH1-16", "BUS", "MAIN"];
+        subTabs = ["AUX 1-16"]; 
         dests = Array.from({ length: 6 }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
-        srcs = routingSubTab === "BUS" 
-          ? Array.from({ length: 16 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })) 
-          : Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` }));
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: 6 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' },
+          { id: 'off', name: 'Off' }
+        ];
         break;
       
       case 'MAIN_OUT':
-        subTabs = ["MAIN", "BUS", "USB"];
+        subTabs = ["MAIN L/R"];
         dests = [{ id: 'sock_main_l', name: 'MAIN L' }, { id: 'sock_main_r', name: 'MAIN R' }];
-        srcs = [{ id: 'main_l', name: 'MAIN L' }, { id: 'main_r', name: 'MAIN R' }];
+        srcs = [
+          { id: 'main_l', name: 'MAIN L' }, { id: 'main_r', name: 'MAIN R' },
+          ...Array.from({ length: 6 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          { id: 'off', name: 'Off' }
+        ];
         break;
 
       case 'AES50_A':
       case 'AES50_B':
-        subTabs = ["CH1-16", "BUS", "MAIN"];
-        dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+1}`, name: `A${i+1}` }));
-        srcs = Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` }));
+        subTabs = ["OUT 1-16", "OUT 17-32", "OUT 33-48"];
+        const aesOffset = routingSubTab === "OUT 33-48" ? 32 : (routingSubTab === "OUT 17-32" ? 16 : 0);
+        dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+aesOffset+1}`, name: `AES ${i+aesOffset+1}` }));
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` })),
+          ...Array.from({ length: 12 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          { id: 'off', name: 'Off' }
+        ];
         break;
     }
 
@@ -1702,17 +1733,17 @@
                     <table class="xair-matrix">
                       <thead>
                         <tr>
-                          <th class="corner-label">SOURCE \\ DEST</th>
-                          {#each patchSet.dests as dest}
-                            <th class="col-head"><span>{dest.name}</span></th>
+                          <th class="corner-label">DEST \\ SOURCE</th>
+                          {#each patchSet.srcs as src}
+                            <th class="col-head"><span>{src.name}</span></th>
                           {/each}
                         </tr>
                       </thead>
                       <tbody>
-                        {#each patchSet.srcs as src}
+                        {#each patchSet.dests as dest}
                           <tr>
-                            <td class="row-head">{src.name}</td>
-                            {#each patchSet.dests as dest}
+                            <td class="row-head">{dest.name}</td>
+                            {#each patchSet.srcs as src}
                               {@const isActive = routingState[dest.id] === src.id}
                               <td class="patch-point" class:active={isActive}>
                                 <button 
@@ -1720,14 +1751,15 @@
                                   on:click={() => {
                                     if (routingState[dest.id] === src.id) {
                                       routingState[dest.id] = null;
+                                      showToast(`${dest.name} unpatched (Off)`, "info");
                                     } else {
                                       routingState[dest.id] = src.id;
+                                      showToast(`${dest.name} patched to ${src.name}`, "info");
                                     }
                                     routingState = { ...routingState };
-                                    showToast(`${dest.name} patched to ${src.name}`, "info");
                                   }}
                                 >
-                                  <div class="radio-circle"></div>
+                                  <div class="radio-circle" title={src.name}></div>
                                 </button>
                               </td>
                             {/each}
