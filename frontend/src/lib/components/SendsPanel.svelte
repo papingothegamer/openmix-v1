@@ -152,7 +152,7 @@
 
   <div class="view-header-inline">
     <h2 class="title-left">
-    s <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
+      SENDS: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
     </h2>
     <div class="header-actions">
       <button class="ctrl-btn" on:click={toggleAllPrePost}>Pre/Post All</button>
