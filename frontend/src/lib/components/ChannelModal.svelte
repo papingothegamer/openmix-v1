@@ -254,30 +254,47 @@
             </div>
             <div class="x32-bottom-faders preamp-faders">
                 <div class="fader-group">
-                   <div class="v-slider-val">{params.gain} dB</div>
+                   <input
+                     type="number"
+                     class="v-slider-val"
+                     bind:value={params.gain}
+                     on:change={() => sendOscForPreamp()}
+                     min="0"
+                     max="60"
+                     step="0.5"
+                   />
                    <div class="v-slider-wrapper">
                      <input
                        type="range"
                        class="v-slider red-thumb"
                        min="0"
                        max="60"
-                       value={params.gain}
-                       on:input={(e) => { params.gain = Number(e.currentTarget.value); sendOscForPreamp(); }}
+                       step="0.5"
+                       bind:value={params.gain}
+                       on:input={() => sendOscForPreamp()}
                      />
                    </div>
                    <div class="v-slider-lbl">GAIN</div>
                 </div>
                 <div class="fader-group">
-                   <div class="v-slider-val" class:inactive={!params.hpfOn}>{params.hpfFreq} Hz</div>
+                   <input
+                     type="number"
+                     class="v-slider-val"
+                     class:inactive={!params.hpfOn}
+                     bind:value={params.hpfFreq}
+                     on:change={() => sendOscForPreamp()}
+                     min="20"
+                     max="400"
+                   />
                    <div class="v-slider-wrapper">
                      <input
                        type="range"
                        class="v-slider red-thumb"
                        min="20"
                        max="400"
-                       value={params.hpfFreq}
+                       bind:value={params.hpfFreq}
                        disabled={!params.hpfOn}
-                       on:input={(e) => { params.hpfFreq = Number(e.currentTarget.value); sendOscForPreamp(); }}
+                       on:input={() => sendOscForPreamp()}
                      />
                    </div>
                    <div class="v-slider-lbl">HPF FREQ</div>
@@ -304,29 +321,29 @@
             <div class="x32-bottom-faders">
                 <div class="fader-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateThresh}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.gateThresh} on:change={() => sendOscForGate()} min="-80" max="0" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="-80"
                           max="0"
-                          value={params.gateThresh}
-                          on:input={(e) => { params.gateThresh = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateThresh}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">THR</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateRange}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.gateRange} on:change={() => sendOscForGate()} min="0" max="60" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="0"
                           max="60"
-                          value={params.gateRange}
-                          on:input={(e) => { params.gateRange = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateRange}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">RANGE</div>
@@ -334,43 +351,43 @@
                 </div>
                 <div class="fader-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateAttack}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.gateAttack} on:change={() => sendOscForGate()} min="0" max="120" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="0"
                           max="120"
-                          value={params.gateAttack}
-                          on:input={(e) => { params.gateAttack = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateAttack}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">ATTACK</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateHold}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.gateHold} on:change={() => sendOscForGate()} min="0" max="500" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="0"
                           max="500"
-                          value={params.gateHold}
-                          on:input={(e) => { params.gateHold = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateHold}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">HOLD</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateRel}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.gateRel} on:change={() => sendOscForGate()} min="5" max="500" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="5"
                           max="500"
-                          value={params.gateRel}
-                          on:input={(e) => { params.gateRel = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateRel}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">REL</div>
@@ -378,15 +395,18 @@
                 </div>
                 <div class="fader-section sidechain-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.gateScFreq} Hz</div>
+                      <div style="display:flex; align-items:center; gap:0.25rem;">
+                        <input type="number" class="v-slider-val" bind:value={params.gateScFreq} on:change={() => sendOscForGate()} min="20" max="20000" />
+                        <span style="font-size:0.6rem; color:#64748b; font-weight:800;">Hz</span>
+                      </div>
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider blue-thumb"
                           min="20"
                           max="20000"
-                          value={params.gateScFreq}
-                          on:input={(e) => { params.gateScFreq = Number(e.currentTarget.value); sendOscForGate(); }}
+                          bind:value={params.gateScFreq}
+                          on:input={() => sendOscForGate()}
                         />
                       </div>
                       <div class="v-slider-lbl">SC FILT</div>
@@ -414,43 +434,45 @@
             <div class="x32-bottom-faders">
                 <div class="fader-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compThresh}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.compThresh} on:change={() => sendOscForComp()} min="-60" max="0" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="-60"
                           max="0"
-                          value={params.compThresh}
-                          on:input={(e) => { params.compThresh = Number(e.currentTarget.value); sendOscForComp(); }}
+                          bind:value={params.compThresh}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">THR</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compRatio}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.compRatio} on:change={() => sendOscForComp()} min="1" max="20" step="0.1" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="1"
                           max="20"
-                          value={params.compRatio}
-                          on:input={(e) => { params.compRatio = Number(e.currentTarget.value); sendOscForComp(); }}
+                          step="0.1"
+                          bind:value={params.compRatio}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">RATIO</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compMakeup}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.compMakeup} on:change={() => sendOscForComp()} min="0" max="24" step="0.5" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="0"
                           max="24"
-                          value={params.compMakeup}
-                          on:input={(e) => { params.compMakeup = Number(e.currentTarget.value); sendOscForComp(); }}
+                          step="0.5"
+                          bind:value={params.compMakeup}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">MAKEUP</div>
@@ -458,29 +480,29 @@
                 </div>
                 <div class="fader-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compAttack}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.compAttack} on:change={() => sendOscForComp()} min="0" max="100" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="0"
                           max="100"
-                          value={params.compAttack}
-                          on:input={(e) => { params.compAttack = Number(e.currentTarget.value); sendOscForComp(); }}
+                          bind:value={params.compAttack}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">ATTACK</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compRelease}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.compRelease} on:change={() => sendOscForComp()} min="5" max="500" />
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="5"
                           max="500"
-                          value={params.compRelease}
-                          on:input={(e) => { params.compRelease = Number(e.currentTarget.value); sendOscForComp(); }}
+                          bind:value={params.compRelease}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">REL</div>
@@ -488,15 +510,18 @@
                 </div>
                 <div class="fader-section sidechain-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.compScFreq} Hz</div>
+                      <div style="display:flex; align-items:center; gap:0.25rem;">
+                        <input type="number" class="v-slider-val" bind:value={params.compScFreq} on:change={() => sendOscForComp()} min="20" max="20000" />
+                        <span style="font-size:0.6rem; color:#64748b; font-weight:800;">Hz</span>
+                      </div>
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider green-thumb"
                           min="20"
                           max="20000"
-                          value={params.compScFreq}
-                          on:input={(e) => { params.compScFreq = Number(e.currentTarget.value); sendOscForComp(); }}
+                          bind:value={params.compScFreq}
+                          on:input={() => sendOscForComp()}
                         />
                       </div>
                       <div class="v-slider-lbl">SC FILT</div>
@@ -525,22 +550,34 @@
             <div class="x32-bottom-faders">
                 <div class="fader-section">
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.outPan === 0 ? 'C' : params.outPan}</div>
+                      <input type="number" class="v-slider-val" bind:value={params.outPan} min="-100" max="100" />
                       <div class="v-slider-wrapper">
                         <input type="range" class="v-slider gray-thumb" min="-100" max="100" bind:value={params.outPan} />
                       </div>
                       <div class="v-slider-lbl">PAN</div>
                     </div>
                     <div class="fader-group">
-                      <div class="v-slider-val">{params.outLevel} dB</div>
+                      <div style="display:flex; align-items:center; gap:0.25rem;">
+                        <input
+                          type="number"
+                          class="v-slider-val"
+                          min="-90"
+                          max="10"
+                          step="0.5"
+                          bind:value={params.outLevel}
+                          on:change={() => sendOscForOutput()}
+                        />
+                        <span style="font-size:0.6rem; color:#64748b; font-weight:800;">dB</span>
+                      </div>
                       <div class="v-slider-wrapper">
                         <input
                           type="range"
                           class="v-slider gray-thumb"
                           min="-90"
                           max="10"
-                          value={params.outLevel}
-                          on:input={(e) => { params.outLevel = Number(e.currentTarget.value); sendOscForOutput(); }}
+                          step="0.5"
+                          bind:value={params.outLevel}
+                          on:input={() => sendOscForOutput()}
                         />
                       </div>
                       <div class="v-slider-lbl">LVL</div>
@@ -595,14 +632,17 @@
   .flex-center { display: flex; justify-content: center; align-items: center; }
   .graph-watermark { color: #334155; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.1em; opacity: 0.3; }
   
-  .x32-bottom-faders { flex: 1; background: linear-gradient(180deg, #09090b 0%, #18181b 100%); display: flex; padding: 1.5rem 2rem; justify-content: center; align-items: flex-end; gap: 4rem; border-top: 1px solid #27272a; }
-  .preamp-faders { justify-content: flex-start; padding-left: 4rem; }
-  .push-right { margin-left: 3rem; align-items: flex-start !important; gap: 1rem !important; flex-direction: row !important; height: 100%; padding-top: 2rem; }
+  .x32-bottom-faders { flex: 1; background: linear-gradient(180deg, #09090b 0%, #18181b 100%); display: flex; padding: 1rem 0.5rem; justify-content: center; align-items: flex-end; gap: 1rem; border-top: 1px solid #27272a; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+  .x32-bottom-faders::-webkit-scrollbar { display: none; }
+  .preamp-faders { justify-content: center; }
+  .push-right { margin-left: 1.5rem; align-items: flex-start !important; gap: 1rem !important; flex-direction: row !important; height: 100%; padding-top: 1rem; }
   
-  .fader-section { display: flex; gap: 1.5rem; background: rgba(30,41,59,0.2); padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+  .fader-section { display: flex; gap: 1rem; background: rgba(30,41,59,0.2); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
   .fader-group { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; min-width: 60px; }
   
-  .v-slider-val { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #f8fafc; background: #0f172a; padding: 0.2rem 0.4rem; border-radius: 4px; border: 1px solid #1e293b; min-width: 48px; text-align: center; }
+  .v-slider-val { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #f8fafc; background: #0f172a; padding: 0.2rem 0.4rem; border-radius: 4px; border: 1px solid #1e293b; min-width: 48px; text-align: center; outline: none; transition: 0.2s; -moz-appearance: textfield; }
+  .v-slider-val::-webkit-outer-spin-button, .v-slider-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .v-slider-val:focus { background: #1e293b; border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
   .v-slider-lbl { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
   
   .v-slider-wrapper { height: 110px; display: flex; align-items: center; justify-content: center; }

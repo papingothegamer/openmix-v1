@@ -1475,20 +1475,20 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  EQ EDITOR: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
+                  EQ EDITOR: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
                 </h2>
                 <div class="nav-group">
                   <button
                     class="nav-icon-btn"
                     disabled={isFirstChannel}
                     on:click={() => cycleChannel(-1)}
-                    ><ChevronLeft size={20} /></button
+                    ><ChevronLeft size={16} /></button
                   >
                   <button
                     class="nav-icon-btn"
                     disabled={isLastChannel}
                     on:click={() => cycleChannel(1)}
-                    ><ChevronRight size={20} /></button
+                    ><ChevronRight size={16} /></button
                   >
                 </div>
               </div>
@@ -1507,20 +1507,20 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  CHANNEL: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
+                  CHANNEL: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
                 </h2>
                 <div class="nav-group">
                   <button
                     class="nav-icon-btn"
                     disabled={isFirstChannel}
                     on:click={() => cycleChannel(-1)}
-                    ><ChevronLeft size={20} /></button
+                    ><ChevronLeft size={16} /></button
                   >
                   <button
                     class="nav-icon-btn"
                     disabled={isLastChannel}
                     on:click={() => cycleChannel(1)}
-                    ><ChevronRight size={20} /></button
+                    ><ChevronRight size={16} /></button
                   >
                 </div>
               </div>
@@ -1789,7 +1789,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  EFFECTS RACK: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
+                  EFFECTS RACK: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
                 </h2>
                 <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
                    <div class="insert-control" style="background: #1e293b; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #334155; display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem;">
@@ -1812,8 +1812,8 @@
                       </div>
                    </div>
                    <div class="nav-group">
-                      <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={18} /></button>
-                      <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={18} /></button>
+                      <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={16} /></button>
+                      <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={16} /></button>
                    </div>
                 </div>
               </div>
@@ -1944,7 +1944,7 @@
             </div>
           {/if}
 
-          {#if activeRole === "foh"}
+          {#if activeRole === "foh" && activeTab !== "channel"}
             <Sidebar
               {activeTab}
               bind:activeView
@@ -2246,6 +2246,17 @@
     flex-direction: column;
     overflow: hidden; /* Prevent macro-level scroll; children handle it */
   }
+  .view-header-inline { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .title-left { font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em; color: #cbd5e1; margin: 0; }
+  .ch-name { color: #e2e8f0; }
+  .nav-group { display: flex; gap: 2px; margin-left: 0.25rem; }
+  .nav-icon-btn {
+    background: #0d1a28; border: 1px solid #1a3040; color: #64748b;
+    border-radius: 5px; padding: 4px 6px; cursor: pointer; display: flex; align-items: center;
+    transition: color .12s, border-color .12s;
+  }
+  .nav-icon-btn:hover:not(:disabled) { color: #e2e8f0; border-color: #3b82f6; }
+  .nav-icon-btn:disabled { opacity: .25; cursor: not-allowed; }
 
   .routing-macro-view {
     background: #090e1a;
@@ -2486,15 +2497,19 @@
     outline: none;
     cursor: pointer;
   }
-  .tab-content-body::-webkit-scrollbar {
+  .tab-content-body::-webkit-scrollbar, .patch-scroll-viewport::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
-  .tab-content-body::-webkit-scrollbar-track {
+  .tab-content-body::-webkit-scrollbar-track, .patch-scroll-viewport::-webkit-scrollbar-track {
     background: transparent;
   }
-  .tab-content-body::-webkit-scrollbar-thumb {
+  .tab-content-body::-webkit-scrollbar-thumb, .patch-scroll-viewport::-webkit-scrollbar-thumb {
     background: #334155;
     border-radius: 3px;
+  }
+  .tab-content-body::-webkit-scrollbar-thumb:hover, .patch-scroll-viewport::-webkit-scrollbar-thumb:hover {
+    background: #475569;
   }
   .param-section {
     background: #111827;
