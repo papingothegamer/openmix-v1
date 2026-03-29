@@ -30,6 +30,10 @@ mixer.on('metersUpdate', (data) => {
     emitOscBroadcast(io, { type: 'meters', ...data });
 });
 
+mixer.on('syncStatus', (data) => {
+    io.emit('syncStatus', data);
+});
+
 io.on('connection', (socket) => {
     handleConnection(socket, mixer, io);
 

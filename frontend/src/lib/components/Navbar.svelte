@@ -1,6 +1,6 @@
 <script>
-  import { isConnected } from '../socket';
-  import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2 } from 'lucide-svelte';
+  import { isConnected, syncProgress } from '../socket';
+  import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2, Loader2 } from 'lucide-svelte';
 
   export let activeRole = null;
   export let scribbleEditMode = false;
@@ -32,6 +32,13 @@
       <div class="ping-dot"></div>
       <span>{$isConnected ? 'Connected' : 'Offline'}</span>
     </div>
+
+    {#if $syncProgress.active}
+      <div class="sync-status">
+        <Loader2 class="spin" size={14} />
+        <span>Syncing {$syncProgress.progress}%</span>
+      </div>
+    {/if}
     
     {#if activeRole === 'foh'}
       <button class="btn-sm" class:active={monitorMode} on:click={onToggleMonitor} title="Monitor/Phones Settings">
@@ -99,4 +106,32 @@
   }
   .exit-btn { border-color: #7f1d1d; color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
   .exit-btn:hover { background: #ef4444; color: white; }
+
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    animation: pulse-blue 2s infinite;
+  }
+
+  @keyframes pulse-blue {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  }
+
+  :global(.spin) {
+    animation: spin 1.5s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 </style>

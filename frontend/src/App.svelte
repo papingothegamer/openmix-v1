@@ -271,7 +271,98 @@
   let sendsState = {};
 
   // Routing Architecture Phase 3.8 (X-AIR Layout)
+  // Routing Architecture Phase 4 (OSC Integration)
   let routingState = {}; // { [dest_id]: src_id }
+
+  /**
+   * Maps UI Route IDs to Hardware OSC Paths and Values
+   * @param {string} mode - 'INPUT', 'USB_RTN', etc.
+   * @param {Object} dest - { id, name }
+   * @param {Object} src - { id, name }
+   */
+  function mapPatchToOsc(mode, dest, src) {
+    let path = '';
+    let value = 0;
+
+    // Dest / Src ID parsing
+    const destIdx = parseInt(dest.id.split('_').pop()) || 0;
+    const srcIdx = parseInt(src.id.split('_').pop()) || 0;
+
+    switch(mode) {
+      case 'INPUT':
+        path = `/config/routing/i/${destIdx.toString().padStart(2, '0')}`;
+        if (src.id === 'off') value = 18;
+        else if (src.id === 'sock_aux_l') value = 16;
+        else if (src.id === 'sock_aux_r') value = 17;
+        else value = srcIdx - 1; // 0-15
+        break;
+      case 'USB_RTN':
+        path = `/config/routing/card/${destIdx.toString().padStart(2, '0')}`;
+        if (src.id === 'off') value = 18;
+        else value = srcIdx - 1; // 0-17
+        break;
+      case 'ULTRANET':
+        path = `/config/routing/p16/${destIdx.toString().padStart(2, '0')}`;
+        if (src.id === 'off') value = 0; // TBD - differs by preset
+        else value = srcIdx - 1; 
+        break;
+      case 'AUX_OUT':
+        path = `/config/routing/aux/${destIdx.toString().padStart(2, '0')}`;
+        value = srcIdx - 1;
+        break;
+    }
+
+    return { path, value };
+  }
+
+  function handlePatchChange(dest, src) {
+    // 1. Update local optimistic state
+    if (routingState[dest.id] === src.id) {
+       routingState[dest.id] = null;
+       showToast(`${dest.name} unpatched (Off)`, "info");
+    } else {
+       routingState[dest.id] = src.id;
+       showToast(`${dest.name} patched to ${src.name}`, "info");
+    }
+    routingState = { ...routingState };
+
+    // 2. Emit OSC to hardware
+    const { path, value } = mapPatchToOsc(routingMode, dest, src);
+    if (path) {
+      setOsc(path, [{ type: 'i', value }]);
+    }
+  }
+
+  // 3. Reactive Hydration (Mixer -> Frontend UI)
+  $: {
+    const cache = $mixerState.flatOscCache;
+    const configInputs = config.inputs || 16;
+    if (cache && Object.keys(cache).length > 0) {
+      // Hydrate INPUT Mode
+      for (let i = 1; i <= configInputs; i++) {
+        const path = `/config/routing/i/${i.toString().padStart(2, '0')}`;
+        const val = cache[path]?.[0]?.value;
+        if (val !== undefined) {
+           let srcId = 'off';
+           if (val < 16) srcId = `sock_in_${val + 1}`;
+           else if (val === 16) srcId = 'sock_aux_l';
+           else if (val === 17) srcId = 'sock_aux_r';
+           routingState[`in_${i}`] = srcId;
+        }
+      }
+      
+      // Hydrate USB RTN Mode
+      for (let i = 1; i <= configInputs; i++) {
+        const path = `/config/routing/card/${i.toString().padStart(2, '0')}`;
+        const val = cache[path]?.[0]?.value;
+        if (val !== undefined) {
+          let srcId = (val < 18) ? `usb_in_${val + 1}` : 'off';
+          routingState[`in_${i}`] = srcId; 
+        }
+      }
+      routingState = { ...routingState };
+    }
+  }
   
   // Available Modes based on Preset
   $: availableRoutingModes = (() => {
@@ -1748,16 +1839,7 @@
                               <td class="patch-point" class:active={isActive}>
                                 <button 
                                   class="radio-dot-btn" 
-                                  on:click={() => {
-                                    if (routingState[dest.id] === src.id) {
-                                      routingState[dest.id] = null;
-                                      showToast(`${dest.name} unpatched (Off)`, "info");
-                                    } else {
-                                      routingState[dest.id] = src.id;
-                                      showToast(`${dest.name} patched to ${src.name}`, "info");
-                                    }
-                                    routingState = { ...routingState };
-                                  }}
+                                  on:click={() => handlePatchChange(dest, src)}
                                 >
                                   <div class="radio-circle" title={src.name}></div>
                                 </button>

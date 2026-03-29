@@ -28,6 +28,86 @@ class MixerConnection extends EventEmitter {
         this.udpPort.on('error', (err) => {
             console.error('[MixerSync] OSC UDP Error:', err);
         });
+
+        // Sync State Tracking
+        this.isSyncing = false;
+        this.syncProgress = 0;
+    }
+
+    // Phase 4 Hardware Sync Templates
+    getSyncTemplate(type = 'XR18') {
+        const templates = {
+            'XR18': [
+                // Global Config
+                { address: '/config/routing/i', count: 16, start: 1, suffix: true },
+                { address: '/config/routing/card', count: 18, start: 1, suffix: true },
+                { address: '/config/routing/p16', count: 16, start: 1, suffix: true },
+                { address: '/config/routing/aux', count: 6, start: 1, suffix: true },
+                // Strips (Config/Preamps)
+                { address: '/ch/01-16/config/name', pattern: '/ch/{N}/config/name', count: 16 },
+                { address: '/ch/01-16/config/color', pattern: '/ch/{N}/config/color', count: 16 },
+                { address: '/ch/01-16/config/icon', pattern: '/ch/{N}/config/icon', count: 16 },
+                { address: '/headamp/00-15/gain', pattern: '/headamp/{N}', count: 16, start: 0, pad: 2 },
+                { address: '/headamp/00-15/phantom', pattern: '/headamp/{N}/phantom', count: 16, start: 0, pad: 2 },
+                // EQ/Dyn/Gate
+                { address: '/ch/01-16/eq', pattern: '/ch/{N}/eq', count: 16 },
+                { address: '/ch/01-16/gate', pattern: '/ch/{N}/gate', count: 16 },
+                { address: '/ch/01-16/dyn', pattern: '/ch/{N}/dyn', count: 16 }
+            ],
+            'X32RACK': [
+                { address: '/config/routing/user/in', count: 32, start: 1, suffix: true, pad: 2 },
+                { address: '/config/routing/user/out', count: 16, start: 1, suffix: true, pad: 2 },
+                { address: '/ch/01-32/config/name', pattern: '/ch/{N}/config/name', count: 32 },
+                { address: '/ch/01-32/eq', pattern: '/ch/{N}/eq', count: 32 }
+            ]
+        };
+        return templates[type] || templates['XR18'];
+    }
+
+    async requestFullSync(mixerType = 'XR18') {
+        if (this.isSyncing) return;
+        console.log(`[MixerSync] Starting deep sync for ${mixerType}...`);
+        this.isSyncing = true;
+        this.syncProgress = 0;
+        this.emit('syncStatus', { active: true, progress: 0 });
+
+        const template = this.getSyncTemplate(mixerType);
+        let totalRequests = 0;
+        const requests = [];
+
+        // Explode template into individual OSC requests
+        template.forEach(item => {
+            if (item.pattern) {
+                for (let i = 0; i < item.count; i++) {
+                    const n = (i + (item.start || 1)).toString().padStart(item.pad || 2, '0');
+                    requests.push(item.pattern.replace('{N}', n));
+                }
+            } else if (item.suffix) {
+                for (let i = 0; i < item.count; i++) {
+                    const n = (i + (item.start || 1)).toString().padStart(item.pad || 2, '0');
+                    requests.push(`${item.address}/${n}`);
+                }
+            } else {
+                requests.push(item.address);
+            }
+        });
+
+        totalRequests = requests.length;
+        console.log(`[MixerSync] Dispatching ${totalRequests} sync requests...`);
+
+        for (let i = 0; i < requests.length; i++) {
+            this.sendOsc(requests[i], []); // Empty args = "Request current value" in Behringer OSC
+            this.syncProgress = Math.round(((i + 1) / totalRequests) * 100);
+            if (i % 20 === 0) {
+                this.emit('syncStatus', { active: true, progress: this.syncProgress });
+            }
+            // Add a tiny delay to not swamp the network stack (handled by sendOsc throttle, but explicit help)
+            if (i % 50 === 0) await new Promise(r => setTimeout(r, 50));
+        }
+
+        this.isSyncing = false;
+        this.emit('syncStatus', { active: false, progress: 100 });
+        console.log(`[MixerSync] Deep sync complete.`);
     }
 
     connect() {
@@ -44,8 +124,11 @@ class MixerConnection extends EventEmitter {
             this.sendOsc('/xremote', []);
         }, 9000);
         
-        // Send initial keep-alive
+        // Handshake
         this.sendOsc('/xremote', []);
+        
+        // Auto-request sync on first connection
+        setTimeout(() => this.requestFullSync('XR18'), 500);
     }
 
     sendOsc(address, args = []) {

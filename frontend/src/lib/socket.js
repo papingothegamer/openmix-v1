@@ -14,7 +14,8 @@ export const socket = io(SOCKET_URL, {
 export const isConnected = writable(false);
 export const mixerState = writable({ buses: {}, channels: {}, meters: [], flatOscCache: {} });
 export const rawMeters = writable([]);
-export const meterLight = writable('off'); // 'off', 'green', 'yellow', 'red'
+export const meterLight = writable('off'); 
+export const syncProgress = writable({ active: false, progress: 0 }); // { active: boolean, progress: 0-100 }
 
 // Ensure musician session tokens are included in the Socket.io handshake.
 export function setSocketAuthToken(token) {
@@ -32,6 +33,10 @@ socket.on('disconnect', () => {
 
 socket.on('syncState', (state) => {
     mixerState.set(state);
+});
+
+socket.on('syncStatus', (data) => {
+    syncProgress.set(data);
 });
 
 socket.on('meterTrafficLight', (data) => {
