@@ -5,8 +5,12 @@
   export let value = 0.5;
   export let min = 0;
   export let max = 100;
-  export let defaultValue = value; // Captures initial load value as default
+  export let defaultValue = value; 
   export let onChange = (val) => {}; 
+  export let interactive = true;
+  export let isLogarithmic = false;
+  export let color = "#00CED1";
+  export let size = 80;
 
   let knobElement;
   let isDragging = false;
@@ -26,10 +30,22 @@
   }
 
   function normalizeValue(val) {
+    if (isLogarithmic) {
+      const logMin = Math.log10(Math.max(0.1, min));
+      const logMax = Math.log10(max);
+      const logVal = Math.log10(Math.max(0.1, val));
+      return clamp((logVal - logMin) / (logMax - logMin), 0, 1);
+    }
     return clamp((val - min) / getSafeRange(), 0, 1);
   }
 
   function denormalizeValue(normalized) {
+    if (isLogarithmic) {
+       const logMin = Math.log10(Math.max(0.1, min));
+       const logMax = Math.log10(max);
+       const val = Math.pow(10, logMin + normalized * (logMax - logMin));
+       return clamp(val, min, max);
+    }
     return min + clamp(normalized, 0, 1) * getSafeRange();
   }
 
@@ -75,6 +91,7 @@
   }
 
   function handleMouseDown(event) {
+    if (!interactive) return;
     event.preventDefault();
     isDragging = true;
     updateFromPointer(event.clientX, event.clientY);
@@ -90,6 +107,7 @@
   }
 
   function handleTouchStart(event) {
+    if (!interactive) return;
     if (!event.touches.length) return;
     isDragging = true;
     const touch = event.touches[0];
@@ -107,6 +125,7 @@
   }
   
   function handleDoubleClick() {
+    if (!interactive) return;
     if (defaultValue !== undefined) onChange(defaultValue);
   }
 
@@ -142,21 +161,22 @@
 <div
   class="knob-container"
   class:dragging={isDragging}
+  class:readonly={!interactive}
   bind:this={knobElement}
   on:mousedown={handleMouseDown}
   on:touchstart|preventDefault={handleTouchStart}
   on:dblclick={handleDoubleClick}
 >
-  <svg class="knob-svg" viewBox={`${-radius} ${-radius} ${radius * 2} ${radius * 2}`}>
+  <svg class="knob-svg" viewBox={`${-radius} ${-radius} ${radius * 2} ${radius * 2}`} style="width: {size}px; height: {size}px;">
     <path d={describeArc(startAngle + sweepAngle)} fill="none" stroke="#2a2a2a" stroke-width={trackWidth} stroke-linecap="round" />
-    <path d={arcPath} fill="none" stroke="#00CED1" stroke-width={trackWidth} stroke-linecap="round" />
+    <path d={arcPath} fill="none" stroke={color} stroke-width={trackWidth} stroke-linecap="round" />
     <circle cx="0" cy="0" r="19" fill="#161616" stroke="#2b2b2b" stroke-width="1.5" />
-    <g transform={`rotate(${pointerAngle})`}><line x1="0" y1="-3" x2="0" y2="-16" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round" /></g>
-    <circle cx="0" cy="0" r="4" fill="#00CED1" />
+    <g transform={`rotate(${pointerAngle})`}><line x1="0" y1="-3" x2="0" y2="-16" stroke={color} stroke-width="2.5" stroke-linecap="round" /></g>
+    <circle cx="0" cy="0" r="4" fill={color} />
   </svg>
 
   <div class="knob-label">{label}</div>
-  <div class="knob-value">{displayValue}</div>
+  <div class="knob-value" style="--knob-color: {color}">{displayValue}</div>
 </div>
 
 <style>
@@ -171,6 +191,10 @@
     border-radius: 8px;
     transition: background-color 0.2s, transform 0.2s;
     touch-action: none;
+  }
+  .knob-container.readonly {
+    cursor: default !important;
+    opacity: 0.85;
   }
 
   .knob-container:hover {
@@ -200,7 +224,7 @@
 
   .knob-value {
     font-size: 0.85rem;
-    color: #00CED1;
+    color: var(--knob-color, #00CED1);
     font-weight: 700;
     min-width: 2rem;
     text-align: center;

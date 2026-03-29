@@ -11,6 +11,14 @@
   export let compAttack = 10;
   export let compRelease = 100;
   export let compMakeup = 0;
+  export let compScFreq = 100;
+  export let compScType = 0;
+
+  $: logMin = Math.log10(20);
+  $: logMax = Math.log10(20000);
+  $: logVal = Math.log10(compScFreq);
+  
+  import Knob from "../EffectControls/Knob.svelte";
 
   function generateCompCurve(thresh, ratio) {
     const pts = [];
@@ -82,8 +90,19 @@
 
   <div class="x32-graph-box">
     <div class="graph-title">Side Chain Filter</div>
-    <div class="graph-placeholder flex-center">
-      <span class="graph-watermark">SC FILTER</span>
+    <div class="graph-placeholder flex-center" style="padding: 1rem;">
+      <div class="sc-knob-wrapper">
+        <Knob 
+          value={compScFreq} 
+          min={20} 
+          max={20000} 
+          label={['2-POLE', 'LC', 'HC'][compScType]} 
+          color="#10b981" 
+          interactive={false} 
+          isLogarithmic={true} 
+          size={70} 
+        />
+      </div>
     </div>
   </div>
 </div>
@@ -124,16 +143,11 @@
     justify-content: center;
     align-items: center;
   }
-  .graph-watermark {
-    color: #334155;
-    font-size: 1.5rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    opacity: 0.3;
-  }
   .envelope-svg {
     width: 100%;
     height: 100%;
   }
+
+  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(1.1); }
 </style>
 

@@ -51,7 +51,7 @@
         <DownloadCloud size={14} /> Export Scene
       </button>
       <label class="btn-sm upload-btn">
-        <UploadCloud size={14} /> Load JSON
+        <UploadCloud size={14} /> Import Scene
         <input type="file" accept=".json" on:change={onFileLoad} style="display: none;" />
       </label>
       <button class="btn-sm" on:click={toggleFullscreen} title="Toggle Fullscreen UI"><Maximize size={14} /></button>

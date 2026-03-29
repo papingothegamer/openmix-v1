@@ -10,6 +10,14 @@
   export let gateAttack = 5;
   export let gateHold = 50;
   export let gateRel = 100;
+  export let gateScFreq = 100;
+  export let gateScType = 0;
+
+  $: logMin = Math.log10(20);
+  $: logMax = Math.log10(20000);
+  $: logVal = Math.log10(gateScFreq);
+  
+  import Knob from "../EffectControls/Knob.svelte";
 
   function generateGateCurve(thresh, range) {
     const pts = [];
@@ -88,8 +96,19 @@
 
   <div class="x32-graph-box">
     <div class="graph-title">Side Chain Filter</div>
-    <div class="graph-placeholder flex-center">
-      <span class="graph-watermark">SC FILTER</span>
+    <div class="graph-placeholder flex-center" style="padding: 1rem;">
+      <div class="sc-knob-wrapper">
+        <Knob 
+          value={gateScFreq} 
+          min={20} 
+          max={20000} 
+          label={['2-POLE', 'LC', 'HC'][gateScType]} 
+          color="#3b82f6" 
+          interactive={false} 
+          isLogarithmic={true} 
+          size={70} 
+        />
+      </div>
     </div>
   </div>
 </div>
@@ -130,16 +149,11 @@
     justify-content: center;
     align-items: center;
   }
-  .graph-watermark {
-    color: #334155;
-    font-size: 1.5rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    opacity: 0.3;
-  }
   .envelope-svg {
     width: 100%;
     height: 100%;
   }
+
+  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(1.1); }
 </style>
 

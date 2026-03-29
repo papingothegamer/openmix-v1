@@ -108,4 +108,14 @@ export function setSlot(idx, patch) {
   });
 }
 
+export function loadFxState(newState) {
+  if (!newState || (!newState.slots || !Array.isArray(newState.slots))) return;
+  fxState.update(s => {
+    return {
+      ...s,
+      slots: newState.slots.map(slot => normalizeSlot(slot))
+    };
+  });
+}
+
 export default fxState;

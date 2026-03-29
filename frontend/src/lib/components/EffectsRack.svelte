@@ -22,7 +22,7 @@
   const unsub = fxState.subscribe(v => fx = v);
   onDestroy(unsub);
 
-  let selectedSlotIndex = 0;
+  export let selectedSlotIndex = 0;
 
   const presetShortNames = {
     'Empty': 'EMPTY',

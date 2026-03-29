@@ -13,6 +13,18 @@
   let height = 400;
   let selectedBandIndex = 2;
   let mounted = false;
+  
+  // Logic Pro Style Color Palette for 8-band EQ
+  const bandColors = [
+    "#f87171", // 1: Red/Low Cut
+    "#fbbf24", // 2: Amber/Low Shelf
+    "#34d399", // 3: Green/PEQ 1
+    "#22d3ee", // 4: Cyan/PEQ 2
+    "#60a5fa", // 5: Blue/PEQ 3
+    "#a78bfa", // 6: Violet/PEQ 4
+    "#f472b6", // 7: Pink/High Shelf
+    "#e2e8f0"  // 8: Slate-White/High Cut
+  ];
 
   const defaultBands = () => [
     { id: 1, type: 'hpf12', freq: 20,  gain: 0, q: 0.71, logVal: 1.301, enabled: false }, // Flat by default
@@ -256,21 +268,25 @@
           totalGain = Math.max(-15, Math.min(15, totalGain));
           const by = gainToY(totalGain);
 
+          // DRAW SELECTION HALO (Amber Ring)
+          if (i === selectedBandIndex) {
+              ctx.beginPath();
+              ctx.arc(bx, by, 12, 0, Math.PI * 2);
+              ctx.strokeStyle = '#fbbf24';
+              ctx.lineWidth = 2.5;
+              ctx.setLineDash([2, 3]); // Suble dashed halo
+              ctx.stroke();
+              ctx.setLineDash([]); // Reset
+          }
+
           ctx.beginPath();
           ctx.arc(bx, by, i === selectedBandIndex ? 9 : 7, 0, Math.PI * 2);
-          ctx.fillStyle = b.enabled
-              ? (i === selectedBandIndex ? '#f59e0b' : '#38bdf8')
-              : '#475569';
+          ctx.fillStyle = b.enabled ? bandColors[i] : '#475569';
           ctx.fill();
           ctx.strokeStyle = '#0f172a';
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          ctx.fillStyle = '#000';
-          ctx.font = 'bold 9px Inter';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(b.id.toString(), bx, by);
       }
   }
 
@@ -283,10 +299,28 @@
   }
 
   export function resetFlat() {
-      bands = bands.map(b => ({ ...b, gain: 0, q: 1.0 }));
+      bands = bands.map(b => ({ ...b, gain: 0, q: 1.0, enabled: true }));
       if (eqBands) { eqBands = bands; }
-      onBandsChange(channelId, bands);
-      drawEQ();
+      updateBands();
+  }
+
+  export function copyEq() {
+      return JSON.parse(JSON.stringify(bands));
+  }
+
+  export function pasteEq(copiedBands) {
+      if (!copiedBands || !Array.isArray(copiedBands)) return;
+      bands = copiedBands.map((b, i) => ({ ...b, id: i + 1 }));
+      if (eqBands) { eqBands = bands; }
+      updateBands();
+  }
+
+  export function toggleBypass(forceState) {
+      const anyEnabled = bands.some(b => b.enabled);
+      const target = typeof forceState === 'boolean' ? forceState : !anyEnabled;
+      bands = bands.map(b => ({ ...b, enabled: target }));
+      if (eqBands) { eqBands = bands; }
+      updateBands();
   }
 
   onMount(() => {
@@ -345,7 +379,8 @@
             {#each bands as band, i}
                 <button class="wing-band-row" class:active={selectedBandIndex === i} on:click|stopPropagation={() => selectedBandIndex = i}>
                     <div class="wing-band-name">
-                        <span class="w-id">{band.id}</span>
+                        <div class="band-color-dot" style="background: {bandColors[i]}; border-color: {selectedBandIndex === i ? '#fbbf24' : 'transparent'};"></div>
+                        <span class="w-id">{i + 1}</span>
                         <span class="w-type">{shortNames[band.type]}</span>
                     </div>
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -360,7 +395,7 @@
                 {@const activeBand = bands[selectedBandIndex]}
                 <div class="w-detail-header">
                     <div class="w-detail-title-group">
-                        <span class="w-band-label">BAND {activeBand.id}</span>
+                        <span class="w-band-label">BAND {selectedBandIndex + 1}</span>
                         <button class="w-mini-toggle" class:is-on={activeBand.enabled} on:click|stopPropagation={() => { activeBand.enabled = !activeBand.enabled; updateBands(); }}>
                             {activeBand.enabled ? 'ON' : 'OFF'}
                         </button>
@@ -430,6 +465,7 @@
   .wing-band-row:hover { background: rgba(59,130,246,0.05); }
   .wing-band-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
   .wing-band-name { display: flex; gap: 0.5rem; align-items: center; color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+  .band-color-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 2px solid transparent; transition: 0.2s; }
   .wing-band-row.active .wing-band-name { color: #f8fafc; font-weight: 700; }
   .w-id { font-weight: 800; font-size: 0.85rem; }
   

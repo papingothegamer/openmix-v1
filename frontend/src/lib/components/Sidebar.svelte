@@ -10,6 +10,9 @@
   export let onViewChange = (v) => {};
   export let onStripsChange = (n) => {};
   export let onResetEq = () => {};
+  export let onBypassEq = () => {};
+  export let onCopyEq = () => {};
+  export let onPasteEq = () => {};
 
   function prev() { if (currentPage > 0) onPageChange(currentPage - 1); }
   function next() { if (currentPage < totalPages - 1) onPageChange(currentPage + 1); }
@@ -52,9 +55,9 @@
     <div class="section">
       <h4>EQ</h4>
       <button class="layer-btn" on:click={onResetEq}>Reset Flat</button>
-      <button class="layer-btn">Bypass</button>
-      <button class="layer-btn">Copy</button>
-      <button class="layer-btn">Paste</button>
+      <button class="layer-btn" on:click={onBypassEq}>Bypass</button>
+      <button class="layer-btn" on:click={onCopyEq}>Copy</button>
+      <button class="layer-btn" on:click={onPasteEq}>Paste</button>
     </div>
 
   {:else if activeTab === 'channel'}

@@ -210,7 +210,7 @@
                   {@const isPre  = sendsState[busKey]?.prePost === 1}
                   {@const level  = sendsState[busKey]?.level ?? 0}
                   <div class="strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                    <div class="strip-name">{scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}</div>
+                    <div class="strip-name">{scribbles[`bus_${busNum}`]?.name || `AUX ${busNum}`}</div>
                     <div class="fader-well">
                       <input type="range" class="v-fader" min="0" max="1" step="0.005"
                         value={level} style="width:{FADER_H}px"
@@ -277,7 +277,7 @@
                 {@const isPre  = sendsState[busKey]?.prePost === 1}
                 {@const level  = sendsState[busKey]?.level ?? 0}
                 <div class="strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                  <div class="strip-name">{scribbles[`out_${busNum}`]?.name || `AUX ${busNum}`}</div>
+                  <div class="strip-name">{scribbles[`bus_${busNum}`]?.name || `AUX ${busNum}`}</div>
                   <div class="fader-well">
                     <input type="range" class="v-fader" min="0" max="1" step="0.005"
                       value={level} style="width:{FADER_H}px"

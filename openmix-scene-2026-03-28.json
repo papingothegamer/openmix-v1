@@ -1,0 +1,696 @@
+{
+  "name": "OpenMix Export",
+  "timestamp": 1774688672499,
+  "state": {
+    "flatOscCache": {}
+  },
+  "uiConfig": {
+    "config": {
+      "inputs": 18,
+      "outputs": 6,
+      "dcas": 4,
+      "fx": 4,
+      "presetId": "XR18",
+      "visibleBuses": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "scribbles": {
+      "in_1": {
+        "name": "KICK",
+        "iconType": "icon_02",
+        "color": "#10b981"
+      },
+      "in_2": {
+        "name": "SNAREHH",
+        "iconType": "icon_04",
+        "color": "#10b981"
+      },
+      "in_3": {
+        "name": "OVERH",
+        "iconType": "icon_11",
+        "color": "#10b981"
+      },
+      "in_4": {
+        "name": "PERCS",
+        "iconType": "icon_14",
+        "color": "#10b981"
+      },
+      "in_5": {
+        "name": "BASS",
+        "iconType": "icon_17",
+        "color": "#ef4444"
+      },
+      "in_6": {
+        "name": "KEYS 1",
+        "iconType": "icon_27",
+        "color": "#3b82f6"
+      },
+      "in_7": {
+        "name": "KEYS 2",
+        "iconType": "icon_30",
+        "color": "#3f3f46"
+      },
+      "in_8": {
+        "name": "IEM COMS",
+        "iconType": "icon_53",
+        "color": "#ec4899"
+      },
+      "in_9": {
+        "name": "MIC 1",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_10": {
+        "name": "MIC 2",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_11": {
+        "name": "MIC 3",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_12": {
+        "name": "MIC 4",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_13": {
+        "name": "MIC 5",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_14": {
+        "name": "MIC 6",
+        "iconType": "icon_51",
+        "color": "#f59e0b"
+      },
+      "in_15": {
+        "name": "SAX",
+        "iconType": "icon_37",
+        "color": "#3b82f6"
+      },
+      "in_16": {
+        "name": "LOOP",
+        "iconType": "icon_62",
+        "color": "#3f3f46"
+      },
+      "bus_3": {
+        "name": "PIANO",
+        "iconType": "icon_53",
+        "color": "#3b82f6"
+      },
+      "bus_4": {
+        "name": "PIANO 2",
+        "iconType": "icon_53",
+        "color": "#3b82f6"
+      },
+      "bus_5": {
+        "name": "D+B+S",
+        "iconType": "icon_53",
+        "color": "#10b981"
+      },
+      "bus_6": {
+        "name": "SCENA",
+        "iconType": "icon_66",
+        "color": "#f59e0b"
+      },
+      "main_LR": {
+        "name": "MAIN_LR",
+        "iconType": "icon_67",
+        "color": "#f8fafc"
+      }
+    },
+    "channelEqState": {
+      "in_17": [
+        {
+          "id": 1,
+          "type": "hpf48",
+          "freq": 79.43282347242814,
+          "gain": 0.3,
+          "q": 2.8,
+          "logVal": 1.9,
+          "enabled": true
+        },
+        {
+          "id": 2,
+          "type": "loshelf",
+          "freq": 169.82436524617444,
+          "gain": -1.9,
+          "q": 4.2,
+          "logVal": 2.23,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 363.0780547701014,
+          "gain": 6,
+          "q": 3.1,
+          "logVal": 2.56,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 1000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 1999.8618696327449,
+          "gain": -6.6,
+          "q": 1,
+          "logVal": 3.301,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 3999.4474976109736,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.602,
+          "enabled": true
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 7998.342550070284,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 3.903,
+          "enabled": true
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 17988.709151287872,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.255,
+          "enabled": true
+        }
+      ],
+      "main_LR": [
+        {
+          "id": 1,
+          "type": "loshelf",
+          "freq": 97.72372209558107,
+          "gain": -13.6,
+          "q": 4.3,
+          "logVal": 1.99,
+          "enabled": true
+        },
+        {
+          "id": 2,
+          "type": "peq",
+          "freq": 169.82436524617444,
+          "gain": 4.2,
+          "q": 0.3,
+          "logVal": 2.23,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 500.0345349769783,
+          "gain": 2.8,
+          "q": 1.9,
+          "logVal": 2.699,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 1778.2794100389228,
+          "gain": -4.2,
+          "q": 1,
+          "logVal": 3.25,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 6309.57344480193,
+          "gain": 1.8,
+          "q": 1.4,
+          "logVal": 3.8,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 3999.4474976109736,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.602,
+          "enabled": false
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 7998.342550070284,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 3.903,
+          "enabled": false
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 17988.709151287872,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.255,
+          "enabled": false
+        }
+      ],
+      "in_11": [
+        {
+          "id": 1,
+          "type": "hpf12",
+          "freq": 20,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 1.301,
+          "enabled": false
+        },
+        {
+          "id": 2,
+          "type": "loshelf",
+          "freq": 200,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 2.301,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 500,
+          "gain": 0,
+          "q": 1,
+          "logVal": 2.699,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 1000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 2000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.301,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 4000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.602,
+          "enabled": true
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 8000,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 3.903,
+          "enabled": true
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 20000,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.301,
+          "enabled": false
+        }
+      ],
+      "in_12": [
+        {
+          "id": 1,
+          "type": "hpf48",
+          "freq": 59.51357340018542,
+          "gain": -0.9,
+          "q": 0.71,
+          "logVal": 1.7746160275860896,
+          "enabled": true
+        },
+        {
+          "id": 2,
+          "type": "peq",
+          "freq": 132.64454739419895,
+          "gain": 5.045454545454547,
+          "q": 0.71,
+          "logVal": 2.122689402186557,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 688.1546051324214,
+          "gain": -5.863636363636363,
+          "q": 1,
+          "logVal": 2.8376860205215664,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 1689.8233987331475,
+          "gain": 2.522727272727273,
+          "q": 1,
+          "logVal": 3.227841319428288,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 3228.7099403489024,
+          "gain": 2.1818181818181817,
+          "q": 1,
+          "logVal": 3.50902903078235,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 3879.6433875513894,
+          "gain": 2.590909090909091,
+          "q": 1,
+          "logVal": 3.5887918075693745,
+          "enabled": false
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 6037.042316167179,
+          "gain": -0.8181818181818181,
+          "q": 0.71,
+          "logVal": 3.780824220016715,
+          "enabled": false
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 19998.61869632745,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.301,
+          "enabled": false
+        }
+      ],
+      "in_2": [
+        {
+          "id": 1,
+          "type": "hpf12",
+          "freq": 20,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 1.301,
+          "enabled": false
+        },
+        {
+          "id": 2,
+          "type": "loshelf",
+          "freq": 200,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 2.301,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 500,
+          "gain": 0,
+          "q": 1,
+          "logVal": 2.699,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 1000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 2000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.301,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 4000,
+          "gain": 0,
+          "q": 1,
+          "logVal": 3.602,
+          "enabled": true
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 8000,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 3.903,
+          "enabled": true
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 20000,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.301,
+          "enabled": false
+        }
+      ],
+      "in_9": [
+        {
+          "id": 1,
+          "type": "loshelf",
+          "freq": 107.26777648572086,
+          "gain": -15,
+          "q": 0.71,
+          "logVal": 2.0304692783851546,
+          "enabled": true
+        },
+        {
+          "id": 2,
+          "type": "loshelf",
+          "freq": 204.60024259618265,
+          "gain": -2.5227272727272725,
+          "q": 0.71,
+          "logVal": 2.3109061443229693,
+          "enabled": true
+        },
+        {
+          "id": 3,
+          "type": "peq",
+          "freq": 242.8317276918839,
+          "gain": 6.681818181818182,
+          "q": 1,
+          "logVal": 2.3853054297726466,
+          "enabled": true
+        },
+        {
+          "id": 4,
+          "type": "peq",
+          "freq": 766.3520372069033,
+          "gain": -4.090909090909091,
+          "q": 1,
+          "logVal": 2.884428316232028,
+          "enabled": true
+        },
+        {
+          "id": 5,
+          "type": "peq",
+          "freq": 2030.5051541162072,
+          "gain": -3,
+          "q": 1,
+          "logVal": 3.307604096215313,
+          "enabled": true
+        },
+        {
+          "id": 6,
+          "type": "peq",
+          "freq": 3357.785068347767,
+          "gain": 4.0227272727272725,
+          "q": 1,
+          "logVal": 3.5260528935239037,
+          "enabled": true
+        },
+        {
+          "id": 7,
+          "type": "hishelf",
+          "freq": 7998.342550070284,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 3.903,
+          "enabled": false
+        },
+        {
+          "id": 8,
+          "type": "lpf12",
+          "freq": 19998.61869632745,
+          "gain": 0,
+          "q": 0.71,
+          "logVal": 4.301,
+          "enabled": false
+        }
+      ]
+    },
+    "mainOutAssign": {
+      "in_1": true,
+      "in_2": true,
+      "in_3": true,
+      "in_4": true,
+      "in_5": true,
+      "in_6": true,
+      "in_7": true,
+      "in_8": true,
+      "in_9": true,
+      "in_10": true,
+      "in_12": true,
+      "in_13": true,
+      "in_14": true,
+      "in_15": true,
+      "in_16": true,
+      "main_LR": true
+    },
+    "stereoLinks": {
+      "11": false,
+      "17": false
+    },
+    "routingState": {
+      "in_1_bus1": true,
+      "in_2_bus1": true,
+      "in_16_bus4": true,
+      "in_16_bus1": true,
+      "in_2_bus2": true,
+      "in_1_bus2": true,
+      "in_1_bus3": true,
+      "in_2_bus3": true,
+      "in_1_bus4": true,
+      "in_2_bus4": true,
+      "in_1_bus5": true,
+      "in_2_bus5": true,
+      "in_1_bus6": true,
+      "in_2_bus6": true,
+      "in_3_bus1": true,
+      "in_4_bus1": true,
+      "in_5_bus1": true,
+      "in_6_bus1": true,
+      "in_7_bus1": true,
+      "in_8_bus1": true,
+      "in_9_bus1": true,
+      "in_3_bus2": true,
+      "in_4_bus2": true,
+      "in_5_bus2": true,
+      "in_6_bus2": true,
+      "in_7_bus2": true,
+      "in_8_bus2": true,
+      "in_9_bus2": true,
+      "in_3_bus3": true,
+      "in_4_bus3": true,
+      "in_3_bus4": true,
+      "in_4_bus4": true,
+      "in_3_bus5": true,
+      "in_3_bus6": true,
+      "in_4_bus6": true,
+      "in_15_bus4": true,
+      "in_14_bus4": true,
+      "in_13_bus4": true,
+      "in_12_bus4": true,
+      "in_11_bus4": true,
+      "in_10_bus4": true,
+      "in_9_bus3": true,
+      "in_9_bus4": true,
+      "in_8_bus3": true,
+      "in_8_bus4": true,
+      "in_8_bus5": true,
+      "in_16_bus2": true,
+      "in_16_bus3": true,
+      "in_16_bus5": true,
+      "in_8_bus6": true,
+      "in_9_bus6": true,
+      "in_10_bus6": true,
+      "in_11_bus6": true,
+      "in_16_bus6": true,
+      "in_15_bus6": true,
+      "in_14_bus6": true,
+      "in_13_bus6": true,
+      "in_12_bus6": true,
+      "in_5_bus6": true,
+      "in_6_bus6": true,
+      "in_7_bus6": true,
+      "in_4_bus5": true,
+      "in_5_bus5": true,
+      "in_5_bus4": true,
+      "in_7_bus3": true,
+      "in_6_bus4": true,
+      "in_5_bus3": true,
+      "in_7_bus5": true,
+      "in_6_bus5": true,
+      "in_7_bus4": true,
+      "in_6_bus3": true,
+      "in_10_bus1": true,
+      "in_11_bus2": true,
+      "in_10_bus3": true,
+      "in_10_bus2": true,
+      "in_11_bus1": true,
+      "in_11_bus3": true,
+      "in_11_bus5": true,
+      "in_10_bus5": true,
+      "in_9_bus5": true,
+      "in_12_bus5": true,
+      "in_13_bus5": true,
+      "in_14_bus5": true,
+      "in_15_bus5": true,
+      "in_12_bus3": true,
+      "in_13_bus3": true,
+      "in_14_bus3": true,
+      "in_15_bus3": true,
+      "in_15_bus2": true,
+      "in_14_bus2": true,
+      "in_13_bus2": true,
+      "in_12_bus2": true,
+      "in_14_bus1": true,
+      "in_13_bus1": true,
+      "in_12_bus1": true,
+      "in_15_bus1": true
+    },
+    "sendsState": {}
+  }
+}

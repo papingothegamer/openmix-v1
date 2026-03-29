@@ -19,6 +19,9 @@
   import EffectsRack from "./lib/components/EffectsRack.svelte";
   import ChannelModal from "./lib/components/ChannelModal.svelte";
   import MonitorModal from "./lib/components/MonitorModal.svelte";
+  import Toast from "./lib/components/Toast.svelte";
+  import { showToast } from "./lib/notificationStore";
+  import fxState, { loadFxState } from "./lib/fxState";
   import { MixerPresets, PredefinedMixersArray } from "./lib/mixerPresets";
   import {
     ChevronLeft,
@@ -34,7 +37,11 @@
     ArrowLeft,
     Sliders,
     Headphones,
-    Lock
+    Lock,
+    Mic2,
+    Usb,
+    Network,
+    Speaker
   } from "lucide-svelte";
 
   let fohMeters = new Array(16).fill(-60);
@@ -42,7 +49,9 @@
   // Navigation / Focus State
   let activeRole = null; // 'foh' or null
   let activeTab = "mixer"; // 'mixer', 'channel', 'eq', 'sends', 'routing', 'fx'
-  let routingSubTab = "busses"; // 'busses', 'aes50a', 'aes50b', 'usb', 'ultranet'
+  let routingMode = "INPUT"; // 'INPUT', 'USB_RTN', 'USB_SEND', 'ULTRANET', 'AUX_OUT', 'MAIN_OUT', 'AES50_A', 'AES50_B'
+  let routingSubTab = "CH1-16"; 
+  let routingSignalTap = "POST_FADER";
   let activeView = "inputs"; // 'inputs', 'outputs', 'dcas'
   let currentPage = 1;
   let channelsPerPage = 8;
@@ -58,6 +67,32 @@
   let musicianAux = null;
   let musicianTokenLoading = false;
   let musicianToken = null;
+  let channelFxInsert = {}; // Keyed by channelId: slotIndex (0-3) or null
+  let perChannelFx = {}; // Keyed by channelId: { slots: [...] }
+  let rackSlotIndex = 0;
+  let previousChannel = null;
+
+  $: if (selectedChannel) {
+    // 1. Save current FX rack state for the PREVIOUS channel before switching context
+    if (previousChannel && previousChannel !== selectedChannel) {
+      perChannelFx[previousChannel] = { slots: JSON.parse(JSON.stringify($fxState.slots)) };
+    }
+    
+    // 2. Load or Initialize FX rack state for the NEW channel
+    if (!perChannelFx[selectedChannel]) {
+      // Initialize fresh 4-slot rack for this channel
+      const freshSlots = Array(4).fill(null).map(() => ({ preset: 'Empty', bypass: false, params: {}, level: 0, type: 'generic' }));
+      perChannelFx[selectedChannel] = { slots: freshSlots };
+    }
+    
+    // Hydro $fxState with this channel's context
+    loadFxState(perChannelFx[selectedChannel]);
+    previousChannel = selectedChannel;
+
+    // Standard reactive slot focus logic
+    const ins = channelFxInsert[selectedChannel];
+    if (typeof ins === 'number') rackSlotIndex = ins;
+  }
 
   function connectAsFoh() {
     // Clear auth token so backend defaults to master_admin_token/FOH.
@@ -116,8 +151,8 @@
 
     if (type === "in" && num >= 1 && num <= config.inputs) {
       selectedChannel = `in_${num}`;
-    } else if (type === "out" && num >= 1 && num <= config.outputs) {
-      selectedChannel = `out_${num}`;
+    } else if ((type === "out" || type === "bus") && num >= 1 && num <= config.outputs) {
+      selectedChannel = `bus_${num}`;
     } else if (type === "dca" && num >= 1 && num <= config.dcas) {
       selectedChannel = `dca_${num}`;
     }
@@ -135,10 +170,43 @@
     const [type, numStr] = selectedChannel.split("_");
     const num = parseInt(numStr, 10);
     if (type === "in") return num >= config.inputs;
-    if (type === "out") return num >= config.outputs;
+    if (type === "out" || type === "bus") return num >= config.outputs;
     if (type === "dca") return num >= (config.dcas || 8);
     return true;
   })();
+
+  let eqComponent;
+  let clipboardEq = null;
+
+  function handleResetEq() {
+    if (eqComponent) {
+      eqComponent.resetFlat();
+      showToast("EQ Reset to Flat", "info");
+    }
+  }
+
+  function handleCopyEq() {
+    if (eqComponent) {
+      clipboardEq = eqComponent.copyEq();
+      showToast(`EQ Copied from ${selectedChannel.toUpperCase()}`, "success");
+    }
+  }
+
+  function handlePasteEq() {
+    if (eqComponent && clipboardEq) {
+      eqComponent.pasteEq(clipboardEq);
+      showToast(`EQ Pasted to ${selectedChannel.toUpperCase()}`, "success");
+    } else if (!clipboardEq) {
+      showToast("No EQ in clipboard", "error");
+    }
+  }
+
+  function handleBypassEq() {
+    if (eqComponent) {
+      eqComponent.toggleBypass();
+      showToast("EQ Bypass Toggled", "info");
+    }
+  }
 
   let requiresSetup = localStorage.getItem("openmix_setup") !== "true";
   let config = {
@@ -195,7 +263,6 @@
   let scribbles = {};
 
   // Phase 13 Parametric Nodes Reference
-  let eqComponent;
 
   // Per-channel EQ state persistence (survives tab switches)
   let channelEqState = {};
@@ -203,20 +270,105 @@
   // Sends tab: per-channel per-bus state { level: 0-1, prePost: 0|1 }
   let sendsState = {};
 
-  // Routing tab: per-channel per-bus on/off state (defaults to true = routed)
-  let routingState = {};
-  let routingSourceFilter = 'all'; // 'all' | 'inputs' | 'aux' | 'fx' | 'bus'
+  // Routing Architecture Phase 3.8 (X-AIR Layout)
+  let routingState = {}; // { [dest_id]: src_id }
+  
+  // Available Modes based on Preset
+  $: availableRoutingModes = (() => {
+    const preset = MixerPresets[config.presetId] || MixerPresets.CUSTOM;
+    const modes = [
+      { id: 'INPUT', name: 'Input', icon: Mic2 },
+      { id: 'USB_RTN', name: 'USB Returns', icon: Usb }
+    ];
+    if (preset.hasUSB) modes.push({ id: 'USB_SEND', name: 'USB Sends', icon: Usb });
+    if (preset.hasUltranet) modes.push({ id: 'ULTRANET', name: 'Ultranet', icon: Network });
+    modes.push({ id: 'AUX_OUT', name: 'Aux Out', icon: Sliders });
+    modes.push({ id: 'MAIN_OUT', name: 'Main Out', icon: Speaker });
+    if (preset.hasAES50) {
+      modes.push({ id: 'AES50_A', name: 'AES50-A', icon: Network });
+      modes.push({ id: 'AES50_B', name: 'AES50-B', icon: Network });
+    }
+    return modes;
+  })();
 
-  $: routingSources = [
-    ...Array.from({ length: config.inputs }, (_, i) => ({ id: `in_${i+1}`, type: 'in', num: i+1, name: scribbles[`in_${i+1}`]?.name || `CH ${i+1}` })),
-    ...Array.from({ length: 8 }, (_, i) => ({ id: `auxin_${i+1}`, type: 'aux', num: i+1, name: scribbles[`auxin_${i+1}`]?.name || `AUX ${i+1}` })),
-    ...Array.from({ length: config.fx || 4 }, (_, i) => ({ id: `fxrn_${i+1}`, type: 'fx', num: i+1, name: `FX RTN ${i+1}` })),
-    ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, type: 'bus', num: i+1, name: `BUS ${i+1}` }))
-  ];
+  // Sync SubTab when Mode changes
+  $: {
+    if (routingMode === 'INPUT') routingSubTab = "CH1-16";
+    if (routingMode === 'USB_RTN') routingSubTab = "CH1-16";
+    if (routingMode === 'USB_SEND') routingSubTab = "CH1-16";
+  }
 
-  $: filteredRoutingSources = (() => {
-    if (routingSourceFilter === 'all') return routingSources;
-    return routingSources.filter(s => s.type === (routingSourceFilter === 'bus' ? 'bus' : (routingSourceFilter === 'aux' ? 'aux' : (routingSourceFilter === 'fx' ? 'fx' : 'in'))));
+  // Reactive Matrix Sets
+  $: patchSet = (() => {
+    const preset = MixerPresets[config.presetId] || MixerPresets.CUSTOM;
+    let srcs = [];
+    let dests = [];
+    let subTabs = [];
+
+    switch(routingMode) {
+      case 'INPUT':
+        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i * 16 < config.inputs || i === 2);
+        dests = Array.from({ length: 16 }, (_, i) => {
+          const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
+          const id = i + offset + 1;
+          if (id > config.inputs) return null;
+          return { id: `in_${id}`, name: scribbles[`in_${id}`]?.name || `CH ${id}` };
+        }).filter(d => d);
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `sock_in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          { id: `sock_aux_l`, name: '17' },
+          { id: `sock_aux_r`, name: '18' },
+          { id: 'off', name: 'Off' }
+        ];
+        break;
+
+      case 'USB_RTN':
+        subTabs = ["CH1-16", "CH17-32", "AUX/FX"];
+        dests = Array.from({ length: 16 }, (_, i) => {
+          const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
+          const id = i + offset + 1;
+          if (id > config.inputs) return null;
+          return { id: `in_${id}`, name: scribbles[`in_${id}`]?.name || `CH ${id}` };
+        }).filter(d => d);
+        srcs = [
+          ...Array.from({ length: 16 }, (_, i) => ({ id: `usb_in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          { id: 'off', name: 'Off (Analog)' }
+        ];
+        break;
+
+      case 'USB_SEND':
+        subTabs = ["CH1-16", "AUX/BUS", "FX", "MAIN"];
+        dests = Array.from({ length: 16 }, (_, i) => ({ id: `usb_out_${i+1}`, name: `USB ${i+1}` }));
+        srcs = routingSubTab === "CH1-16" 
+          ? Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` }))
+          : (routingSubTab === "AUX/BUS" 
+              ? Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` }))
+              : [{ id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }]);
+        break;
+
+      case 'AUX_OUT':
+        subTabs = ["CH1-16", "BUS", "MAIN"];
+        dests = Array.from({ length: 6 }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
+        srcs = routingSubTab === "BUS" 
+          ? Array.from({ length: 16 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })) 
+          : Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` }));
+        break;
+      
+      case 'MAIN_OUT':
+        subTabs = ["MAIN", "BUS", "USB"];
+        dests = [{ id: 'sock_main_l', name: 'MAIN L' }, { id: 'sock_main_r', name: 'MAIN R' }];
+        srcs = [{ id: 'main_l', name: 'MAIN L' }, { id: 'main_r', name: 'MAIN R' }];
+        break;
+
+      case 'AES50_A':
+      case 'AES50_B':
+        subTabs = ["CH1-16", "BUS", "MAIN"];
+        dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+1}`, name: `A${i+1}` }));
+        srcs = Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` }));
+        break;
+    }
+
+    return { srcs, dests, subTabs };
   })();
 
   // Stereo link state: key = odd channel number, value = true if linked to next even channel
@@ -516,6 +668,9 @@
         stereoLinks,
         routingState,
         sendsState,
+        fxRack: $fxState,
+        channelFxInsert,
+        perChannelFx
       },
     };
     const sceneData = JSON.stringify(sceneLayout, null, 2);
@@ -553,19 +708,64 @@
 
         if (json.uiConfig) {
           if (json.uiConfig.config) config = json.uiConfig.config;
-          if (json.uiConfig.scribbles) scribbles = json.uiConfig.scribbles;
+          
+          // MIGRATION: Convert 'out_' keys to 'bus_' in all UI state objects
+          const migrateKeys = (obj) => {
+            if (!obj) return obj;
+            const newObj = {};
+            for (const key in obj) {
+              const newKey = key.startsWith('out_') ? key.replace('out_', 'bus_') : key;
+              newObj[newKey] = obj[key];
+            }
+            return newObj;
+          };
+
+          if (json.uiConfig.scribbles) scribbles = migrateKeys(json.uiConfig.scribbles);
           if (json.uiConfig.channelEqState)
-            channelEqState = json.uiConfig.channelEqState;
+            channelEqState = migrateKeys(json.uiConfig.channelEqState);
           if (json.uiConfig.mainOutAssign)
-            mainOutAssign = json.uiConfig.mainOutAssign;
+            mainOutAssign = migrateKeys(json.uiConfig.mainOutAssign);
           if (json.uiConfig.stereoLinks)
-            stereoLinks = json.uiConfig.stereoLinks;
+            stereoLinks = json.uiConfig.stereoLinks; // Links are typically numeric keys or handled differently
           if (json.uiConfig.routingState)
             routingState = json.uiConfig.routingState;
           if (json.uiConfig.sendsState)
-            sendsState = json.uiConfig.sendsState;
+            sendsState = migrateKeys(json.uiConfig.sendsState);
+          
+          if (json.uiConfig.fxRack) {
+            const globalVal = json.uiConfig.fxRack;
+            // MIGRATION: Link legacy global rack ONLY to the channel it was inserted on
+            if (!json.uiConfig.perChannelFx) {
+              const inserts = json.uiConfig.channelFxInsert || {};
+              // For every channel that had an FX insert, give it the legacy rack
+              for (const chId in inserts) {
+                 perChannelFx[chId] = JSON.parse(JSON.stringify(globalVal));
+              }
+              // If NO inserts found, maybe it was just a floating rack, assign to selected?
+              if (Object.keys(inserts).length === 0) {
+                 perChannelFx[selectedChannel || 'in_1'] = JSON.parse(JSON.stringify(globalVal));
+              }
+            }
+          }
+          if (json.uiConfig.channelFxInsert) {
+            channelFxInsert = migrateKeys(json.uiConfig.channelFxInsert);
+          }
+          if (json.uiConfig.perChannelFx) {
+            perChannelFx = migrateKeys(json.uiConfig.perChannelFx);
+          }
+          
+          // Force UI refresh after file import
+          const current = selectedChannel;
+          selectedChannel = '';
+          setTimeout(() => {
+             selectedChannel = current;
+             if (selectedChannel && perChannelFx[selectedChannel]) {
+                loadFxState(perChannelFx[selectedChannel]);
+             }
+          }, 10);
 
           localStorage.setItem("openmix_config", JSON.stringify(config));
+          showToast("Scene Imported Successfully", "success");
         }
 
         if (
@@ -862,7 +1062,7 @@
                   on:click={() => requestMusicianTokenAndConnect(auxNum)}
                 >
                   <span class="aux-num">AUX {auxNum}</span>
-                  <span class="aux-label">{scribbles[`out_${auxNum}`]?.name || `Output ${auxNum}`}</span>
+                  <span class="aux-label">{scribbles[`bus_${auxNum}`]?.name || `Output ${auxNum}`}</span>
                 </button>
               {/each}
             </div>
@@ -881,9 +1081,9 @@
             {#if activeRole === "musician"}
               <div class="musician-mix fade-in">
                 <div class="musician-header">
-                  {#if scribbles[`out_${musicianAux}`]?.iconType}
+                  {#if scribbles[`bus_${musicianAux}`]?.iconType}
                     <img
-                      src="/icons-bmp/{scribbles[`out_${musicianAux}`].iconType}.bmp"
+                      src="/icons-bmp/{scribbles[`bus_${musicianAux}`].iconType}.bmp"
                       alt=""
                       class="musician-header-icon"
                     />
@@ -891,7 +1091,7 @@
                     <div class="musician-header-icon-empty"></div>
                   {/if}
                   <h2>
-                    {scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux} Monitor Mix`}
+                    {scribbles[`bus_${musicianAux}`]?.name || `AUX ${musicianAux} Monitor Mix`}
                   </h2>
                 </div>
                 <div class="musician-rack-container" style="display: flex; align-items: stretch; justify-content: flex-start; gap: 0.25rem; flex: 1; height: 100%;">
@@ -923,9 +1123,9 @@
                     channelIndex={musicianAux}
                     role="musician"
                     stripType="output"
-                    name={scribbles[`out_${musicianAux}`]?.name || `AUX ${musicianAux}`}
-                    iconType={scribbles[`out_${musicianAux}`]?.iconType || "icon_01"}
-                    color={scribbles[`out_${musicianAux}`]?.color || "#8b5cf6"}
+                    name={scribbles[`bus_${musicianAux}`]?.name || `AUX ${musicianAux}`}
+                    iconType={scribbles[`bus_${musicianAux}`]?.iconType || "icon_01"}
+                    color={scribbles[`bus_${musicianAux}`]?.color || "#8b5cf6"}
                     peakLevel={-60}
                     on:nameClick={() => {}}
                   />
@@ -1352,7 +1552,7 @@
                     };
                   }}
                 >
-                  <h3>Output</h3>
+                  <h3 style="display: flex; justify-content: space-between;">Output & Main Assign <Settings size={14} style="color:#64748b; opacity:0.5;"/></h3>
                   <div class="param-row">
                     <span>Pan</span><input
                       type="range"
@@ -1373,27 +1573,19 @@
                       disabled
                     /><span>0 dB</span>
                   </div>
-                </div>
-
-                {#if selectedChannel && !selectedChannel.startsWith("out_")}
-                  <div class="bento-card">
-                    <h3>Main Out</h3>
-                    <div class="param-row">
-                      <span>Assign to LR</span>
+                  {#if selectedChannel && !selectedChannel.startsWith("out_")}
+                    <div class="param-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #1e293b;">
+                      <span>LR Assign</span>
                       <button
                         class="toggle-sm"
                         class:active={mainOutAssign[selectedChannel]}
-                        on:click={() => toggleMainOut(selectedChannel)}
+                        on:click|stopPropagation={() => toggleMainOut(selectedChannel)}
                       >
                         {mainOutAssign[selectedChannel] ? "ON" : "OFF"}
                       </button>
                     </div>
-                    <p class="bento-hint">
-                      Route this channel to the Main LR output bus. Disable for
-                      talkback or monitor-only channels.
-                    </p>
-                  </div>
-                {/if}
+                  {/if}
+                </div>
                 {#if selectedChannel.startsWith("in_")}
                   {@const chNum = parseInt(selectedChannel.replace("in_", ""))}
                   {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
@@ -1429,92 +1621,143 @@
               {isLastChannel}
             />
           {:else if activeTab === "fx"}
-            <EffectsRack
-              {config}
-              {scribbles}
-              bind:selectedChannel
-              {cycleChannel}
-              {isFirstChannel}
-              {isLastChannel}
-            />
-          {:else if activeTab === "routing"}
-            <div class="macro-view fade-in" style="overflow-x: auto;">
+            <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  GLOBAL ROUTING MATRIX
+                  EFFECTS RACK: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}
                 </h2>
-              </div>
-              <div class="view-header-inline" style="border-top: 1px solid #1e293b; padding-top: 1rem; margin-top: 1rem;">
-                <div class="nav-group" style="margin-bottom: 0;">
-                  <button class="nav-btn" class:active={routingSubTab === 'busses'} on:click={() => routingSubTab = 'busses'}>Busses</button>
-                  
-                  {#if MixerPresets[config.presetId]?.hasAES50}
-                    <button class="nav-btn" class:active={routingSubTab === 'aes50a'} on:click={() => routingSubTab = 'aes50a'}>AES50-A</button>
-                    <button class="nav-btn" class:active={routingSubTab === 'aes50b'} on:click={() => routingSubTab = 'aes50b'}>AES50-B</button>
-                  {/if}
-
-                  {#if MixerPresets[config.presetId]?.hasUSB}
-                    <button class="nav-btn" class:active={routingSubTab === 'usb'} on:click={() => routingSubTab = 'usb'}>USB/Card</button>
-                  {/if}
-
-                  {#if MixerPresets[config.presetId]?.hasUltranet}
-                    <button class="nav-btn" class:active={routingSubTab === 'ultranet'} on:click={() => routingSubTab = 'ultranet'}>Ultranet</button>
-                  {/if}
+                <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                   <div class="insert-control" style="background: #1e293b; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #334155; display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem;">
+                      <span style="color: #64748b; font-weight: 700;">INSERT TO</span>
+                      <div style="display: flex; gap: 0.25rem;">
+                        {#each Array(config.fx || 4) as _, i}
+                          <button 
+                            class="tiny-btn" 
+                            class:active={channelFxInsert[selectedChannel] === i}
+                            on:click={() => {
+                              const current = channelFxInsert[selectedChannel];
+                              channelFxInsert[selectedChannel] = (current === i) ? null : i;
+                              channelFxInsert = {...channelFxInsert};
+                              showToast(`FX Slot ${i+1} ${channelFxInsert[selectedChannel] === i ? 'Inserted' : 'Removed'} for ${selectedChannel.toUpperCase()}`, "info");
+                            }}
+                          >
+                          {i+1}
+                          </button>
+                        {/each}
+                      </div>
+                   </div>
+                   <div class="nav-group">
+                      <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={18} /></button>
+                      <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={18} /></button>
+                   </div>
                 </div>
               </div>
-              <div class="tab-content-body" style="padding: 1rem;">
-                <div class="param-section">
-                  <h3 style="text-transform: uppercase;">{routingSubTab} Routing Matrix</h3>
-                  <p style="color:#94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">
-                    Patch inputs directly from the corresponding protocol blocks.
-                  </p>
-                          <div class="routing-layout" style="display: flex; gap: 1rem; height: calc(100vh - 300px);">
-                    <!-- Sidebar Filtering -->
-                    <div class="routing-sidebar" style="width: 150px; flex-shrink: 0; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                      <h4 style="font-size: 0.65rem; color: #64748b; text-transform: uppercase; margin: 0.5rem 0.25rem;">Sources</h4>
-                      <button class="side-filter-btn" class:active={routingSourceFilter === 'all'} on:click={() => routingSourceFilter = 'all'}>All Inputs</button>
-                      <button class="side-filter-btn" class:active={routingSourceFilter === 'inputs'} on:click={() => routingSourceFilter = 'inputs'}>Local In</button>
-                      <button class="side-filter-btn" class:active={routingSourceFilter === 'aux'} on:click={() => routingSourceFilter = 'aux'}>Aux In</button>
-                      <button class="side-filter-btn" class:active={routingSourceFilter === 'fx'} on:click={() => routingSourceFilter = 'fx'}>FX Return</button>
-                      <button class="side-filter-btn" class:active={routingSourceFilter === 'bus'} on:click={() => routingSourceFilter = 'bus'}>Mix Busses</button>
-                    </div>
+              <div style="flex: 1; width: 100%; display: flex; flex-direction: column;">
+                <EffectsRack
+                  {config}
+                  {scribbles}
+                  bind:selectedChannel
+                  {cycleChannel}
+                  {isFirstChannel}
+                  {isLastChannel}
+                  bind:selectedSlotIndex={rackSlotIndex}
+                />
+              </div>
+            </div>
+          {:else if activeTab === "routing"}
+            <div class="macro-view routing-macro-view fade-in">
+              <!-- X-AIR Style Top Icon Bar -->
+              <div class="routing-mode-bar">
+                {#each availableRoutingModes as mode}
+                  <button 
+                    class="mode-tab-btn" 
+                    class:active={routingMode === mode.id}
+                    on:click={() => {
+                      routingMode = mode.id;
+                      // SubTab is synced via reactive script block
+                    }}
+                  >
+                    <svelte:component this={mode.icon} size={20} />
+                    <span>{mode.name}</span>
+                  </button>
+                {/each}
+              </div>
 
-                    <div class="matrix-table-container" style="flex: 1; overflow: auto; border: 1px solid #1e293b; border-radius: 8px; background: #0b1120; position: relative;">
-                      <table class="routing-matrix-grid" style="width: 100%; border-collapse: collapse;">
-                        <thead style="position: sticky; top: 0; z-index: 10; background: #111827;">
+              <div class="matrix-window-main">
+                <!-- Sub-Category Tabs (Top Right of Matrix Area) -->
+                <div class="matrix-subheader">
+                  <div class="sub-tab-group">
+                    {#each patchSet.subTabs as sub}
+                      <button 
+                        class="sub-tab-btn" 
+                        class:active={routingSubTab === sub}
+                        on:click={() => routingSubTab = sub}
+                      >{sub}</button>
+                    {/each}
+                  </div>
+                </div>
+
+                <div class="routing-matrix-container">
+                  <div class="patch-scroll-viewport">
+                    <table class="xair-matrix">
+                      <thead>
+                        <tr>
+                          <th class="corner-label">SOURCE \\ DEST</th>
+                          {#each patchSet.dests as dest}
+                            <th class="col-head"><span>{dest.name}</span></th>
+                          {/each}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {#each patchSet.srcs as src}
                           <tr>
-                            <th style="padding: 0.5rem; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem;">SRC \\ DEST</th>
-                            {#each Array(config.outputs) as _, j}
-                              <th class="col-header" style="padding: 0.5rem; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem;">AUX {j+1}</th>
+                            <td class="row-head">{src.name}</td>
+                            {#each patchSet.dests as dest}
+                              {@const isActive = routingState[dest.id] === src.id}
+                              <td class="patch-point" class:active={isActive}>
+                                <button 
+                                  class="radio-dot-btn" 
+                                  on:click={() => {
+                                    if (routingState[dest.id] === src.id) {
+                                      routingState[dest.id] = null;
+                                    } else {
+                                      routingState[dest.id] = src.id;
+                                    }
+                                    routingState = { ...routingState };
+                                    showToast(`${dest.name} patched to ${src.name}`, "info");
+                                  }}
+                                >
+                                  <div class="radio-circle"></div>
+                                </button>
+                              </td>
                             {/each}
                           </tr>
-                        </thead>
-                        <tbody>
-                          {#each filteredRoutingSources as src, i (src.id)}
-                            <tr>
-                              <td class="row-header" style="position: sticky; left: 0; background: #111827; z-index: 5; padding: 0.5rem; border: 1px solid #1e293b; font-size: 0.75rem; font-weight: 600; color: #cbd5e1; text-align: left;">{src.name}</td>
-                              {#each Array(config.outputs) as _, j}
-                                {@const rKey = `${src.id}_bus${j+1}`}
-                                <td class="cell-toggle" style="padding: 0.4rem; border: 1px solid #1e293b; text-align: center;">
-                                  <button class="matrix-dot" 
-                                    aria-label="Toggle {src.name} to AUX {j+1}"
-                                    class:active={routingState[rKey]} 
-                                    on:click={() => {
-                                        routingState[rKey] = !routingState[rKey];
-                                        routingState = { ...routingState };
-                                        const ch = src.num.toString().padStart(2, "0");
-                                        const bus = String(j+1).padStart(2, "0");
-                                        const prefix = src.type === 'in' ? 'ch' : (src.type === 'aux' ? 'auxin' : (src.type === 'fx' ? 'rtn' : 'bus'));
-                                        setOsc(`/${prefix}/${ch}/mix/${bus}/on`, routingState[rKey] ? 1 : 0);
-                                    }}
-                                  ></button>
-                                </td>
-                              {/each}
-                            </tr>
-                          {/each}
-                        </tbody>
-                      </table>
-                    </div>
+                        {/each}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Footer Legend & Signal Tap -->
+                <div class="matrix-footer">
+                  <div class="tap-legend">
+                    <div class="legend-item"><div class="dot analog"></div> Analog</div>
+                    <div class="legend-item"><div class="dot input"></div> Input</div>
+                    <div class="legend-item"><div class="dot pre-eq"></div> Pre EQ</div>
+                    <div class="legend-item"><div class="dot post-eq"></div> Post EQ</div>
+                    <div class="legend-item"><div class="dot pre-fade"></div> Pre Fader</div>
+                    <div class="legend-item"><div class="dot post-fade"></div> Post Fader</div>
+                  </div>
+                  <div class="tap-selector-box">
+                    <span class="label">Default Signal Tap:</span>
+                    <select bind:value={routingSignalTap} class="tap-select">
+                      <option value="ANALOG">Analog</option>
+                      <option value="INPUT">Input</option>
+                      <option value="PRE_EQ">Pre EQ</option>
+                      <option value="POST_EQ">Post EQ</option>
+                      <option value="PRE_FADER">Pre Fader</option>
+                      <option value="POST_FADER">Post Fader</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1554,9 +1797,10 @@
               onPageChange={(p) => (currentPage = p)}
               onViewChange={(v) => (activeView = v)}
               onStripsChange={(n) => (stripsPerPage = n)}
-              onResetEq={() => {
-                if (eqComponent) eqComponent.resetFlat();
-              }}
+              onResetEq={handleResetEq}
+              onCopyEq={handleCopyEq}
+              onPasteEq={handlePasteEq}
+              onBypassEq={handleBypassEq}
             />
           {/if}
         </div>
@@ -1586,18 +1830,21 @@
         channelName={scribbles[channelModalState.channelId]?.name}
         initialSection={channelModalState.section}
         {scribbles}
+        mainOut={mainOutAssign[channelModalState.channelId]}
+        on:toggleMainOut={() => toggleMainOut(channelModalState.channelId)}
         on:close={() => (channelModalState.isOpen = false)}
       />
     {/if}
   </div>
-  <MonitorModal 
-    show={showMonitorModal} 
-    currentSource={monitorSource}
-    sources={soloSources}
-    on:select={(e) => { setMonitorSource(e.detail); }}
-    on:close={() => showMonitorModal = false}
-  />
-</main>
+    <MonitorModal 
+      show={showMonitorModal} 
+      currentSource={monitorSource}
+      sources={soloSources}
+      on:select={(e) => { setMonitorSource(e.detail); }}
+      on:close={() => showMonitorModal = false}
+    />
+    <Toast />
+  </main>
 
 <style>
   :global(#app) {
@@ -1724,7 +1971,6 @@
     height: 100%;
   }
   .role-btn:hover {
-    transform: translateY(-4px);
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
     border-color: rgba(255, 255, 255, 0.3);
     background: rgba(30, 41, 59, 0.8);
@@ -1835,77 +2081,253 @@
 
   /* Macro Views Styling */
   .macro-view {
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     width: 100%;
-    max-width: 1400px;
     margin: 0 auto;
     height: 100%;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden; /* Prevent macro-level scroll; children handle it */
   }
 
-  .view-header-inline {
+  .routing-macro-view {
+    background: #090e1a;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    padding: 0 0.5rem;
+    flex-direction: column;
+    padding: 0 !important; /* Take full space for the windowed look */
+  }
+
+  /* X-AIR Style Top Icon Mode Bar */
+  .routing-mode-bar {
+    display: flex;
+    background: #111827;
+    border-bottom: 2px solid #1e293b;
+    padding: 0 1rem;
+    gap: 0.25rem;
     flex-shrink: 0;
   }
-  .title-left {
-    margin: 0;
-    color: #f8fafc;
-    font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  }
-  .nav-group {
+  .mode-tab-btn {
     display: flex;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #64748b;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    min-width: 80px;
   }
-  .nav-icon-btn {
-    background: #1e293b;
-    border: 1px solid #334155;
+  .mode-tab-btn:hover {
     color: #94a3b8;
-    border-radius: 6px;
-    padding: 0.4rem;
+    background: rgba(30, 41, 59, 0.5);
+  }
+  .mode-tab-btn.active {
+    color: #22d3ee; /* Cyan */
+    border-bottom-color: #06b6d4;
+    background: rgba(6, 182, 212, 0.1);
+  }
+
+  .matrix-window-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #0f172a;
+  }
+
+  .matrix-subheader {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem 1rem;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+  }
+  .sub-tab-group {
+    display: flex;
+    background: #0f172a;
+    border-radius: 4px;
+    padding: 2px;
+    border: 1px solid #334155;
+  }
+  .sub-tab-btn {
+    padding: 0.35rem 1rem;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .sub-tab-btn.active {
+    background: #334155;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .routing-matrix-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: #0b1120;
+    position: relative;
+  }
+  .patch-scroll-viewport {
+    flex: 1;
+    overflow: auto;
+  }
+
+  /* THE MATRIX GRID */
+  .xair-matrix {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: auto;
+    min-width: 100%;
+  }
+  .xair-matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #111827;
+    border-bottom: 2px solid #334155;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .xair-matrix thead th.col-head {
+    min-width: 48px;
+    text-align: center;
+  }
+  .xair-matrix thead th.corner-label {
+    left: 0;
+    z-index: 30;
+    background: #0f172a;
+    border-right: 2px solid #334155;
+    padding: 0.75rem 1rem;
+    color: #64748b;
+    font-size: 0.6rem;
+  }
+  .xair-matrix .row-head {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: #0f172a;
+    border-right: 2px solid #334155;
+    border-bottom: 1px solid #1e293b;
+    padding: 0.6rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    white-space: nowrap;
+    text-align: left;
+  }
+  .patch-point {
+    border-bottom: 1px solid #1e293b;
+    border-right: 1px solid #1e293b;
+    text-align: center;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    transition: background 0.1s;
+  }
+  .patch-point.active {
+    background: rgba(34, 211, 238, 0.08); /* Cyan Active */
+  }
+  
+  /* Dots/Circles */
+  .radio-dot-btn {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .nav-icon-btn:hover:not(:disabled) {
-    color: #fff;
-    background: #3b82f6;
-    border-color: #60a5fa;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-    transform: scale(1.05);
+  .radio-circle {
+    width: 12px;
+    height: 12px;
+    border: 1px solid #334155;
+    border-radius: 50%;
+    transition: all 0.2s;
+    background: transparent;
   }
-  .nav-icon-btn:disabled {
-    opacity: 0.25;
-    cursor: not-allowed;
+  .patch-point.active .radio-circle {
+    background: transparent;
+    border: 3px solid #22d3ee;
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+    transform: scale(1.3);
   }
-
-  .wireframe-content {
-    flex: 1;
-    border: 2px dashed #3f3f46;
-    border-radius: 12px;
-    opacity: 0.5;
-    min-height: 60px;
+  .patch-point:hover .radio-circle {
+    border-color: #94a3b8;
   }
 
-  /* Tab Content Body */
-  .tab-content-body {
-    flex: 1;
+  /* Matrix Footer */
+  .matrix-footer {
+    padding: 0.75rem 1.5rem;
+    background: #0b111b;
+    border-top: 1px solid #1e293b;
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    overflow-y: auto;
-    padding: 0.5rem 0;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .tap-legend {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+  .legend-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .dot.analog { background: #ef4444; border: 1px solid #fca5a5; }
+  .dot.input { background: #10b981; border: 1px solid #6ee7b7; }
+  .dot.pre-eq { background: #f59e0b; border: 1px solid #fcd34d; }
+  .dot.post-eq { background: #3b82f6; border: 1px solid #93c5fd; }
+  .dot.pre-fade { background: #d946ef; border: 1px solid #f5d0fe; }
+  .dot.post-fade { background: #06b6d4; border: 1px solid #67e8f9; }
+
+  .tap-selector-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .tap-selector-box .label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #94a3b8;
+  }
+  .tap-select {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
   }
   .tab-content-body::-webkit-scrollbar {
     width: 6px;
@@ -2054,7 +2476,6 @@
     align-items: center;
   }
   .aux-btn:hover {
-    transform: translateY(-4px);
     box-shadow: 0 12px 24px rgba(139, 92, 246, 0.3);
     border-color: #8b5cf6;
     background: rgba(139, 92, 246, 0.15);
@@ -2182,7 +2603,6 @@
   }
   .bento-clickable:hover {
     background: #1f2937;
-    transform: translateY(-2px);
     border-color: #374151;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }

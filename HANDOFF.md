@@ -136,40 +136,17 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 
 | Phase | Description                                         | Status |
 | ----- | --------------------------------------------------- | ------ |
-| 1     | Backend foundation (Express, Socket.io, OSC)        | ✅ Done |
-| 2     | Frontend infrastructure (Svelte + Socket.io client) | ✅ Done |
-| 3     | Role-Based Access Control                           | ✅ Done |
-| 4     | Throttled metering system                           | ✅ Done |
-| 5     | Scene file save/load                                | ✅ Done |
-| 6     | V2 UI overhaul                                      | ✅ Done |
-| 7     | Rack presets                                        | ✅ Done |
-| 8     | V3 layout                                           | ✅ Done |
-| 9     | Global tabs                                         | ✅ Done |
-| 10    | BMP icon masking                                    | ✅ Done |
-| 11    | FX routing                                          | ✅ Done |
-| 12    | Contextual UI                                       | ✅ Done |
-| 13    | Parametric EQ                                       | ✅ Done |
-| 14    | Wing-style UX                                       | ✅ Done |
-| 15    | EQ polish                                           | ✅ Done |
-| 16    | EQ rail independence                                | ✅ Done |
-| 17    | Bento Channel tab                                   | ✅ Done |
-| 18    | Stereo linking                                      | ✅ Done |
-| 19    | FX returns                                          | ✅ Done |
-| 20    | .gitignore                                          | ✅ Done |
-| 21    | Scene export (UI state)                             | ✅ Done |
-| 22    | Mobile orientation lock                             | ✅ Done |
-| 23    | Scribble shortcut                                   | ✅ Done |
-| 24    | Navbar active state                                 | ✅ Done |
-| 25    | Modal fix                                           | ✅ Done |
-| 26    | Git cache reset                                     | ✅ Done |
-| 27    | Scene import/export v2                              | ✅ Done |
-| 28    | EQ initial render                                   | ✅ Done |
-| 29    | Auto-discovery + manual IP                          | ✅ Done |
-| 30    | Sends tab                                           | ✅ Done |
-| 31    | Routing tab                                         | ✅ Done |
-| 32    | Channel modal refactor                              | ✅ Done |
-| 33    | OSC mapping validation                              | ✅ Done |
-| 34    | Sends + routing hydration                           | ✅ Done |
+| ...   | ...                                                 | ...    |
+| 39    | Output channel standardization (bus_)              | ✅ Done |
+| 40    | Selective FX Migration (Isolation)                 | ✅ Done |
+| 41    | 8-Band EQ Color-Coding & Halo                      | ✅ Done |
+| 42    | Main Assign Prop/Cache Sync Fix                   | ✅ Done |
+| 43    | Non-Interactive Logarithmic Knob Variant           | ✅ Done |
+| 44    | Channel Modal Header Responsive Layout             | ✅ Done |
+| 45    | X-AIR Style Routing Patchbay (Nested Modes)      | ✅ Done |
+| 46    | Zero Vertical Scroll Grid Architecture             | ✅ Done |
+| 47    | Non-Interactive Knob Cursor Fix                    | ✅ Done |
+| 48    | Signal Tap Legend & Global Selector                | ✅ Done |
 
 ---
 
@@ -185,12 +162,15 @@ All top-level state is managed in `App.svelte`:
 | channelEqState  | Object | EQ band data        |
 | sendsState      | Object | AUX send levels     |
 | routingState    | Object | Bus routing         |
+| channelFxInsert | Object | FX slot assignments |
+| fxRack          | Object | Global FX parameters|
 | stereoLinks     | Object | Link pairs          |
 | mainOutAssign   | Object | LR assignment       |
 | activeRole      | String | 'foh' or null       |
 | activeTab       | String | UI tab              |
 | activeView      | String | inputs/outputs/dcas |
 | selectedChannel | String | current channel     |
+| rackSlotIndex   | Number | Focused FX slot     |
 
 * State persists in **localStorage**
 * Scene exports include full state JSON
@@ -318,13 +298,48 @@ cd frontend && npm install
       "in_1": []
     },
     "mainOutAssign": { "in_1": true },
-    "stereoLinks": { "1": false }
+    "stereoLinks": { "1": false },
+    "fxRack": { "slots": [] },
+    "channelFxInsert": { "in_1": 0 }
   }
 }
 ```
 
 * Backend uses `state.flatOscCache`
 * Frontend restores from `uiConfig`
+
+---
+
+## 14. Key Technical Debt Fixed (2026-03-29)
+
+### 14.1 Selective FX Migration
+Previously, importing a legacy scene would apply a single global FX rack to all mixer channels. We implemented a migration logic in `App.svelte` that cross-references `channelFxInsert`. 
+- **Isolated Racks**: FX are now only applied to channels that actually had them assigned in the export.
+- **Clean Slate**: New channels on a fresh load remain empty even if other channels have FX.
+
+### 14.2 Main Assign Sync (Modal vs. Bento)
+Fixed a `=== 1` type-mismatch bug in `ChannelModal.svelte`. 
+- **Bug**: Numeric OSC cache values were being compared to boolean fallbacks (`mainOut: true === 1` is false).
+- **Fix**: Cast fallbacks to numeric (`params.mainOut ? 1 : 0`) during cache lookup to ensure the "ON" state persists correctly.
+
+### 14.3 Unified Knob Component
+Enhanced `frontend/src/lib/components/EffectControls/Knob.svelte` with:
+- **`interactive` prop**: Disables mouse/touch listeners for "read-only" visual meters.
+- **`isLogarithmic` prop**: Necessary for human-friendly frequency response control (20Hz-20kHz).
+- **Consolidation**: Removed ad-hoc SVG code from `GateGraph` and `CompressionGraph` in favor of this standardized component.
+
+### 14.4 EQ Visual Language
+Moved from numbered bands to a color-coded identifier system (8 colors). 
+- **Halo Selection**: Active band now draws a `Yellow/Amber Dashed Halo` on the canvas for instant selection feedback.
+- **Clutter Reduction**: Numbers removed from graph dots; remains strictly color-coordinated with the sidebar.
+
+### 14.5 X-AIR Style Routing Patchbay
+The Routing tab has been completely rebuilt to provide a professional, hardware-parity experience matching the **Behringer X-AIR Edit** workflow.
+- **Top Icon Mode Bar**: Provides instant access to `Input`, `USB Returns`, `USB Sends`, `Ultranet`, `Aux Out`, and `Main Out` (with `AES50` for X32/WING).
+- **Zero-Scroll Vertical Constraint**: Implements a nested **Sub-Tab** system (e.g., `Ch 1-16`, `Bus`, `FX`) that buckets the matrix rows/columns. This ensures the Patching Matrix always fits the vertical viewport, eliminating vertical page scrolling.
+- **High-Fidelity Matrix**: Features a cyan-on-black color scheme with radio-style selection dots.
+- **Signal Tap Legend**: Includes a professional, color-coded legend at the bottom (Analog, Pre/Post EQ, Pre/Post Fader) and a "Default Signal Tap" dropdown for professional output patching.
+- **"Off" Mode**: Integrated un-patching support for compatible hardware consoles.
 
 ```
 ```
