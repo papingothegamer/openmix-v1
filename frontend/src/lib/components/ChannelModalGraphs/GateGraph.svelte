@@ -1,8 +1,9 @@
 <script>
   // Gate visualization for the ChannelModal.
-  // - gateThresh: threshold in dB
+  // The OSC parameters in this project are represented as:
+  // - gateThresh: threshold in dB (negative range typically)
   // - gateRange: attenuation applied below threshold in dB
-  // Attack/hold/release are used to render the time envelope
+  // Attack/hold/release are used to render the time envelope (not a real DSP model).
 
   export let gateThresh = -40;
   export let gateRange = 20;
@@ -12,6 +13,10 @@
   export let gateScFreq = 100;
   export let gateScType = 0;
 
+  $: logMin = Math.log10(20);
+  $: logMax = Math.log10(20000);
+  $: logVal = Math.log10(gateScFreq);
+  
   import Knob from "../EffectControls/Knob.svelte";
 
   function generateGateCurve(thresh, range) {
@@ -25,33 +30,66 @@
     return pts.join(" ");
   }
 
+  function clamp01(n) {
+    return Math.max(0, Math.min(1, n));
+  }
+
   // Render a simple "gate opens then closes" envelope:
   // attack -> hold -> release.
   function generateEnvelopePath(attack, hold, rel) {
-    const maxT = 1000; 
-    const tAtt = Math.min(attack, maxT * 0.2);
-    const tHold = Math.min(hold, maxT * 0.4);
-    const tRel = Math.min(rel, maxT * 0.4);
-    const total = tAtt + tHold + tRel || 1;
+    const a = Math.max(0, Number(attack));
+    const h = Math.max(0, Number(hold));
+    const r = Math.max(0, Number(rel));
+    const total = a + h + r;
+    const safeTotal = total > 0 ? total : 1;
 
-    const p1x = (tAtt / total) * 100;
-    const p2x = ((tAtt + tHold) / total) * 100;
-    
-    return `M0,100 L${p1x},20 L${p2x},20 L100,100`;
+    const w = 100;
+    const hpx = 60;
+
+    // We map envelope amplitude between 15% and 95% of box height.
+    const yOpen = hpx * 0.15;
+    const yClosed = hpx * 0.95;
+
+    // Times mapped to x positions in [0..100]
+    const xA = (a / safeTotal) * w;
+    const xH = xA + (h / safeTotal) * w;
+    const xR = w;
+
+    const yAtA = yOpen;
+
+    // Attack: closed -> open
+    // Hold: open
+    // Release: open -> closed
+    return [
+      `M 0 ${yClosed}`,
+      `L ${xA} ${yAtA}`,
+      `L ${xH} ${yAtA}`,
+      `L ${xR} ${yClosed}`,
+    ].join(" ");
   }
+
+  $: gateCurve = generateGateCurve(gateThresh, gateRange);
+  $: envelopePath = generateEnvelopePath(gateAttack, gateHold, gateRel);
 </script>
 
 <div class="x32-top-graphs">
   <div class="x32-graph-box">
-    <div class="graph-title">Gate Curve & Envelope</div>
-    <div class="graph-placeholder flex-center" style="padding: 1rem; position: relative;">
-      <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="none" style="position: absolute; inset: 0; padding: 1.5rem;">
-        <path d="M0 100 L100 0" stroke="#334155" stroke-width="1" stroke-dasharray="2,2" />
-        <path d={generateGateCurve(gateThresh, gateRange)} fill="none" stroke="#3b82f6" stroke-width="2.5" />
-        <path d="M0 57 L100 57" stroke="#1e293b" stroke-width="1" />
+    <div class="graph-title">Gate Curve</div>
+    <div class="graph-placeholder flex-center" style="padding: 0.5rem;">
+      <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; overflow: visible;">
+        <line x1="0" y1="50" x2="100" y2="50" stroke="#1e293b" stroke-width="1" />
+        <line x1="50" y1="0" x2="50" y2="100" stroke="#1e293b" stroke-width="1" />
+        <polyline points={gateCurve} fill="none" stroke="#38bdf8" stroke-width="2" />
       </svg>
-      <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="none" style="position: absolute; inset: 0; padding: 1.5rem; opacity: 0.3;">
-        <path d={generateEnvelopePath(gateAttack, gateHold, gateRel)} fill="none" stroke="#60a5fa" stroke-width="2" />
+    </div>
+  </div>
+
+  <div class="x32-graph-box">
+    <div class="graph-title">Gain Envelope</div>
+    <div class="graph-placeholder flex-center">
+      <svg viewBox="0 0 100 60" class="envelope-svg" preserveAspectRatio="none">
+        <path d={envelopePath} fill="none" stroke="#38bdf8" stroke-width="2.5" />
+        <path d="M0 57 L100 57" stroke="#1e293b" stroke-width="1" />
       </svg>
     </div>
   </div>
@@ -64,11 +102,11 @@
           value={gateScFreq} 
           min={20} 
           max={20000} 
-          label={['2-POLE', 'LC', 'HC'][gateScType] || 'HPF'} 
+          label={['2-POLE', 'LC', 'HC'][gateScType]} 
           color="#3b82f6" 
           interactive={false} 
           isLogarithmic={true} 
-          size={60} 
+          size={70} 
         />
       </div>
     </div>
@@ -76,10 +114,46 @@
 </div>
 
 <style>
-  .x32-top-graphs { display: flex; gap: 1rem; padding: 1rem; height: 160px; flex-shrink: 0; }
-  .x32-graph-box { flex: 1; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
-  .graph-title { background: #1e293b; color: #94a3b8; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.4rem 0.75rem; border-bottom: 1px solid #0f172a; }
-  .graph-placeholder { flex: 1; background: #020617; position: relative; }
-  .flex-center { display: flex; align-items: center; justify-content: center; }
-  .sc-knob-wrapper { display: flex; flex-direction: column; align-items: center; transform: scale(0.9); }
+  .x32-top-graphs {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    height: 160px;
+    flex-shrink: 0;
+  }
+  .x32-graph-box {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .graph-title {
+    background: #1e293b;
+    color: #cbd5e1;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #334155;
+  }
+  .graph-placeholder {
+    flex: 1;
+    position: relative;
+  }
+  .flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .envelope-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(0.85); }
 </style>
+
