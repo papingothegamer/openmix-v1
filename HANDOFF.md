@@ -152,6 +152,7 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 | 55    | MR18/XR18 Full Sync Polish (FX, Links, Bus Names)  | ✅ Done |
 | 56    | Main/Aux Physical Output Patching Logic            | ✅ Done |
 | 57    | Auto-Sync Handshake on Connection                  | ✅ Done |
+| 58    | X-Air / M-Air Factory Protocol Alignment            | ✅ Done |
 
 ---
 
@@ -214,8 +215,6 @@ Backend converts values via `toOscArgs()`.
 
 ## 9. OSC Reference Paths
 
-| Action      | Address             | Type   | Range    |
-| ----------- | ------------------- | ------ | -------- |
 | Fader       | /ch/XX/mix/fader    | float  | 0–1      |
 | Mute        | /ch/XX/mix/on       | int    | 0/1      |
 | Send level  | /ch/XX/mix/NN/level | float  | 0–1      |
@@ -223,6 +222,8 @@ Backend converts values via `toOscArgs()`.
 | Stereo link | /config/chlink/1-2  | int    | 0/1      |
 | Name        | /ch/XX/config/name  | string | 12 chars |
 | EQ freq     | /ch/XX/eq/N/f       | float  | 20–20000 |
+| Headamp     | /headamp/XX/gain    | float  | 0–1      |
+| FX Send     | /ch/XX/mix/07-10    | float  | 0–1 (XR) |
 
 Keep-alive: `/xremote`
 Discovery: `/xinfo`
@@ -371,3 +372,15 @@ The OpenMix controller is now 100% feature-complete for professional-grade field
 - **Scene Integrity**: Full state serialization/deserialization confirmed.
 
 **READY FOR MR18/XR18 FIELD TEST.**
+
+---
+
+### 14.10 Phase 7: X-Air / M-Air Factory Protocol Alignment (2026-03-30)
+This phase focused on ensuring literal bit-parity with the Behringer X-Air and Midas M-Air OSC command sets, moving beyond generic 'X32-style' control.
+- **FX Structural Remapping**: Corrected the architectural discrepancy where FX sends were previously treated as separate modules. On XR18/MR18, **FX Sends 1-4** are now mapped to **Mixbuses 7-10** (e.g., `/ch/xx/mix/07/level`), matching the hardware's internal fader-bank routing.
+- **Headamp Precision**: Migrated gain and phantom power controls for input channels to the `/headamp/01-16/` address space. This provides direct control over the physical analog preamps, bypassing the digital trim layer where appropriate.
+- **Index & Padding Standardization**:
+    - **Buses & FX**: Switched to non-padded indices (`/bus/1/`, `/fx/1/`) to prevent hardware command rejection.
+    - **Routing Matrix**: Updated to the `/routing/` base addresses (replacing the deprecated `/config/routing/` structure).
+- **Backend Recognition**: Updated `backend/mixerSync.js` with hardware-aware sync templates. The backend now performs a `/xinfo` handshake to verify model capabilities before initializing the deep-sync state loop.
+- **HPF Logic Correction**: Standardized High-Pass Filter (HPF) addressing to use `/preamp/hpon` (binary state) and `/preamp/hpf` (frequency value), resolving a critical inversion bug.

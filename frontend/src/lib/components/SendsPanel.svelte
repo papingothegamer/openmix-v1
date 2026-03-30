@@ -21,6 +21,23 @@
   const pending = new Map();
   const DEBOUNCE_MS = 120;
 
+  function getSendOscBase(ch, num, type) {
+    const isXR = config?.presetId === 'XR18';
+    const c = String(ch).replace('in_', '').padStart(2, '0');
+    if (type === 'aux') {
+      return `/ch/${c}/mix/${String(num).padStart(2, '0')}`;
+    } else {
+      // FX Sends
+      if (isXR) {
+        // XR18 maps FX1-4 to Mixbuses 7-10
+        const busNum = 6 + parseInt(num, 10);
+        return `/ch/${c}/mix/${String(busNum).padStart(2, '0')}`;
+      } else {
+        return `/ch/${c}/mix/fx/${num}`;
+      }
+    }
+  }
+
   function scheduleOsc(address, value) {
     if (pending.has(address)) clearTimeout(pending.get(address));
     const id = setTimeout(() => { pending.delete(address); setOsc(address, value); }, DEBOUNCE_MS);
@@ -43,8 +60,8 @@
     sendsState[busKey].level = v;
     sendsState = { ...sendsState };
     if (selectedChannel?.startsWith('in_')) {
-      const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-      scheduleOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/level`, v);
+      const addr = getSendOscBase(selectedChannel, busNum, 'aux');
+      scheduleOsc(`${addr}/level`, v);
     }
   }
 
@@ -53,8 +70,8 @@
     sendsState[busKey].level = v;
     sendsState = { ...sendsState };
     if (selectedChannel?.startsWith('in_')) {
-      const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-      scheduleOsc(`/ch/${ch}/mix/fx/${idx}/level`, v);
+      const addr = getSendOscBase(selectedChannel, idx, 'fx');
+      scheduleOsc(`${addr}/level`, v);
     }
   }
 
@@ -64,9 +81,8 @@
     sendsState[busKey].prePost = newTap;
     sendsState = { ...sendsState };
     if (selectedChannel?.startsWith('in_')) {
-      const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-      if (busType === 'aux') setOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/type`, newTap);
-      else setOsc(`/ch/${ch}/mix/fx/${busNum}/type`, newTap);
+      const addr = getSendOscBase(selectedChannel, busNum, busType);
+      setOsc(`${addr}/type`, newTap);
     }
   }
 
@@ -76,9 +92,8 @@
     sendsState[busKey].on = !cur;
     sendsState = { ...sendsState };
     if (selectedChannel?.startsWith('in_')) {
-      const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-      if (busType === 'aux') setOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/on`, !cur ? 1 : 0);
-      else setOsc(`/ch/${ch}/mix/fx/${busNum}/on`, !cur ? 1 : 0);
+      const addr = getSendOscBase(selectedChannel, busNum, busType);
+      setOsc(`${addr}/on`, !cur ? 1 : 0);
     }
   }
 
@@ -100,15 +115,13 @@
       sendsState = { ...sendsState };
       const m = suffix.match(/^(aux)(\d+)$/) || suffix.match(/^(fx)(\d+)$/);
       if (m && selectedChannel.startsWith('in_')) {
-        const ch = selectedChannel.replace('in_', '').padStart(2, '0');
         const busNum = parseInt(m[2], 10);
+        const addr = getSendOscBase(selectedChannel, busNum, m[1]);
+        
+        scheduleOsc(`${addr}/level`, sendsState[key].level ?? 0);
+        setOsc(`${addr}/type`, sendsState[key].prePost ?? 0);
         if (m[1] === 'aux') {
-          scheduleOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/level`, sendsState[key].level ?? 0);
-          setOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/type`, sendsState[key].prePost ?? 0);
-          setOsc(`/ch/${ch}/mix/${String(busNum).padStart(2,'0')}/on`, sendsState[key].on ? 1 : 0);
-        } else {
-          scheduleOsc(`/ch/${ch}/mix/fx/${busNum}/level`, sendsState[key].level ?? 0);
-          setOsc(`/ch/${ch}/mix/fx/${busNum}/type`, sendsState[key].prePost ?? 0);
+          setOsc(`${addr}/on`, sendsState[key].on ? 1 : 0);
         }
       }
     });
@@ -126,9 +139,8 @@
       const suffix = k.replace(`${selectedChannel}_`, '');
       const ma = suffix.match(/^(aux)(\d+)$/) || suffix.match(/^(fx)(\d+)$/);
       if (ma && selectedChannel.startsWith('in_')) {
-        const ch = selectedChannel.replace('in_', '').padStart(2, '0');
-        if (ma[1] === 'aux') setOsc(`/ch/${ch}/mix/${String(ma[2]).padStart(2,'0')}/type`, sendsState[k].prePost);
-        else setOsc(`/ch/${ch}/mix/fx/${ma[2]}/type`, sendsState[k].prePost);
+        const addr = getSendOscBase(selectedChannel, ma[2], ma[1]);
+        setOsc(`${addr}/type`, sendsState[k].prePost);
       }
     });
   }

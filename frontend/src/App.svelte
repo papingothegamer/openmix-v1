@@ -289,31 +289,45 @@
   function mapPatchToOsc(mode, dest, src) {
     let path = '';
     let value = 0;
+    const isXR = config.presetId === 'XR18';
 
     // Dest / Src ID parsing
     const destIdx = parseInt(dest.id.split('_').pop()) || 0;
     const srcIdx = parseInt(src.id.split('_').pop()) || 0;
+    const dStr = destIdx.toString().padStart(2, '0');
 
     switch(mode) {
       case 'INPUT':
-        path = `/config/routing/i/${destIdx.toString().padStart(2, '0')}`;
+        path = isXR ? `/ch/${dStr}/config/insrc` : `/config/routing/i/${dStr}`;
         if (src.id === 'off') value = 18;
         else if (src.id === 'sock_aux_l') value = 16;
         else if (src.id === 'sock_aux_r') value = 17;
         else value = srcIdx - 1; // 0-15
         break;
       case 'USB_RTN':
-        path = `/config/routing/card/${destIdx.toString().padStart(2, '0')}`;
+        path = isXR ? `/ch/${dStr}/config/rtnsrc` : `/config/routing/card/${dStr}`;
         if (src.id === 'off') value = 18;
         else value = srcIdx - 1; // 0-17
         break;
+      case 'USB_SEND':
+        path = isXR ? `/routing/usb/${dStr}/src` : `/config/routing/card/${dStr}`;
+        // Note: card/xx in X32 vs usb/xx in XR. 
+        // Value mapping for XR: Ch01-16 (0-15), AuxL-R (16-17), Fx1L-Fx4R (18-25), Bus1-6 (26-31), Send1-4 (32-35), L, R (36-37)
+        if (src.id.startsWith('in_')) value = srcIdx - 1;
+        else if (src.id.startsWith('bus_')) value = 26 + (srcIdx - 1);
+        else if (src.id === 'main_l') value = 36;
+        else if (src.id === 'main_r') value = 37;
+        break;
       case 'ULTRANET':
-        path = `/config/routing/p16/${destIdx.toString().padStart(2, '0')}`;
-        if (src.id === 'off') value = 0; // TBD - differs by preset
-        else value = srcIdx - 1; 
+        path = isXR ? `/routing/p16/${dStr}/src` : `/config/routing/p16/${dStr}`;
+        if (src.id === 'off') value = 0; 
+        else if (src.id.startsWith('in_')) value = srcIdx - 1;
+        else if (src.id.startsWith('bus_')) value = 26 + (srcIdx - 1);
+        else if (src.id === 'main_l') value = 36;
+        else if (src.id === 'main_r') value = 37;
         break;
       case 'AUX_OUT':
-        path = `/config/routing/aux/${destIdx.toString().padStart(2, '0')}`;
+        path = isXR ? `/routing/aux/${dStr}/src` : `/config/routing/aux/${dStr}`;
         if (src.id === 'off') value = 24;
         else if (src.id.startsWith('in_')) value = srcIdx - 1;
         else if (src.id.startsWith('bus_')) value = 16 + (srcIdx - 1);
@@ -321,7 +335,7 @@
         else if (src.id === 'main_r') value = 23;
         break;
       case 'MAIN_OUT':
-        path = `/config/routing/main/${destIdx.toString().padStart(2, '0')}`;
+        path = isXR ? `/routing/main/${dStr}/src` : `/config/routing/main/${dStr}`;
         if (src.id === 'off') value = 8;
         else if (src.id === 'main_l' || src.id === 'main_r') value = src.id === 'main_l' ? 0 : 1;
         else if (src.id.startsWith('bus_')) value = 2 + (srcIdx - 1);
@@ -353,33 +367,41 @@
   $: {
     const cache = $mixerState.flatOscCache;
     const configInputs = config.inputs || 16;
+    const isXR = config.presetId === 'XR18';
+
     if (cache && Object.keys(cache).length > 0) {
       // Hydrate INPUT Mode
       for (let i = 1; i <= configInputs; i++) {
-        const path = `/config/routing/i/${i.toString().padStart(2, '0')}`;
-        const val = cache[path]?.[0]?.value;
-        if (val !== undefined) {
+        const iStr = i.toString().padStart(2, '0');
+        // X-Air uses per-channel insrc/rtnsrc rather than a global table
+        const inputPath = isXR ? `/ch/${iStr}/config/insrc` : `/config/routing/i/${iStr}`;
+        const inputVal = cache[inputPath]?.[0]?.value;
+        
+        if (inputVal !== undefined) {
            let srcId = 'off';
-           if (val < 16) srcId = `sock_in_${val + 1}`;
-           else if (val === 16) srcId = 'sock_aux_l';
-           else if (val === 17) srcId = 'sock_aux_r';
+           if (inputVal < 16) srcId = `sock_in_${inputVal + 1}`;
+           else if (inputVal === 16) srcId = 'sock_aux_l';
+           else if (inputVal === 17) srcId = 'sock_aux_r';
            routingState[`in_${i}`] = srcId;
+        }
+
+        // Hydrate USB RTN Mode (If separate in UI)
+        const usbPath = isXR ? `/ch/${iStr}/config/rtnsrc` : `/config/routing/card/${iStr}`;
+        const usbVal = cache[usbPath]?.[0]?.value;
+        if (usbVal !== undefined) {
+          // Note: On XR, rtnsrc maps 0-17 to U01-18
+          let srcId = (usbVal < 18) ? `usb_in_${usbVal + 1}` : 'off';
+          // Only apply if we are currently in USB_RTN mode or it won't conflict
+          if (routingMode === 'USB_RTN') {
+            routingState[`in_${i}`] = srcId;
+          }
         }
       }
       
-      // Hydrate USB RTN Mode
-      for (let i = 1; i <= configInputs; i++) {
-        const path = `/config/routing/card/${i.toString().padStart(2, '0')}`;
-        const val = cache[path]?.[0]?.value;
-        if (val !== undefined) {
-          let srcId = (val < 18) ? `usb_in_${val + 1}` : 'off';
-          routingState[`in_${i}`] = srcId; 
-        }
-      }
-
       // Hydrate AUX OUT Mode
       for (let i = 1; i <= 6; i++) {
-        const path = `/config/routing/aux/${i.toString().padStart(2, '0')}`;
+        const iStr = i.toString().padStart(2, '0');
+        const path = isXR ? `/routing/aux/${iStr}/src` : `/config/routing/aux/${iStr}`;
         const val = cache[path]?.[0]?.value;
         if (val !== undefined) {
           let srcId = 'off';
@@ -393,7 +415,8 @@
 
       // Hydrate MAIN OUT Mode
       for (let i = 1; i <= 2; i++) {
-        const path = `/config/routing/main/${i.toString().padStart(2, '0')}`;
+        const iStr = i.toString().padStart(2, '0');
+        const path = isXR ? `/routing/main/${iStr}/src` : `/config/routing/main/${iStr}`;
         const val = cache[path]?.[0]?.value;
         if (val !== undefined) {
           let srcId = 'off';
@@ -605,6 +628,11 @@
     if (chId.startsWith("in_")) {
       const num = chId.replace("in_", "").padStart(2, "0");
       setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
+    } else if (chId.startsWith("bus_")) {
+      const isXR = config.presetId === 'XR18';
+      const n = chId.replace("bus_", "");
+      const busPath = isXR ? `/bus/${n}/mix/lr` : `/bus/${n.padStart(2, '0')}/mix/lr`;
+      setOsc(busPath, newState ? 1 : 0);
     } else if (chId.startsWith("fx_")) {
       const num = chId.replace("fx_", "");
       setOsc(`/rtn/${num}/mix/lr`, newState ? 1 : 0);
@@ -622,6 +650,17 @@
         setOsc(`/ch/${num}/eq/${i + 1}/f`, band.freq);
         setOsc(`/ch/${num}/eq/${i + 1}/g`, band.gain);
         setOsc(`/ch/${num}/eq/${i + 1}/q`, band.q);
+        setOsc(`/ch/${num}/eq/${i + 1}/on`, band.enabled ? 1 : 0);
+      });
+    } else if (chId.startsWith("bus_")) {
+      const isXR = config.presetId === 'XR18';
+      const n = chId.replace("bus_", "");
+      const busPrefix = isXR ? `/bus/${n}/eq` : `/bus/${n.padStart(2, '0')}/eq`;
+      newBands.forEach((band, i) => {
+        setOsc(`${busPrefix}/${i + 1}/f`, band.freq);
+        setOsc(`${busPrefix}/${i + 1}/g`, band.gain);
+        setOsc(`${busPrefix}/${i + 1}/q`, band.q);
+        setOsc(`${busPrefix}/${i + 1}/on`, band.enabled ? 1 : 0);
       });
     }
   }

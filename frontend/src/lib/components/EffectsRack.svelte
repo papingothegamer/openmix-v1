@@ -66,10 +66,7 @@
       <div class="header-title-group">
         <h2 class="title-left">FX: <span class="ch-name">{selectedChannel ? (scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()) : 'SELECT'}</span></h2>
       </div>
-      <div class="nav-group">
-        <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={18} /></button>
-        <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={18} /></button>
-      </div>
+    
     </div>
 
     <div class="fx-slot-list">
@@ -149,16 +146,7 @@
   .title-left { font-size: 1.1rem; font-weight: 800; color: #f8fafc; margin: 0; }
   .ch-name { color: #e2e8f0; }
   .header-title-group { display: flex; align-items: center; }
-  .nav-group { display: flex; gap: 0.25rem; }
-
-  .nav-icon-btn {
-    background: #374151; border: none; color: #94a3b8; padding: 0.4rem;
-    border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex;
-    align-items: center; justify-content: center;
-  }
-  .nav-icon-btn:hover:not(:disabled) { background: #4b5563; color: #f8fafc; }
-  .nav-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
+ 
   .fx-slot-list {
     display: flex; flex-direction: column; flex: 1;
     background: #0f1115; overflow-y: auto;

@@ -38,28 +38,33 @@ class MixerConnection extends EventEmitter {
     getSyncTemplate(type = 'XR18') {
         const templates = {
             'XR18': [
-                // Global Config
-                { address: '/config/routing/i', count: 16, start: 1, suffix: true },
-                { address: '/config/routing/card', count: 18, start: 1, suffix: true },
-                { address: '/config/routing/p16', count: 16, start: 1, suffix: true },
-                { address: '/config/routing/aux', count: 6, start: 1, suffix: true },
-                { address: '/config/routing/main', count: 2, start: 1, suffix: true },
+                // Global Identity & Status
+                { address: '/xinfo' },
+                { address: '/-snap/name' },
+                // Global Config & Routing
+                { address: '/routing/i', count: 16, start: 1, suffix: true, pad: 2 },
+                { address: '/routing/usb', count: 18, start: 1, suffix: true, pad: 2 },
+                { address: '/routing/p16', count: 16, start: 1, suffix: true, pad: 2 },
+                { address: '/routing/aux', count: 6, start: 1, suffix: true, pad: 2 },
+                { address: '/routing/main', count: 2, start: 1, suffix: true, pad: 2 },
                 { address: '/config/chlink', count: 1 },
+                { address: '/config/buslink', count: 1 },
                 // Strips (Config/Preamps)
                 { address: '/ch/01-16/config/name', pattern: '/ch/{N}/config/name', count: 16 },
                 { address: '/ch/01-16/config/color', pattern: '/ch/{N}/config/color', count: 16 },
                 { address: '/ch/01-16/config/icon', pattern: '/ch/{N}/config/icon', count: 16 },
-                { address: '/bus/01-06/config/name', pattern: '/bus/{N}/config/name', count: 6 },
-                { address: '/bus/01-06/config/color', pattern: '/bus/{N}/config/color', count: 6 },
-                { address: '/bus/01-06/config/icon', pattern: '/bus/{N}/config/icon', count: 6 },
-                { address: '/headamp/00-15/gain', pattern: '/headamp/{N}', count: 16, start: 0, pad: 2 },
-                { address: '/headamp/00-15/phantom', pattern: '/headamp/{N}/phantom', count: 16, start: 0, pad: 2 },
-                // EQ/Dyn/Gate
+                { address: '/ch/01-16/config/insrc', pattern: '/ch/{N}/config/insrc', count: 16 },
+                { address: '/bus/1-6/config/name', pattern: '/bus/{N}/config/name', count: 6, pad: 0 },
+                { address: '/bus/1-6/config/color', pattern: '/bus/{N}/config/color', count: 6, pad: 0 },
+                { address: '/bus/1-6/config/icon', pattern: '/bus/{N}/config/icon', count: 6, pad: 0 },
+                { address: '/headamp/01-16/gain', pattern: '/headamp/{N}/gain', count: 16, start: 1, pad: 2 },
+                { address: '/headamp/01-16/phantom', pattern: '/headamp/{N}/phantom', count: 16, start: 1, pad: 2 },
+                // EQ/Dyn/Gate (Standardized)
                 { address: '/ch/01-16/eq', pattern: '/ch/{N}/eq', count: 16 },
                 { address: '/ch/01-16/gate', pattern: '/ch/{N}/gate', count: 16 },
                 { address: '/ch/01-16/dyn', pattern: '/ch/{N}/dyn', count: 16 },
-                // FX
-                { address: '/fx/1-4/type', pattern: '/fx/{N}/type', count: 4 }
+                // FX (Non-padded)
+                { address: '/fx/1-4/type', pattern: '/fx/{N}/type', count: 4, pad: 0 }
             ],
             'X32RACK': [
                 { address: '/config/routing/user/in', count: 32, start: 1, suffix: true, pad: 2 },
@@ -86,12 +91,18 @@ class MixerConnection extends EventEmitter {
         template.forEach(item => {
             if (item.pattern) {
                 for (let i = 0; i < item.count; i++) {
-                    const n = (i + (item.start || 1)).toString().padStart(item.pad || 2, '0');
+                    const pad = item.pad !== undefined ? item.pad : 2;
+                    const n = pad > 0 
+                        ? (i + (item.start || 1)).toString().padStart(pad, '0')
+                        : (i + (item.start || 1)).toString();
                     requests.push(item.pattern.replace('{N}', n));
                 }
             } else if (item.suffix) {
                 for (let i = 0; i < item.count; i++) {
-                    const n = (i + (item.start || 1)).toString().padStart(item.pad || 2, '0');
+                    const pad = item.pad !== undefined ? item.pad : 2;
+                    const n = pad > 0 
+                        ? (i + (item.start || 1)).toString().padStart(pad, '0')
+                        : (i + (item.start || 1)).toString();
                     requests.push(`${item.address}/${n}`);
                 }
             } else {

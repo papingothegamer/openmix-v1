@@ -79,6 +79,8 @@
 
   function oscPrefixFromChannelId(id) {
     if (typeof id !== "string") return null;
+    const isXR = $mixerState?.config?.presetId === 'XR18';
+    
     if (id.startsWith("in_")) {
       const num = parseInt(id.replace("in_", ""), 10);
       if (!Number.isFinite(num) || num < 1) return null;
@@ -87,10 +89,18 @@
     if (id.startsWith("bus_")) {
       const num = parseInt(id.replace("bus_", ""), 10);
       if (!Number.isFinite(num) || num < 1) return null;
-      return `/bus/${String(num).padStart(2, "0")}`;
+      // XR18 uses non-padded bus indices
+      return isXR ? `/bus/${num}` : `/bus/${String(num).padStart(2, "0")}`;
     }
 
     return null;
+  }
+
+  function getHeadampPath(id, param) {
+    if (!id.startsWith("in_")) return null;
+    const num = parseInt(id.replace("in_", ""), 10);
+    if (!Number.isFinite(num) || num < 1 || num > 16) return null;
+    return `/headamp/${String(num).padStart(2, "0")}/${param}`;
   }
 
   function readCacheNumber(cache, address, fallback) {
@@ -109,16 +119,26 @@
     const cache = $mixerState?.flatOscCache || {};
 
     if (prefix) {
+    if (prefix) {
       const outNorm = readCacheNumber(
         cache,
         `${prefix}/mix/fader`,
         dbToFader(params.outLevel),
       );
 
+      const headampGainPath = getHeadampPath(channelId, 'gain');
+      const headampPhantomPath = getHeadampPath(channelId, 'phantom');
+
       params = {
         ...params,
-        gain: readCacheNumber(cache, `${prefix}/preamp/gain`, params.gain),
+        gain: headampGainPath 
+          ? readCacheNumber(cache, headampGainPath, params.gain)
+          : readCacheNumber(cache, `${prefix}/preamp/gain`, params.gain),
+        phantom: headampPhantomPath
+          ? readCacheNumber(cache, headampPhantomPath, params.phantom ? 1 : 0) === 1
+          : params.phantom,
         gateThresh: readCacheNumber(cache, `${prefix}/gate/thr`, params.gateThresh),
+        // ... rest of params ...
         gateRange: readCacheNumber(cache, `${prefix}/gate/range`, params.gateRange),
         // These may not exist on the mixer in the current profile; defaults are preserved.
         gateAttack: readCacheNumber(cache, `${prefix}/gate/att`, params.gateAttack),
@@ -165,9 +185,23 @@
   function sendOscForPreamp() {
     const prefix = oscPrefixFromChannelId(channelId);
     if (!prefix) return;
-    setOsc(`${prefix}/preamp/gain`, params.gain);
-    setOsc(`${prefix}/preamp/hpf`, params.hpfOn ? 1 : 0);
-    setOsc(`${prefix}/preamp/hpf/f`, params.hpfFreq);
+
+    const headampGainPath = getHeadampPath(channelId, 'gain');
+    const headampPhantomPath = getHeadampPath(channelId, 'phantom');
+
+    if (headampGainPath) {
+      setOsc(headampGainPath, params.gain);
+    } else {
+      setOsc(`${prefix}/preamp/gain`, params.gain);
+    }
+
+    if (headampPhantomPath) {
+      setOsc(headampPhantomPath, params.phantom ? 1 : 0);
+    }
+
+    // X-Air specific HPF addresses
+    setOsc(`${prefix}/preamp/hpon`, params.hpfOn ? 1 : 0);
+    setOsc(`${prefix}/preamp/hpf`, params.hpfFreq);
   }
 
   function sendOscForOutput() {

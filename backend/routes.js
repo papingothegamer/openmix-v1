@@ -70,15 +70,22 @@ function handleConnection(socket, mixer, io) {
 
         if (session.role === 'musician') {
             // Enforce WebSocket OSC routing rewrite
-            const targetBusStr = String(session.targetBus).padStart(2, '0');
+            const busNum = parseInt(session.targetBus, 10);
+            const busStr2 = String(busNum).padStart(2, '0'); // Padded for channel sub-paths
             
-            // Prevent touching main LR by strict matching
-            // Example: Incoming /ch/01/mix/fader translates to /ch/01/mix/0N/level
+            // X-Air protocol alignment: Some addresses use single-digit bus indices
+            // Security: We allow the musician to touch their specific assigned bus only.
+            
+            // Handle Fader rewrite to specific Aux Send level
             if (data.address.endsWith('mix/fader')) {
-                const rewriteAddr = data.address.replace('/mix/fader', `/mix/${targetBusStr}/level`);
+                const rewriteAddr = data.address.replace('/mix/fader', `/mix/${busStr2}/level`);
                 mixer.sendOsc(rewriteAddr, oscArgs);
                 console.log(`[Security] Rewrote Fader to Bus level: ${rewriteAddr}`);
-            } else if (data.address.includes(`/mix/${targetBusStr}/`)) {
+            } else if (
+                data.address.includes(`/mix/${busStr2}/`) || 
+                data.address.startsWith(`/bus/${busNum}/`) || 
+                data.address.startsWith(`/bus/${busStr2}/`)
+            ) {
                 // Exact auxiliary bus modification
                 mixer.sendOsc(data.address, oscArgs);
             } else {
@@ -168,10 +175,18 @@ function emitOscBroadcast(io, mixerData) {
             mixerData.type === 'state' &&
             typeof mixerData.address === 'string'
         ) {
-            // AUX send paths look like: /ch/01/mix/02/level  (and /on, /type)
+            // AUX send paths look like: /ch/01/mix/02/level (padded)
+            // or /bus/1/mix/fader (non-padded)
             const m = mixerData.address.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\//);
+            const b = mixerData.address.match(/^\/bus\/(\d+)\//);
+
             if (m) {
                 const bus = parseInt(m[2], 10);
+                if (Number.isFinite(bus)) {
+                    io.to(`bus_${bus}`).emit('oscData', mixerData);
+                }
+            } else if (b) {
+                const bus = parseInt(b[1], 10);
                 if (Number.isFinite(bus)) {
                     io.to(`bus_${bus}`).emit('oscData', mixerData);
                 }
