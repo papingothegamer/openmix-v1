@@ -22,18 +22,30 @@
   const DEBOUNCE_MS = 120;
 
   function getSendOscBase(ch, num, type) {
+    if (!ch) return '';
     const isXR = config?.presetId === 'XR18';
-    const c = String(ch).replace('in_', '').padStart(2, '0');
+    
+    // Parse source channel (in_1, bus_1, etc.)
+    const parts = ch.split('_');
+    const chType = parts[0];
+    const chNum = parts[1];
+    const c = String(chNum).padStart(2, '0');
+    
+    // Determine source prefix (/ch or /bus)
+    let srcPrefix = '/ch';
+    if (chType === 'bus' || chType === 'out') srcPrefix = '/bus';
+    
     if (type === 'aux') {
-      return `/ch/${c}/mix/${String(num).padStart(2, '0')}`;
+      return `${srcPrefix}/${c}/mix/${String(num).padStart(2, '0')}`;
+    } else if (type === 'mtx') {
+      return `${srcPrefix}/${c}/mix/mtx/${String(num).padStart(2, '0')}`;
     } else {
       // FX Sends
       if (isXR) {
-        // XR18 maps FX1-4 to Mixbuses 7-10
         const busNum = 6 + parseInt(num, 10);
-        return `/ch/${c}/mix/${String(busNum).padStart(2, '0')}`;
+        return `${srcPrefix}/${c}/mix/${String(busNum).padStart(2, '0')}`;
       } else {
-        return `/ch/${c}/mix/fx/${num}`;
+        return `${srcPrefix}/${c}/mix/fx/${num}`;
       }
     }
   }
@@ -71,6 +83,16 @@
     sendsState = { ...sendsState };
     if (selectedChannel?.startsWith('in_')) {
       const addr = getSendOscBase(selectedChannel, idx, 'fx');
+      scheduleOsc(`${addr}/level`, v);
+    }
+  }
+
+  function setMtxLevel(busKey, idx, v) {
+    ensureKey(busKey);
+    sendsState[busKey].level = v;
+    sendsState = { ...sendsState };
+    if (selectedChannel?.startsWith('in_')) {
+      const addr = getSendOscBase(selectedChannel, idx, 'mtx');
       scheduleOsc(`${addr}/level`, v);
     }
   }
@@ -113,14 +135,18 @@
       const key = `${selectedChannel}_${suffix}`;
       sendsState[key] = { ...(sendsState[key] || {}), ...val };
       sendsState = { ...sendsState };
-      const m = suffix.match(/^(aux)(\d+)$/) || suffix.match(/^(fx)(\d+)$/);
-      if (m && selectedChannel.startsWith('in_')) {
+      const m = suffix.match(/^(aux)(\d+)$/) || 
+                suffix.match(/^(fx)(\d+)$/) || 
+                suffix.match(/^(mtx)(\d+)$/);
+      
+      if (m && (selectedChannel.startsWith('in_') || selectedChannel.startsWith('bus_'))) {
         const busNum = parseInt(m[2], 10);
         const addr = getSendOscBase(selectedChannel, busNum, m[1]);
         
         scheduleOsc(`${addr}/level`, sendsState[key].level ?? 0);
         setOsc(`${addr}/type`, sendsState[key].prePost ?? 0);
-        if (m[1] === 'aux') {
+        
+        if (m[1] === 'aux' || m[1] === 'mtx') {
           setOsc(`${addr}/on`, sendsState[key].on ? 1 : 0);
         }
       }
@@ -137,8 +163,11 @@
       sendsState[k].prePost = anyPost ? 1 : 0;
       sendsState = { ...sendsState };
       const suffix = k.replace(`${selectedChannel}_`, '');
-      const ma = suffix.match(/^(aux)(\d+)$/) || suffix.match(/^(fx)(\d+)$/);
-      if (ma && selectedChannel.startsWith('in_')) {
+      const ma = suffix.match(/^(aux)(\d+)$/) || 
+                 suffix.match(/^(fx)(\d+)$/) || 
+                 suffix.match(/^(mtx)(\d+)$/);
+      
+      if (ma && (selectedChannel.startsWith('in_') || selectedChannel.startsWith('bus_'))) {
         const addr = getSendOscBase(selectedChannel, ma[2], ma[1]);
         setOsc(`${addr}/type`, sendsState[k].prePost);
       }
@@ -154,29 +183,72 @@
     { value: 'subgroup',   label: 'Sub Group' },
   ];
 
-  const FADER_H = 220;
+  const PAGE_SIZE = 4;
+  let auxPage = 0;
+  let fxPage = 0;
+  let mtxPage = 0;
+
+  import SendStrip from './SendStrip.svelte';
+
   $: auxBuses     = config?.visibleBuses || Array.from({ length: config?.outputs || 0 }, (_, i) => i + 1);
   $: fxCount      = config?.fx || 0;
-  $: isSmallMixer = (config?.outputs || 0) <= 8;
+  $: mtxCount     = config?.matrices || 0;
+  
+  $: totalStrips  = auxBuses.length + fxCount + mtxCount;
+  $: columnCount  = mtxCount > 0 ? 3 : 2;
+
+  $: displayedAux = auxBuses.slice(auxPage * PAGE_SIZE, (auxPage + 1) * PAGE_SIZE);
+  $: displayedFx  = Array.from({ length: fxCount }).slice(fxPage * PAGE_SIZE, (fxPage + 1) * PAGE_SIZE);
+  $: displayedMtx = Array.from({ length: mtxCount }).slice(mtxPage * PAGE_SIZE, (mtxPage + 1) * PAGE_SIZE);
+
+  $: auxMaxPages = Math.ceil(auxBuses.length / PAGE_SIZE);
+  $: fxMaxPages  = Math.ceil(fxCount / PAGE_SIZE);
+  $: mtxMaxPages = Math.ceil(mtxCount / PAGE_SIZE);
 </script>
 
 <div class="macro-view fade-in">
+  
+  <div class="header-container-rack">
+    <div class="rack-header-main">
+      <div class="header-title-group">
+        <h2 class="title-left">SENDS: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span></h2>
+      </div>
+      
+      <div class="header-actions">
+        <button class="ctrl-btn-rack" on:click={toggleAllPrePost}>Pre/Post All</button>
+        <button class="ctrl-btn-rack" on:click={copyChannel}>Copy</button>
+        <button class="ctrl-btn-rack" class:has-clipboard={!!clipboard} on:click={pasteChannel}>Paste</button>
+        <div class="nav-group">
+          <button class="nav-icon-btn-rack" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}>
+            <ChevronLeft size={16} />
+          </button>
+          <button class="nav-icon-btn-rack" disabled={isLastChannel} on:click={() => cycleChannel(1)}>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
 
-  <div class="view-header-inline">
-    <h2 class="title-left">
-      SENDS: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
-    </h2>
-    <div class="header-actions">
-      <button class="ctrl-btn" on:click={toggleAllPrePost}>Pre/Post All</button>
-      <button class="ctrl-btn" on:click={copyChannel}>Copy</button>
-      <button class="ctrl-btn" class:has-clipboard={!!clipboard} on:click={pasteChannel}>Paste</button>
-      <div class="nav-group">
-        <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}>
-          <ChevronLeft size={16} />
-        </button>
-        <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}>
-          <ChevronRight size={16} />
-        </button>
+    <div class="sendpoint-rack-row">
+      <span class="sp-header">SEND POINT</span>
+      <div class="sp-radios">
+        {#each SEND_POINTS as sp}
+          <label class="sp-radio" class:sp-active={sendPoint === sp.value}>
+            <input
+              type="radio"
+              name="sendpoint_{selectedChannel}"
+              value={sp.value}
+              bind:group={sendPoint}
+              on:change={() => {
+                if (!selectedChannel) return;
+                sendsState[`${selectedChannel}_sendPoint`] = sp.value;
+                sendsState = { ...sendsState };
+              }}
+            />
+            <span class="sp-dot"></span>
+            <span class="sp-lbl">{sp.label}</span>
+          </label>
+        {/each}
       </div>
     </div>
   </div>
@@ -186,330 +258,246 @@
       <p class="empty-state">No AUX buses configured. Add outputs in the Setup Wizard.</p>
     {:else}
 
-      <div class="sendpoint-row">
-        <span class="sp-header">SEND POINT</span>
-        <div class="sp-radios">
-          {#each SEND_POINTS as sp}
-            <label class="sp-radio" class:sp-active={sendPoint === sp.value}>
-              <input
-                type="radio"
-                name="sendpoint_{selectedChannel}"
-                value={sp.value}
-                bind:group={sendPoint}
-                on:change={() => {
-                  if (!selectedChannel) return;
-                  sendsState[`${selectedChannel}_sendPoint`] = sp.value;
-                  sendsState = { ...sendsState };
-                }}
+      <div class="sends-grid" style="--cols: {columnCount}; max-width: {columnCount === 2 ? '1100px' : '1600px'};">
+        
+        <!-- Column 1: AUX Sends -->
+        <div class="sends-section">
+          <div class="section-hdr">
+            <span class="section-lbl">AUX Bus Sends</span>
+            {#if auxMaxPages > 1}
+              <div class="page-nav">
+                <button class="page-btn" disabled={auxPage === 0} on:click={() => auxPage--}>
+                  <ChevronLeft size={14} />
+                </button>
+                <span class="page-nums">{auxPage + 1}/{auxMaxPages}</span>
+                <button class="page-btn" disabled={auxPage >= auxMaxPages - 1} on:click={() => auxPage++}>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            {/if}
+          </div>
+          <div class="strips-flex">
+            {#each displayedAux as busNum}
+              {@const busKey = `${selectedChannel}_aux${busNum}`}
+              {@const isOn   = sendsState[busKey]?.on !== false}
+              {@const isPre  = sendsState[busKey]?.prePost === 1}
+              {@const level  = sendsState[busKey]?.level ?? 0}
+              <SendStrip 
+                name={scribbles[`bus_${busNum}`]?.name || `AUX ${busNum}`}
+                {level}
+                {isOn}
+                {isPre}
+                accentColor="#3b82f6"
+                on:change={(e) => setSendLevel(busKey, busNum, e.detail)}
+                on:toggleOn={() => toggleOnOff(busKey, busNum, 'aux')}
+                on:togglePre={() => togglePrePost(busKey, busNum, 'aux')}
               />
-              <span class="sp-dot"></span>
-              <span class="sp-lbl">{sp.label}</span>
-            </label>
-          {/each}
+            {/each}
+          </div>
         </div>
+
+        <!-- Column 2: FX Sends -->
+        <div class="sends-section">
+          <div class="section-hdr">
+            <span class="section-lbl">FX Sends</span>
+            {#if fxMaxPages > 1}
+              <div class="page-nav">
+                <button class="page-btn" disabled={fxPage === 0} on:click={() => fxPage--}>
+                  <ChevronLeft size={14} />
+                </button>
+                <span class="page-nums">{fxPage + 1}/{fxMaxPages}</span>
+                <button class="page-btn" disabled={fxPage >= fxMaxPages - 1} on:click={() => fxPage++}>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            {/if}
+          </div>
+          <div class="strips-flex">
+            {#each displayedFx as _, i}
+              {@const num = (fxPage * PAGE_SIZE) + i + 1}
+              {@const busKey = `${selectedChannel}_fx${num}`}
+              {@const isOn   = sendsState[busKey]?.on !== false}
+              {@const isPre  = sendsState[busKey]?.prePost === 1}
+              {@const level  = sendsState[busKey]?.level ?? 0}
+              <SendStrip 
+                name={scribbles[`fx_${num}`]?.name || `FX ${num}`}
+                {level}
+                {isOn}
+                {isPre}
+                accentColor="#7c3aed"
+                on:change={(e) => setFxLevel(busKey, num, e.detail)}
+                on:toggleOn={() => toggleOnOff(busKey, num, 'fx')}
+                on:togglePre={() => togglePrePost(busKey, num, 'fx')}
+              />
+            {/each}
+          </div>
+        </div>
+
+        <!-- Column 3: MTX Sends (Optional) -->
+        {#if mtxCount > 0}
+          <div class="sends-section">
+            <div class="section-hdr mtx-hdr">
+              <span class="section-lbl">MTX Sends</span>
+              {#if mtxMaxPages > 1}
+                <div class="page-nav">
+                  <button class="page-btn" disabled={mtxPage === 0} on:click={() => mtxPage--}>
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span class="page-nums">{mtxPage + 1}/{mtxMaxPages}</span>
+                  <button class="page-btn" disabled={mtxPage >= mtxMaxPages - 1} on:click={() => mtxPage++}>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              {/if}
+            </div>
+            <div class="strips-flex">
+              {#each displayedMtx as _, i}
+                {@const busNum = (mtxPage * PAGE_SIZE) + i + 1}
+                {@const busKey = `${selectedChannel}_mtx${busNum}`}
+                {@const isOn   = sendsState[busKey]?.on !== false}
+                {@const isPre  = sendsState[busKey]?.prePost === 1}
+                {@const level  = sendsState[busKey]?.level ?? 0}
+                <SendStrip 
+                  name={scribbles[`mtx_${busNum}`]?.name || `MTX ${busNum}`}
+                  {level}
+                  {isOn}
+                  {isPre}
+                  accentColor="#10b981"
+                  on:change={(e) => setMtxLevel(busKey, busNum, e.detail)}
+                  on:toggleOn={() => toggleOnOff(busKey, busNum, 'mtx')}
+                  on:togglePre={() => togglePrePost(busKey, busNum, 'mtx')}
+                />
+              {/each}
+            </div>
+          </div>
+        {/if}
+
       </div>
-
-      {#if isSmallMixer}
-        <div class="side-by-side">
-
-          {#if auxBuses.length > 0}
-            <div class="sends-section">
-              <div class="section-hdr"><span class="section-lbl">AUX Bus Sends</span></div>
-              <div class="strips-row">
-                {#each auxBuses as busNum}
-                  {@const busKey = `${selectedChannel}_aux${busNum}`}
-                  {@const isOn   = sendsState[busKey]?.on !== false}
-                  {@const isPre  = sendsState[busKey]?.prePost === 1}
-                  {@const level  = sendsState[busKey]?.level ?? 0}
-                  <div class="strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                    <div class="strip-name">{scribbles[`bus_${busNum}`]?.name || `AUX ${busNum}`}</div>
-                    <div class="fader-well">
-                      <input type="range" class="v-fader" min="0" max="1" step="0.005"
-                        value={level} style="width:{FADER_H}px"
-                        on:dblclick={() => setSendLevel(busKey, busNum, 0)}
-                        on:input={(e) => setSendLevel(busKey, busNum, parseFloat(e.currentTarget.value))} />
-                    </div>
-                    <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
-                      {toDb(level)}<span class="db-unit"> dB</span>
-                    </div>
-                    <button class="on-btn" class:on-active={isOn} on:click={() => toggleOnOff(busKey, busNum, 'aux')}>
-                      {isOn ? 'ON' : 'OFF'}
-                    </button>
-                    <button class="pp-btn" class:pp-active={isPre} on:click={() => togglePrePost(busKey, busNum, 'aux')}>
-                      {isPre ? 'PRE' : 'POST'}
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {/if}
-
-          {#if fxCount > 0}
-            <div class="sends-section">
-              <div class="section-hdr"><span class="section-lbl">FX Sends</span></div>
-              <div class="strips-row">
-                {#each Array(fxCount) as _, i}
-                  {@const busKey = `${selectedChannel}_fx${i + 1}`}
-                  {@const isOn   = sendsState[busKey]?.on !== false}
-                  {@const isPre  = sendsState[busKey]?.prePost === 1}
-                  {@const level  = sendsState[busKey]?.level ?? 0}
-                  <div class="strip fx-strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                    <div class="strip-name">{scribbles[`fx_${i + 1}`]?.name || `FX ${i + 1}`}</div>
-                    <div class="fader-well">
-                      <input type="range" class="v-fader fx-fader" min="0" max="1" step="0.005"
-                        value={level} style="width:{FADER_H}px"
-                        on:dblclick={() => setFxLevel(busKey, i + 1, 0)}
-                        on:input={(e) => setFxLevel(busKey, i + 1, parseFloat(e.currentTarget.value))} />
-                    </div>
-                    <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
-                      {toDb(level)}<span class="db-unit"> dB</span>
-                    </div>
-                    <button class="on-btn" class:on-active={isOn} on:click={() => toggleOnOff(busKey, i + 1, 'fx')}>
-                      {isOn ? 'ON' : 'OFF'}
-                    </button>
-                    <button class="pp-btn" class:pp-active={isPre} on:click={() => togglePrePost(busKey, i + 1, 'fx')}>
-                      {isPre ? 'PRE' : 'POST'}
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {/if}
-
-        </div>
-
-      {:else}
-        {#if auxBuses.length > 0}
-          <div class="sends-section">
-            <div class="section-hdr"><span class="section-lbl">AUX Bus Sends</span></div>
-            <div class="strips-row">
-              {#each auxBuses as busNum}
-                {@const busKey = `${selectedChannel}_aux${busNum}`}
-                {@const isOn   = sendsState[busKey]?.on !== false}
-                {@const isPre  = sendsState[busKey]?.prePost === 1}
-                {@const level  = sendsState[busKey]?.level ?? 0}
-                <div class="strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                  <div class="strip-name">{scribbles[`bus_${busNum}`]?.name || `AUX ${busNum}`}</div>
-                  <div class="fader-well">
-                    <input type="range" class="v-fader" min="0" max="1" step="0.005"
-                      value={level} style="width:{FADER_H}px"
-                      on:dblclick={() => setSendLevel(busKey, busNum, 0)}
-                      on:input={(e) => setSendLevel(busKey, busNum, parseFloat(e.currentTarget.value))} />
-                  </div>
-                  <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
-                    {toDb(level)}<span class="db-unit"> dB</span>
-                  </div>
-                  <button class="on-btn" class:on-active={isOn} on:click={() => toggleOnOff(busKey, busNum, 'aux')}>
-                    {isOn ? 'ON' : 'OFF'}
-                  </button>
-                  <button class="pp-btn" class:pp-active={isPre} on:click={() => togglePrePost(busKey, busNum, 'aux')}>
-                    {isPre ? 'PRE' : 'POST'}
-                  </button>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        {#if fxCount > 0}
-          <div class="sends-section">
-            <div class="section-hdr"><span class="section-lbl">FX Sends</span></div>
-            <div class="strips-row">
-              {#each Array(fxCount) as _, i}
-                {@const busKey = `${selectedChannel}_fx${i + 1}`}
-                {@const isOn   = sendsState[busKey]?.on !== false}
-                {@const isPre  = sendsState[busKey]?.prePost === 1}
-                {@const level  = sendsState[busKey]?.level ?? 0}
-                <div class="strip fx-strip" class:strip-on={isOn} class:strip-off={!isOn}>
-                  <div class="strip-name">{scribbles[`fx_${i + 1}`]?.name || `FX ${i + 1}`}</div>
-                  <div class="fader-well">
-                    <input type="range" class="v-fader fx-fader" min="0" max="1" step="0.005"
-                      value={level} style="width:{FADER_H}px"
-                      on:dblclick={() => setFxLevel(busKey, i + 1, 0)}
-                      on:input={(e) => setFxLevel(busKey, i + 1, parseFloat(e.currentTarget.value))} />
-                  </div>
-                  <div class="db-read" class:db-unity={level >= 0.74 && level <= 0.76}>
-                    {toDb(level)}<span class="db-unit"> dB</span>
-                  </div>
-                  <button class="on-btn" class:on-active={isOn} on:click={() => toggleOnOff(busKey, i + 1, 'fx')}>
-                    {isOn ? 'ON' : 'OFF'}
-                  </button>
-                  <button class="pp-btn" class:pp-active={isPre} on:click={() => togglePrePost(busKey, i + 1, 'fx')}>
-                    {isPre ? 'PRE' : 'POST'}
-                  </button>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-      {/if}
 
     {/if}
   </div>
 </div>
 
 <style>
-  .macro-view { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
-
-  .view-header-inline { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-  .title-left { font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em; color: #cbd5e1; margin: 0; }
-  .ch-name { color: #e2e8f0; }
-  .header-actions { display: flex; align-items: center; gap: 0.4rem; }
-  .nav-group { display: flex; gap: 2px; margin-left: 0.25rem; }
-
-  .nav-icon-btn {
-    background: #0d1a28; border: 1px solid #1a3040; color: #64748b;
-    border-radius: 5px; padding: 4px 6px; cursor: pointer; display: flex; align-items: center;
-    transition: color .12s, border-color .12s;
-  }
-  .nav-icon-btn:hover:not(:disabled) { color: #e2e8f0; border-color: #3b82f6; }
-  .nav-icon-btn:disabled { opacity: .25; cursor: not-allowed; }
-
-  .ctrl-btn {
-    background: #0d1a28; color: #64748b; border: 1px solid #1a3040;
-    padding: 4px 10px; border-radius: 5px; cursor: pointer;
-    font-size: 0.72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .ctrl-btn:hover { background: #152236; color: #e2e8f0; border-color: #3b82f6; }
-  .ctrl-btn.has-clipboard { border-color: #22d3ee; color: #22d3ee; }
-
-  .sendpoint-row {
-    display: flex; align-items: center; gap: 1rem;
-    background: #070e18; border: 1px solid #0f1e2e; border-radius: 6px; padding: 0.4rem 0.8rem;
-  }
-  .sp-header { font-size: 0.62rem; font-weight: 800; letter-spacing: .12em; color: #253549; text-transform: uppercase; white-space: nowrap; }
-  .sp-radios { display: flex; gap: 0; flex-wrap: wrap; }
-  .sp-radio { display: flex; align-items: center; gap: 0.28rem; cursor: pointer; padding: 3px 9px; border-radius: 4px; }
-  .sp-radio input[type="radio"] { display: none; }
-  .sp-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #1e3448; background: #050d16; transition: background .12s, border-color .12s, box-shadow .12s; flex-shrink: 0; }
-  .sp-active .sp-dot { background: #06b6d4; border-color: #06b6d4; box-shadow: 0 0 6px rgba(6,182,212,.5); }
-  .sp-lbl { font-size: 0.68rem; font-weight: 600; color: #334155; white-space: nowrap; transition: color .12s; }
-  .sp-active .sp-lbl { color: #cbd5e1; }
-
-  .side-by-side {
-    display: grid; grid-template-columns: 1fr auto; gap: 0.55rem; align-items: start;
-  }
-  .side-by-side > :only-child { grid-column: 1 / -1; }
-
-  .sends-section { background: #060d17; border: 1px solid #0c1a28; border-radius: 8px; overflow: hidden; }
-  .section-hdr { padding: 0.3rem 0.75rem; border-bottom: 1px solid #0c1a28; background: #070f1c; }
-  .section-lbl { font-size: 0.58rem; font-weight: 800; letter-spacing: .15em; color: #1e3448; text-transform: uppercase; }
-
-  .strips-row { display: flex; flex-direction: row; overflow-x: auto; gap: 8px; padding: 0.8rem 0.6rem; }
-  .strips-row::-webkit-scrollbar { height: 3px; }
-  .strips-row::-webkit-scrollbar-track { background: #060d17; }
-  .strips-row::-webkit-scrollbar-thumb { background: #1a3040; border-radius: 2px; }
-
-  .strip {
-    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-    flex: 0 0 110px; min-width: 110px;
-    padding: 0.85rem 0.6rem 0.9rem;
-    border-radius: 8px; border: 1px solid #0f1e2e; background: #070e1a;
-    transition: border-color .18s, background .18s, transform .12s;
-  }
-  .strip:hover { transform: translateY(-6px); }
-  .strip-on  { border-color: #1a3a5c; background: #070f1e; }
-  .strip-off { border-color: #2a100e; background: #0a0606; }
-
-  .strip-name {
-    font-size: 0.78rem; font-weight: 900; letter-spacing: .06em; color: #94a3b8;
-    text-align: center; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;
-    transition: color .12s;
-  }
-  .strip-on .strip-name { color: #64748b; }
-
-  .fader-well {
-    position: relative;
-    width: 36px;
-    height: 220px;
-    flex-shrink: 0;
-    overflow: visible;
+  .macro-view { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    width: 100%;
+    min-height: 100%;
+    background: #080a0f;
   }
 
-  .v-fader {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    height: 36px;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    -webkit-appearance: none;
-    appearance: none; background: transparent;
-    outline: none;
-    cursor: ns-resize;
+  .header-container-rack {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #1f2937;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 2rem;
   }
 
-  .v-fader::-webkit-slider-runnable-track {
-    height: 7px; background: #03060b;
-    border: 1px solid #0f2030;
-    border-radius: 4px;
-    box-shadow: inset 0 2px 6px rgba(0,0,0,0.95);
-  }
-  .v-fader::-moz-range-track {
-    height: 5px;
-    background: #04090f;
-    border: 1px solid #0f2030;
-    border-radius: 3px;
+  .rack-header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 
-  .v-fader::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 34px; height: 18px;
-    margin-top: -6px;
-    background: linear-gradient(180deg, #273248 0%, #0f1724 50%, #273248 100%);
-    border: 1px solid #3b5372;
-    border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
-    cursor: ns-resize;
-    transition: border-color .12s, box-shadow .12s, transform .08s;
+  .header-title-group { display: flex; align-items: center; }
+  .title-left { font-size: 1.1rem; font-weight: 800; color: #f8fafc; margin: 0; letter-spacing: 0.02em; }
+  .ch-name { color: #94a3b8; }
+  
+  .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+  .nav-group { display: flex; gap: 4px; margin-left: 0.5rem; }
+
+  .nav-icon-btn-rack {
+    background: #111827; border: 1px solid #374151; color: #94a3b8;
+    border-radius: 4px; padding: 5px 8px; cursor: pointer; display: flex; align-items: center;
+    transition: all 0.2s;
   }
-  .v-fader::-moz-range-thumb {
-    width: 26px; height: 13px;
-    background: linear-gradient(180deg, #243044, #111827);
-    border: 1px solid #2d4a6a; border-radius: 3px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.8);
-    cursor: ns-resize;
+  .nav-icon-btn-rack:hover:not(:disabled) { background: #3b82f6; color: #fff; border-color: #60a5fa; }
+  .nav-icon-btn-rack:disabled { opacity: 0.2; cursor: not-allowed; }
+
+  .ctrl-btn-rack {
+    background: #111827; color: #f8fafc; border: 1px solid #374151;
+    padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .ctrl-btn-rack:hover { background: #3b82f6; border-color: #60a5fa; }
+  .ctrl-btn-rack.has-clipboard { border-color: #06b6d4; color: #06b6d4; }
+
+  .sendpoint-rack-row {
+    display: flex; align-items: center; justify-content: center; gap: 1rem;
+    padding: 0.75rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.03);
+    background: rgba(0,0,0,0.1);
   }
 
-  .strip-on .v-fader::-webkit-slider-thumb { border-color: #1d4ed8; box-shadow: 0 2px 10px rgba(29,78,216,.4), inset 0 1px 0 rgba(255,255,255,0.06); }
-  .strip-on .v-fader::-moz-range-thumb     { border-color: #1d4ed8; }
-
-  .v-fader:hover::-webkit-slider-thumb  { border-color: #60a5fa; box-shadow: 0 0 14px rgba(96,165,250,.4); }
-  .v-fader:active::-webkit-slider-thumb { background: linear-gradient(180deg, #1e3a5f, #0c1e3c); cursor: grabbing; }
-
-  .fx-strip.strip-on .v-fader::-webkit-slider-thumb { border-color: #7c3aed; box-shadow: 0 2px 10px rgba(124,58,237,.4); }
-  .fx-strip.strip-on .v-fader::-moz-range-thumb     { border-color: #7c3aed; }
-
-  .db-read {
-    font-family: 'JetBrains Mono', 'Fira Mono', monospace;
-    font-size: 0.78rem; font-weight: 800; color: #cbd5e1; text-align: center; white-space: nowrap; transition: color .12s;
+  .tab-content-body { 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+    padding: 0 1.5rem 3rem 1.5rem; 
+    box-sizing: border-box;
+    overflow-x: auto;
   }
-  .strip-on .db-read { color: #3d5a73; }
-  .db-unity          { color: #06b6d4 !important; }
-  .db-unit           { font-size: 0.5rem; opacity: .7; }
 
-  .on-btn {
-    font-size: 0.72rem; font-weight: 900; letter-spacing: .06em;
-    padding: 6px 0; width: 100%; border-radius: 6px; cursor: pointer;
-    border: 1px solid #0f1e2e; background: #060d18; color: #cbd5e1;
-    text-align: center; transition: background .12s, color .12s, border-color .12s;
+  .sends-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 3), 1fr); 
+    gap: 2rem; 
+    align-items: stretch;
+    justify-content: center; 
+    width: 100%;
+    max-width: 1600px;
+    min-width: 1100px;
   }
-  .on-active { background: #052e16; color: #4ade80; border-color: #15803d; box-shadow: 0 0 8px rgba(74,222,128,.2); }
 
-  .pp-btn {
-    font-size: 0.68rem; font-weight: 900; letter-spacing: .06em;
-    padding: 6px 0; width: 100%; border-radius: 6px; cursor: pointer;
-    border: 1px solid #0f1e2e; background: #060d18; color: #cbd5e1;
-    text-align: center; transition: background .12s, color .12s, border-color .12s;
+  .sends-section { 
+    background: #09090b; border: 1px solid #18181b; border-radius: 8px; 
+    overflow: hidden; display: flex; flex-direction: column; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    min-width: 0;
   }
-  .pp-active { background: #0c1e3c; color: #60a5fa; border-color: #1d4ed8; }
+  .sends-section.empty { opacity: 0.2; }
+  .empty-col { flex: 1; display: flex; align-items: center; justify-content: center; color: #3f3f46; font-size: 0.8rem; height: 300px; }
 
-  .empty-state { color: #334155; padding: 2rem; text-align: center; font-size: 0.85rem; }
+  .section-hdr { 
+    padding: 0.5rem 0.8rem; border-bottom: 2px solid #18181b; background: #111114; 
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-lbl { font-size: 0.6rem; font-weight: 900; letter-spacing: .1em; color: #52525b; text-transform: uppercase; }
 
-  @media (max-width: 900px) {
-    .strip { flex: 0 0 84px; min-width: 84px; }
-    .fader-well { height: 160px; width: 28px; }
-    .v-fader { height: 28px; }
-    .db-read { font-size: 0.66rem; }
+  .page-nav { display: flex; align-items: center; gap: 0.4rem; }
+  .page-nums { font-size: 0.65rem; font-weight: 800; color: #3f3f46; font-family: 'JetBrains Mono', monospace; }
+  .page-btn { 
+    background: #18181b; border: 1px solid #27272a; color: #52525b; cursor: pointer; padding: 2px; 
+    border-radius: 4px; display: flex; align-items: center; transition: all .12s;
+  }
+  .page-btn:hover:not(:disabled) { color: #60a5fa; border-color: #3b82f6; }
+  .page-btn:disabled { opacity: 0.1; cursor: not-allowed; }
+
+  .strips-flex { 
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.25rem 0.75rem;
+    align-items: flex-start;
+  }
+
+  .mtx-hdr { border-bottom-color: #064e3b; background: #064e3b11; }
+  .mtx-hdr .section-lbl { color: #10b981; }
+
+  .empty-state { color: #3f3f46; padding: 2rem; text-align: center; font-size: 0.85rem; font-weight: 600; }
+
+  @media (max-width: 1000px) {
+    .sends-grid { grid-template-columns: 1fr; }
   }
 </style>

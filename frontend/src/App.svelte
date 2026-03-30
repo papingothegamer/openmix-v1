@@ -218,6 +218,7 @@
   let config = {
     inputs: 16,
     outputs: 6,
+    matrices: 6,
     dcas: 8,
     fx: 4,
     presetId: "CUSTOM",
@@ -565,10 +566,19 @@
 
 
   function toggleStereoLink(ch) {
-    const oddCh = ch % 2 === 1 ? ch : ch - 1; // Always reference the odd channel
-    const newState = !stereoLinks[oddCh];
-    stereoLinks = { ...stereoLinks, [oddCh]: newState };
-    setOsc(`/config/chlink/${oddCh}-${oddCh + 1}`, newState ? 1 : 0);
+    const num = typeof ch === 'string' ? parseInt(ch.replace(/\D/g, '')) : ch;
+    const oddCh = num % 2 === 1 ? num : num - 1;
+    const isLinked = $mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1;
+    const newState = !isLinked;
+    
+    // Optimistic cache update for immediate UI feedback
+    mixerState.update(prev => {
+      const newCache = { ...(prev.flatOscCache || {}), [`/config/chlink/${oddCh}`]: newState ? 1 : 0 };
+      return { ...prev, flatOscCache: newCache };
+    });
+
+    setOsc(`/config/chlink/${oddCh}`, newState ? 1 : 0);
+    showToast(`Stereo Link ${newState ? 'Enabled' : 'Disabled'} for CH ${oddCh} ↔ ${oddCh+1}`, "info");
   }
 
   function toggleOutputLink(ch) {
@@ -622,20 +632,23 @@
   }
   
   function toggleMainOut(chId) {
-    const newState = !mainOutAssign[chId];
+    // Fallback: If it's undefined, assume it's ON (standard Behringer default)
+    const isCurrentlyAssigned = mainOutAssign[chId] !== false;
+    const newState = !isCurrentlyAssigned;
+    
     mainOutAssign = { ...mainOutAssign, [chId]: newState };
-
+    
     if (chId.startsWith("in_")) {
       const num = chId.replace("in_", "").padStart(2, "0");
       setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
-    } else if (chId.startsWith("bus_")) {
-      const isXR = config.presetId === 'XR18';
-      const n = chId.replace("bus_", "");
-      const busPath = isXR ? `/bus/${n}/mix/lr` : `/bus/${n.padStart(2, '0')}/mix/lr`;
-      setOsc(busPath, newState ? 1 : 0);
     } else if (chId.startsWith("fx_")) {
       const num = chId.replace("fx_", "");
       setOsc(`/rtn/${num}/mix/lr`, newState ? 1 : 0);
+    }
+
+    // Trigger visual toast
+    if (typeof showToast === 'function') {
+      showToast(`Main LR Assign: ${newState ? "ON" : "OFF"}`, "info");
     }
   }
 
@@ -1005,11 +1018,14 @@
     { length: config.inputs },
     (_, i) => i + 1,
   ).filter((ch) => !presetHardLinks[ch]?.hidden);
-  $: outputChannels = (
-    config.visibleBuses ||
-    Array.from({ length: config.outputs }, (_, i) => i + 1)
-  ).sort((a, b) => a - b);
-  $: dcaChannels = Array.from({ length: config.dcas || 8 }, (_, i) => i + 1);
+  $: outputChannels = [
+    ...(config.visibleBuses || Array.from({ length: config.outputs }, (_, i) => i + 1)),
+    ...Array.from({ length: config.matrices || 0 }, (_, i) => -(i + 1))
+  ];
+  $: dcaChannels = Array.from(
+    { length: (config.dcas || 0) + (config.muteGroups || 0) }, 
+    (_, i) => i + 1
+  );
   $: fxChannels = Array.from({ length: config.fx || 4 }, (_, i) => i + 1);
   $: currentChannels =
     activeView === "inputs"
@@ -1053,6 +1069,7 @@
         console.log(`[OpenMix] Applying Mixer Preset: ${preset.name}`, preset);
         config.inputs = preset.inputs;
         config.outputs = preset.outputs;
+        config.matrices = preset.matrices || 0;
         config.dcas = preset.dcas || 8;
         config.fx = preset.fx || 4;
         config.visibleBuses = Array.from(
@@ -1086,6 +1103,52 @@
     scribbles = { ...scribbles };
     editingChannel = null;
   }
+
+  function getBentoParam(id, path, fallback) {
+    if (!id) return fallback;
+    const num = parseInt(id.replace(/\D/g, ''));
+    const chStr = String(num).padStart(2, '0');
+    
+    let address = "";
+    if (id.startsWith("in_")) {
+      if (path === "preamp/gain") address = `/headamp/${chStr}/gain`;
+      else if (path === "preamp/phantom" || path === "phantom") address = `/headamp/${chStr}/phantom`;
+      else if (path === "preamp/phase") address = `/ch/${chStr}/preamp/phase`;
+      else address = `/ch/${chStr}/${path}`;
+    } else if (id.startsWith("bus_")) {
+      address = `/bus/${chStr}/${path}`;
+    }
+
+    const val = $mixerState?.flatOscCache?.[address];
+    if (val === undefined || val === null) return fallback;
+    return Array.isArray(val) ? val[0] : val;
+  }
+
+  function updateBentoParam(id, path, value) {
+    if (!id) return;
+    const num = parseInt(id.replace(/\D/g, ''));
+    const chStr = String(num).padStart(2, '0');
+    
+    let address = "";
+    if (id.startsWith("in_")) {
+      if (path === "preamp/gain") address = `/headamp/${chStr}/gain`;
+      else if (path === "preamp/phantom" || path === "phantom") address = `/headamp/${chStr}/phantom`;
+      else if (path === "preamp/phase") address = `/ch/${chStr}/preamp/phase`;
+      else address = `/ch/${chStr}/${path}`;
+    } else if (id.startsWith("bus_")) {
+      address = `/bus/${chStr}/${path}`;
+    }
+
+    setOsc(address, parseFloat(value));
+
+    // Optimistic cache update
+    mixerState.update(prev => {
+      const newCache = { ...(prev.flatOscCache || {}), [address]: parseFloat(value) };
+      return { ...prev, flatOscCache: newCache };
+    });
+  }
+
+
 </script>
 
 <div class="portrait-warning">
@@ -1221,6 +1284,15 @@
                 musicianToken = null;
                 connectAsFoh();
               }}
+              on:keydown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  activeRole = "foh";
+                  musicianAux = null;
+                  musicianTokenLoading = false;
+                  musicianToken = null;
+                  connectAsFoh();
+                }
+              }}
             >
               <span class="role-icon"><Sliders size={24} /></span>
               <div class="role-info">
@@ -1237,6 +1309,16 @@
                 musicianToken = null;
                 selectedChannel = null;
                 activeTab = "mixer";
+              }}
+              on:keydown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  activeRole = "musician";
+                  musicianAux = null;
+                  musicianTokenLoading = false;
+                  musicianToken = null;
+                  selectedChannel = null;
+                  activeTab = "mixer";
+                }
               }}
             >
               <span class="role-icon"><Headphones size={24} /></span>
@@ -1343,41 +1425,57 @@
               >
                 <div class="channels-track">
                   {#each displayedChannels as chIndex}
+                    {@const isMatrix = activeView === "outputs" && chIndex < 0}
+                    {@const mtxIdx = Math.abs(chIndex)}
+                    {@const isMuteGroup = activeView === "dcas" && config.dcas === 0}
                     {@const sId =
                       activeView === "inputs"
                         ? `in_${chIndex}`
                         : activeView === "outputs"
-                          ? `bus_${chIndex}`
-                          : `dca_${chIndex}`}
+                          ? (isMatrix ? `mtx_${mtxIdx}` : `bus_${chIndex}`)
+                          : (isMuteGroup ? `mgp_${chIndex}` : `dca_${chIndex}`)}
                     <div
                       class="strip-wrapper"
+                      role="button"
+                      tabindex="0"
                       on:click={() => {
                         if (activeRole === "foh" && scribbleEditMode)
                           editingChannel = sId;
                       }}
+                      on:keydown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          if (activeRole === "foh" && scribbleEditMode)
+                            editingChannel = sId;
+                        }
+                      }}
                     >
                       <ChannelStrip
-                        channelIndex={String(chIndex)}
+                        channelIndex={isMatrix ? String(mtxIdx) : String(chIndex)}
                         role={activeRole}
                         stripType={activeView === "outputs"
-                          ? "output"
+                          ? (isMatrix ? "matrix" : "output")
                           : activeView === "dcas"
-                            ? "dca"
+                            ? (isMuteGroup ? "mgp" : "dca")
                             : "input"}
+                        isStereo={activeView === "inputs" 
+                          ? isLinked(chIndex, stereoLinks) 
+                          : (activeView === "outputs" 
+                              ? (isMatrix ? false : (config.presetId === 'WING' || isLinked(chIndex, outputLinks)))
+                              : false)}
                         name={scribbles[sId]?.name ||
                           (activeView === "inputs"
                             ? presetHardLinks[chIndex]?.defaultName ||
                               `CH ${chIndex}`
                             : activeView === "outputs"
-                              ? `AUX ${chIndex}`
-                              : `DCA ${chIndex}`)}
+                              ? (isMatrix ? `MTX ${mtxIdx}` : `AUX ${chIndex}${config.presetId === 'WING' ? ' (St)' : ''}`)
+                              : (isMuteGroup ? `MGP ${chIndex}` : (config.presetId === 'MACKIE_DL32S' ? `VCA ${chIndex}` : `DCA ${chIndex}`)))}
                         iconType={scribbles[sId]?.iconType || "icon_01"}
                         color={activeView === "inputs" &&
                         isLinked(chIndex, stereoLinks)
                           ? chIndex % 2 === 1
                             ? "#3b82f6"
                             : "#ef4444"
-                          : scribbles[sId]?.color || (activeView === "inputs" ? "#3f3f46" : "#3b82f6")}
+                          : scribbles[sId]?.color || (activeView === "inputs" ? "#3f3f46" : (isMatrix ? "#10b981" : (isMuteGroup ? "#f43f5e" : "#3b82f6")))}
                         peakLevel={activeView === "inputs"
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
@@ -1458,9 +1556,17 @@
                       {@const fxSId = `fx_${fxIdx}`}
                       <div
                         class="strip-wrapper"
+                        role="button"
+                        tabindex="0"
                         on:click={() => {
                           if (activeRole === "foh" && scribbleEditMode)
                             editingChannel = fxSId;
+                        }}
+                        on:keydown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            if (activeRole === "foh" && scribbleEditMode)
+                              editingChannel = fxSId;
+                          }
                         }}
                       >
                         <ChannelStrip
@@ -1484,9 +1590,17 @@
                     <div class="master-divider"></div>
                     <div
                       class="strip-wrapper"
+                      role="button"
+                      tabindex="0"
                       on:click={() => {
                         if (activeRole === "foh" && scribbleEditMode)
                           editingChannel = "main_LR";
+                      }}
+                      on:keydown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          if (activeRole === "foh" && scribbleEditMode)
+                            editingChannel = "main_LR";
+                        }
                       }}
                     >
                       <ChannelStrip
@@ -1567,9 +1681,17 @@
                 <div
                   class="bento-card bento-icon-preview"
                   class:is-editable={activeRole === "foh" && scribbleEditMode}
+                  role="button"
+                  tabindex="0"
                   on:click={() => {
                     if (activeRole === "foh" && scribbleEditMode)
                       editingChannel = selectedChannel;
+                  }}
+                  on:keydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      if (activeRole === "foh" && scribbleEditMode)
+                        editingChannel = selectedChannel;
+                    }
                   }}
                 >
                   <h3>Channel Icon</h3>
@@ -1598,6 +1720,8 @@
                 {#if selectedChannel?.startsWith("in_")}
                   <div
                     class="bento-card bento-clickable"
+                    role="button"
+                    tabindex="0"
                     on:click={() => {
                       channelModalState = {
                         isOpen: true,
@@ -1605,28 +1729,57 @@
                         section: "preamp",
                       };
                     }}
+                    on:keydown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        channelModalState = {
+                          isOpen: true,
+                          channelId: selectedChannel,
+                          section: "preamp",
+                        };
+                      }
+                    }}
                   >
                     <h3>Preamp</h3>
                     <div class="param-row">
-                      <span>Gain</span><input
-                        type="range"
-                        class="visual-only"
+                      <span>Gain</span>
+                      <input
+                        type="number"
+                        class="bento-input"
                         min="0"
                         max="60"
-                        value="30"
-                        disabled
-                      /><span>30 dB</span>
+                        step="0.5"
+                        value={getBentoParam(selectedChannel, 'preamp/gain', 30)}
+                        on:change={(e) => updateBentoParam(selectedChannel, 'preamp/gain', e.currentTarget.value)}
+                        on:click|stopPropagation
+                      />
+                      <span class="unit">dB</span>
                     </div>
                     <div class="param-row">
-                      <span>48V</span><button class="toggle-sm">OFF</button>
+                      <span>48V</span>
+                      <button 
+                        class="bento-toggle-btn" 
+                        class:active-yellow={getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phantom', (getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1 ? 0 : 1))}
+                      >
+                        {getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1 ? 'ON' : 'OFF'}
+                      </button>
                     </div>
                     <div class="param-row">
-                      <span>Phase</span><button class="toggle-sm">0°</button>
+                      <span>Phase</span>
+                      <button 
+                        class="bento-toggle-btn" 
+                        class:active={getBentoParam(selectedChannel, 'preamp/phase', 0) === 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phase', (getBentoParam(selectedChannel, 'preamp/phase', 0) === 1 ? 0 : 1))}
+                      >
+                        {getBentoParam(selectedChannel, 'preamp/phase', 0) === 1 ? '180°' : '0°'}
+                      </button>
                     </div>
                   </div>
                 {/if}
                 <div
                   class="bento-card bento-clickable"
+                  role="button"
+                  tabindex="0"
                   on:click={() => {
                     channelModalState = {
                       isOpen: true,
@@ -1634,52 +1787,75 @@
                       section: "gate",
                     };
                   }}
+                  on:keydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      channelModalState = {
+                        isOpen: true,
+                        channelId: selectedChannel,
+                        section: "gate",
+                      };
+                    }
+                  }}
                 >
                   <h3 style="display: flex; justify-content: space-between;">Gate <Settings size={14} style="color:#f59e0b; opacity:0.5;"/></h3>
                   <div class="param-row">
-                    <span>Threshold</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Threshold</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="-80"
                       max="0"
-                      value="-40"
-                      disabled
-                    /><span>-40 dB</span>
+                      value={getBentoParam(selectedChannel, 'gate/thr', -40)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'gate/thr', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">dB</span>
                   </div>
                   <div class="param-row">
-                    <span>Range</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Range</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="0"
                       max="60"
-                      value="20"
-                      disabled
-                    /><span>20 dB</span>
+                      value={getBentoParam(selectedChannel, 'gate/range', 20)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'gate/range', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">dB</span>
                   </div>
                   <div class="param-row">
-                    <span>Attack</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Attack</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="0"
                       max="120"
-                      value="5"
-                      disabled
-                    /><span>5 ms</span>
+                      value={getBentoParam(selectedChannel, 'gate/att', 5)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'gate/att', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">ms</span>
                   </div>
                   <div class="param-row">
-                    <span>Hold</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Hold</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="0"
                       max="500"
-                      value="50"
-                      disabled
-                    /><span>50 ms</span>
+                      value={getBentoParam(selectedChannel, 'gate/hold', 50)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'gate/hold', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">ms</span>
                   </div>
                 </div>
   
                 <div
                   class="bento-card bento-clickable"
+                  role="button"
+                  tabindex="0"
                   on:click={() => {
                     channelModalState = {
                       isOpen: true,
@@ -1687,67 +1863,117 @@
                       section: "compressor",
                     };
                   }}
+                  on:keydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      channelModalState = {
+                        isOpen: true,
+                        channelId: selectedChannel,
+                        section: "compressor",
+                      };
+                    }
+                  }}
                 >
                   <h3 style="display: flex; justify-content: space-between;">Compressor <Settings size={14} style="color:#f59e0b; opacity:0.5;"/></h3>
                   <div class="param-row">
-                    <span>Threshold</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Threshold</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="-60"
                       max="0"
-                      value="-20"
-                      disabled
-                    /><span>-20 dB</span>
+                      value={getBentoParam(selectedChannel, 'dyn/thr', -20)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'dyn/thr', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">dB</span>
                   </div>
                   <div class="param-row">
-                    <span>Ratio</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Ratio</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="1"
                       max="20"
-                      value="4"
-                      disabled
-                    /><span>4:1</span>
+                      step="0.1"
+                      value={getBentoParam(selectedChannel, 'dyn/ratio', 4)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'dyn/ratio', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">:1</span>
                   </div>
                   <div class="param-row">
-                    <span>Attack</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Attack</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="0"
                       max="100"
-                      value="10"
-                      disabled
-                    /><span>10 ms</span>
+                      value={getBentoParam(selectedChannel, 'dyn/att', 10)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'dyn/att', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">ms</span>
                   </div>
                   <div class="param-row">
-                    <span>Release</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Release</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="5"
                       max="500"
-                      value="100"
-                      disabled
-                    /><span>100 ms</span>
+                      value={getBentoParam(selectedChannel, 'dyn/rel', 100)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'dyn/rel', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">ms</span>
                   </div>
                   <div class="param-row">
-                    <span>Makeup</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Makeup</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="0"
                       max="24"
-                      value="0"
-                      disabled
-                    /><span>0 dB</span>
+                      step="0.5"
+                      value={getBentoParam(selectedChannel, 'dyn/makeup', 0)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'dyn/makeup', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">dB</span>
                   </div>
                 </div>
-                <div class="bento-card bento-eq-preview">
+
+                <div 
+                  class="bento-card bento-eq-preview bento-clickable"
+                  role="button"
+                  tabindex="0"
+                  on:click={() => {
+                    channelModalState = {
+                      isOpen: true,
+                      channelId: selectedChannel,
+                      section: "eq",
+                    };
+                  }}
+                  on:keydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      channelModalState = {
+                        isOpen: true,
+                        channelId: selectedChannel,
+                        section: "eq",
+                      };
+                    }
+                  }}
+                >
                   <h3>EQ Preview</h3>
-                  <svg viewBox="0 0 100 40" class="bento-eq-curve"
-                    ><path d={computeMiniEqPath(selectedChannel)} /></svg
-                  >
+                  <svg viewBox="0 0 100 40" class="bento-eq-curve">
+                    <path d={computeMiniEqPath(selectedChannel)} />
+                  </svg>
                 </div>
+
                 <div
                   class="bento-card bento-clickable"
+                  role="button"
+                  tabindex="0"
                   on:click={() => {
                     channelModalState = {
                       isOpen: true,
@@ -1755,55 +1981,72 @@
                       section: "output",
                     };
                   }}
+                  on:keydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      channelModalState = {
+                        isOpen: true,
+                        channelId: selectedChannel,
+                        section: "output",
+                      };
+                    }
+                  }}
                 >
-                  <h3 style="display: flex; justify-content: space-between;">Output & Main Assign <Settings size={14} style="color:#64748b; opacity:0.5;"/></h3>
+                  <h3>Output & Main Assign</h3>
                   <div class="param-row">
-                    <span>Pan</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Pan</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="-100"
                       max="100"
-                      value="0"
-                      disabled
-                    /><span>C</span>
+                      value={getBentoParam(selectedChannel, 'mix/pan', 0)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'mix/pan', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">%</span>
                   </div>
                   <div class="param-row">
-                    <span>Level</span><input
-                      type="range"
-                      class="visual-only"
+                    <span>Level</span>
+                    <input
+                      type="number"
+                      class="bento-input"
                       min="-90"
                       max="10"
-                      value="0"
-                      disabled
-                    /><span>0 dB</span>
+                      step="0.5"
+                      value={getBentoParam(selectedChannel, 'mix/fader', 0)}
+                      on:change={(e) => updateBentoParam(selectedChannel, 'mix/fader', e.currentTarget.value)}
+                      on:click|stopPropagation
+                    />
+                    <span class="unit">dB</span>
                   </div>
                   {#if selectedChannel && !selectedChannel.startsWith("out_")}
-                    <div class="param-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #1e293b;">
+                    <div class="param-row">
                       <span>LR Assign</span>
-                      <button
-                        class="toggle-sm"
-                        class:active={mainOutAssign[selectedChannel]}
-                        on:click|stopPropagation={() => toggleMainOut(selectedChannel)}
+                      <button 
+                        class="bento-toggle-btn" 
+                        class:active={getBentoParam(selectedChannel, 'mix/lr', 0) === 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'mix/lr', (getBentoParam(selectedChannel, 'mix/lr', 0) === 1 ? 0 : 1))}
                       >
-                        {mainOutAssign[selectedChannel] ? "ON" : "OFF"}
+                        {getBentoParam(selectedChannel, 'mix/lr', 0) === 1 ? 'ON' : 'OFF'}
                       </button>
                     </div>
                   {/if}
                 </div>
+
                 {#if selectedChannel.startsWith("in_")}
                   {@const chNum = parseInt(selectedChannel.replace("in_", ""))}
                   {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
-                  {@const partnerCh = chNum % 2 === 1 ? chNum + 1 : chNum - 1}
                   <div class="bento-card">
                     <h3>Stereo Link</h3>
                     <div class="param-row">
                       <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
                       <button
-                        class="toggle-sm"
-                        class:active-yellow={stereoLinks[oddCh]}
-                        on:click={() => toggleStereoLink(chNum)}
+                        class="bento-toggle-btn"
+                        class:active={$mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1}
+                        on:click|stopPropagation={() => toggleStereoLink(oddCh)}
+                        aria-label="Toggle Stereo Link"
                       >
-                        {stereoLinks[oddCh] ? "LINKED" : "OFF"}
+                        {$mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1 ? 'LINKED' : 'OFF'}
                       </button>
                     </div>
                     <p class="bento-hint">
@@ -1851,8 +2094,8 @@
                       </div>
                    </div>
                    <div class="nav-group">
-                      <button class="nav-icon-btn" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={16} /></button>
-                      <button class="nav-icon-btn" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={16} /></button>
+                      <button class="nav-icon-btn" aria-label="Previous Channel" disabled={isFirstChannel} on:click={() => cycleChannel(-1)}><ChevronLeft size={16} /></button>
+                      <button class="nav-icon-btn" aria-label="Next Channel" disabled={isLastChannel} on:click={() => cycleChannel(1)}><ChevronRight size={16} /></button>
                    </div>
                 </div>
               </div>
@@ -1861,9 +2104,6 @@
                   {config}
                   {scribbles}
                   bind:selectedChannel
-                  {cycleChannel}
-                  {isFirstChannel}
-                  {isLastChannel}
                   bind:selectedSlotIndex={rackSlotIndex}
                 />
               </div>
@@ -1983,8 +2223,9 @@
             </div>
           {/if}
 
-          {#if activeRole === "foh" && activeTab !== "channel"}
+          {#if activeRole === "foh" && !["channel", "routing", "sends"].includes(activeTab)}
             <Sidebar
+              {config}
               {activeTab}
               bind:activeView
               bind:currentPage
@@ -2022,11 +2263,11 @@
 
     {#if channelModalState.isOpen}
       <ChannelModal
+        {config}
         channelId={channelModalState.channelId}
         channelName={scribbles[channelModalState.channelId]?.name}
         initialSection={channelModalState.section}
-        {scribbles}
-        mainOut={mainOutAssign[channelModalState.channelId]}
+        scribbles={scribbles}
         on:toggleMainOut={() => toggleMainOut(channelModalState.channelId)}
         on:close={() => (channelModalState.isOpen = false)}
       />
@@ -2071,6 +2312,15 @@
     background-color: #0b0d12;
     color: #e2e8f0;
     overflow: hidden; /* Prevent body scroll, constrain to app-container */
+  }
+
+  /* Global Scrollbar Removal */
+  :global(*) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  :global(*::-webkit-scrollbar) {
+    display: none !important;
   }
 
   .app-container {
@@ -2127,57 +2377,6 @@
     margin: 0;
   }
 
-  .action-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    display: block;
-    width: 100%;
-    transition: background 0.2s;
-    font-size: 1rem;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    margin-top: 1rem;
-  }
-  .action-btn:hover {
-    background: #2563eb;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
-  }
-
-  .role-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-  }
-  .role-btn {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: inherit;
-    height: 100%;
-  }
-  .role-btn:hover {
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.3);
-    background: rgba(30, 41, 59, 0.8);
-  }
-  .role-btn.foh {
-    border-top: 3px solid #3b82f6;
-  }
-  .role-btn.musician {
-    border-top: 3px solid #8b5cf6;
-  }
-
   .btn-text {
     background: transparent;
     border: none;
@@ -2215,7 +2414,6 @@
     margin-bottom: 1.5rem;
   }
 
-  /* Ableton mixer scroll view (Horizontal scroll container) */
   .workspace {
     display: flex;
     flex: 1;
@@ -2253,14 +2451,6 @@
     align-items: flex-end;
     padding: 0 1rem 8px 1rem;
   }
-  .master-divider {
-    width: 2px;
-    height: 100%;
-    background: #1e293b;
-    margin: 0 1rem;
-    border-radius: 1px;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-  }
 
   .strip-wrapper {
     cursor: default;
@@ -2275,7 +2465,6 @@
     background: rgba(16, 185, 129, 0.1);
   }
 
-  /* Macro Views Styling */
   .macro-view {
     padding: 0.5rem 1rem;
     width: 100%;
@@ -2283,11 +2472,10 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Prevent macro-level scroll; children handle it */
+    overflow: hidden;
   }
   .view-header-inline { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
   .title-left { font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em; color: #cbd5e1; margin: 0; }
-  .ch-name { color: #e2e8f0; }
   .nav-group { display: flex; gap: 2px; margin-left: 0.25rem; }
   .nav-icon-btn {
     background: #0d1a28; border: 1px solid #1a3040; color: #64748b;
@@ -2301,10 +2489,9 @@
     background: #090e1a;
     display: flex;
     flex-direction: column;
-    padding: 0 !important; /* Take full space for the windowed look */
+    padding: 0 !important;
   }
 
-  /* X-AIR Style Top Icon Mode Bar */
   .routing-mode-bar {
     display: flex;
     background: #111827;
@@ -2336,7 +2523,7 @@
     background: rgba(30, 41, 59, 0.5);
   }
   .mode-tab-btn.active {
-    color: #22d3ee; /* Cyan */
+    color: #22d3ee;
     border-bottom-color: #06b6d4;
     background: rgba(6, 182, 212, 0.1);
   }
@@ -2392,7 +2579,6 @@
     overflow: auto;
   }
 
-  /* THE MATRIX GRID */
   .xair-matrix {
     border-collapse: separate;
     border-spacing: 0;
@@ -2415,15 +2601,6 @@
   .xair-matrix thead th.col-head {
     min-width: 48px;
     text-align: center;
-  }
-  .xair-matrix thead th.corner-label {
-    left: 0;
-    z-index: 30;
-    background: #0f172a;
-    border-right: 2px solid #334155;
-    padding: 0.75rem 1rem;
-    color: #64748b;
-    font-size: 0.6rem;
   }
   .xair-matrix .row-head {
     position: sticky;
@@ -2449,10 +2626,9 @@
     transition: background 0.1s;
   }
   .patch-point.active {
-    background: rgba(34, 211, 238, 0.08); /* Cyan Active */
+    background: rgba(34, 211, 238, 0.08);
   }
   
-  /* Dots/Circles */
   .radio-dot-btn {
     width: 100%;
     height: 100%;
@@ -2481,7 +2657,6 @@
     border-color: #94a3b8;
   }
 
-  /* Matrix Footer */
   .matrix-footer {
     padding: 0.75rem 1.5rem;
     background: #0b111b;
@@ -2536,108 +2711,6 @@
     outline: none;
     cursor: pointer;
   }
-  .tab-content-body::-webkit-scrollbar, .patch-scroll-viewport::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .tab-content-body::-webkit-scrollbar-track, .patch-scroll-viewport::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .tab-content-body::-webkit-scrollbar-thumb, .patch-scroll-viewport::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 3px;
-  }
-  .tab-content-body::-webkit-scrollbar-thumb:hover, .patch-scroll-viewport::-webkit-scrollbar-thumb:hover {
-    background: #475569;
-  }
-  .param-section {
-    background: #111827;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 1rem;
-  }
-  .param-section h3 {
-    margin: 0 0 0.8rem 0;
-    font-size: 0.8rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  .param-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.4rem 0;
-    border-bottom: 1px solid #1e293b;
-  }
-  .param-row:last-child {
-    border-bottom: none;
-  }
-  .param-row span {
-    font-size: 0.8rem;
-    color: #cbd5e1;
-    min-width: 70px;
-    font-weight: 600;
-  }
-  .param-row span:last-child {
-    min-width: 55px;
-    text-align: right;
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.75rem;
-    color: #94a3b8;
-  }
-  .param-row input[type="range"] {
-    flex: 1;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    background: #1e293b;
-    border-radius: 3px;
-    outline: none;
-    margin: 0;
-  }
-  .param-row input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 6px;
-    background: #1e293b;
-    border-radius: 3px;
-  }
-  .param-row input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    background: #3b82f6;
-    cursor: pointer;
-    margin-top: -5px;
-    border: none;
-    transition: background 0.15s;
-  }
-  .param-row input[type="range"]::-webkit-slider-thumb:hover {
-    background: #60a5fa;
-  }
-  .param-row input[type="range"]::-moz-range-track {
-    width: 100%;
-    height: 6px;
-    background: #1e293b;
-    border-radius: 3px;
-    border: none;
-  }
-  .param-row input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    background: #3b82f6;
-    cursor: pointer;
-    border: none;
-  }
-  .param-row input[type="range"].visual-only::-webkit-slider-thumb {
-    display: none;
-  }
-  .param-row input[type="range"].visual-only::-moz-range-thumb {
-    display: none;
-  }
   .toggle-sm {
     background: #1e293b;
     color: #94a3b8;
@@ -2664,7 +2737,6 @@
     border-color: #fde047;
   }
 
-  /* Musician Aux Selector */
   .aux-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -2701,11 +2773,10 @@
     color: #94a3b8;
   }
 
-  /* Bento Grid for Channel Tab */
   .bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem 0;
@@ -2718,14 +2789,17 @@
     background: #111827;
     border: 1px solid #1e293b;
     border-radius: 8px;
-    padding: 0.75rem;
+    padding: 1rem;
   }
   .bento-card h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.7rem;
-    color: #64748b;
+    margin: 0 0 0.75rem 0;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #475569;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 0.4rem;
   }
   .bento-icon-preview {
     display: flex;
@@ -2764,23 +2838,10 @@
     border-radius: 4px;
     border: 2px solid #334155;
   }
-  .icon-placeholder {
-    width: 48px;
-    height: 48px;
-    border-radius: 4px;
-    border: 2px dashed #334155;
-    background: #0f172a;
-  }
   .icon-name {
     font-size: 0.85rem;
     font-weight: 700;
     color: #e2e8f0;
-  }
-  .icon-color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
   }
   .bento-eq-preview {
     display: flex;
@@ -2805,6 +2866,9 @@
     line-height: 1.4;
     border-top: 1px dashed #1e293b;
     padding-top: 0.5rem;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: normal;
   }
 
   .bento-clickable {
@@ -2814,12 +2878,55 @@
   }
   .bento-clickable:hover {
     background: #1f2937;
-    border-color: #374151;
+    border-color: #475569;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 
+  .bento-input {
+    width: 100%;
+    background: #000;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+  .bento-input:focus { border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
+  
+  .param-row {
+    display: grid;
+    grid-template-columns: 1fr 58px 32px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .param-row span { font-size: 0.61rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .param-row .unit { font-size: 0.55rem; color: #475569; font-weight: 800; text-align: left; }
+  
+  .bento-toggle-btn {
+    grid-column: 2 / -1; 
+    width: 100%;
+    background: #1e293b; color: #475569; border: 1px solid #334155;
+    padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.6rem; font-weight: 900;
+    cursor: pointer; transition: 0.2s;
+  }
+  .bento-toggle-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+  .bento-toggle-btn.active-yellow { background: #eab308; color: #451a03; border-color: #fde047; box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
+  .bento-hint {
+    margin-top: 0.75rem;
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.4;
+    font-weight: 600;
+    border-top: 1px dashed #1e293b;
+    padding-top: 0.5rem;
+  }
 
-  /* Musician Monitor Mix */
   .musician-mix {
     flex: 1;
     display: flex;
@@ -2841,21 +2948,6 @@
     color: #f8fafc;
     font-weight: 800;
     letter-spacing: -0.3px;
-  }
-  .musician-header-icon {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    image-rendering: pixelated;
-    border-radius: 4px;
-    border: 2px solid #8b5cf6;
-  }
-  .musician-header-icon-empty {
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    border: 2px solid #334155;
-    background: #18181b;
   }
   .musician-rack {
     display: flex;
@@ -2894,7 +2986,6 @@
     }
   }
 
-  /* Mobile & Tablet Responsiveness */
   .portrait-warning {
     display: none;
     position: fixed;
@@ -2920,13 +3011,6 @@
     font-size: 0.95rem;
     line-height: 1.5;
     max-width: 300px;
-  }
-  .rotate-icon {
-    font-size: 4rem;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
   }
 
   @media (max-width: 1400px) {
@@ -2954,7 +3038,6 @@
     }
   }
 
-  /* ─── Mixer Discovery UI ─────────────────────────────── */
   .mixer-connect-section {
     border-top: 1px solid #1e293b;
     margin-top: 1.25rem;
@@ -2983,34 +3066,32 @@
     border: 1px solid #ef4444;
   }
 
-  /* ─── Setup & Connection Overlay ─── */
   .setup-overlay { position: absolute; inset: 0; z-index: 1000;
  background: #09090b; display: flex; justify-content: center; align-items: center; padding: 1rem; }
   .setup-card { background: #18181b; border: 1px solid #27272a;
- border-radius: 8px; padding: 3rem 2.5rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 2rem;
+ border-radius: 8px; padding: 2rem 2rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 1.5rem;
  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-height: 90vh; overflow-y: auto; }
   .setup-card::-webkit-scrollbar { width: 6px;
  } .setup-card::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   .setup-logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.2em; color: #fafafa;
  text-align: center; }
-  .wide-setup { max-width: 800px; flex-direction: row; align-items: stretch; gap: 3rem; }
-  .setup-col { flex: 1;
- display: flex; flex-direction: column; gap: 1.5rem; }
-  .setup-col-right { border-left: 1px solid #27272a; padding-left: 3rem; justify-content: space-between;
- }
-  .step-header { display: flex; flex-direction: column; gap: 0.4rem; text-align: center; }
+  .wide-setup { max-width: 840px; flex-direction: row; align-items: stretch; gap: 2.5rem; }
+  .setup-col { flex: 1; display: flex; flex-direction: column; gap: 1.25rem; }
+  .setup-col-right { border-left: 1px solid #27272a; padding-left: 2.5rem; justify-content: space-between; }
+  .step-header { display: flex; flex-direction: column; gap: 0.25rem; text-align: center; }
   .step-title { font-size: 1.25rem; font-weight: 700;
  color: #fafafa; margin: 0; letter-spacing: -0.02em; }
   .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0;
  }
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .role-icon { font-size: 1.5rem; line-height: 1; margin-top: 2px; color: #fafafa; }
+  .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
   
-  .role-grid { display: flex; flex-direction: column; gap: 0.75rem; }
   .role-card { background: #09090b;
  border: 1px solid #27272a; border-radius: 6px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; cursor: pointer; text-align: left;
  transition: background 0.15s, border-color 0.15s; color: inherit; }
   .role-card:hover { background: #1f1f22; border-color: #3b82f6;
  }
-  .role-icon { font-size: 1.5rem; line-height: 1; margin-top: 2px; color: #fafafa; }
   .role-info { display: flex; flex-direction: column;
  gap: 0.25rem; }
   .role-info h3 { margin: 0; color: #fafafa; font-size: 0.95rem; font-weight: 600;
@@ -3018,30 +3099,12 @@
   .role-info p { margin: 0; color: #71717a; font-size: 0.8rem; line-height: 1.4;
  }
   
-  .setup-grid { display: flex; flex-direction: column; gap: 1rem; }
-  .form-row { display: flex; flex-direction: column;
- gap: 1rem; width: 100%; }
-  .form-row.split { flex-direction: row; }
-  .form-group { display: flex; flex-direction: column; gap: 0.4rem;
- }
-  .flex-1 { flex: 1; } .flex-2 { flex: 2; }
   .form-group label { font-size: 0.7rem; font-weight: 600;
  color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
   .form-group input, .form-group select { background: #09090b;
  border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
  outline: none; width: 100%; box-sizing: border-box; }
   .form-group input:focus, .form-group select:focus { border-color: #3b82f6;
- }
-  .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
-  .select-wrapper { position: relative;
- }
-  .select-wrapper::after { content: '▼'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; font-size: 0.6rem;
- }
-  .form-group select { appearance: none; -webkit-appearance: none; padding-right: 2.5rem; cursor: pointer; }
-  .setup-grid { display: grid;
- grid-template-columns: 1fr 1fr; gap: 1rem; }
-  
-  .action-row { display: flex; gap: 0.75rem; margin-top: 1rem;
  }
   .btn-ghost, .btn-primary { padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
  transition: background 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; flex: 1; border: none;
@@ -3054,53 +3117,6 @@
   .btn-primary:disabled { opacity: 0.5;
  cursor: not-allowed; }
   
-  .bus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; margin-top: 0.25rem;
- }
-  .bus-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 0.6rem; color: #e2e8f0; font-size: 0.8rem; cursor: pointer; background: #09090b;
- padding: 0.6rem; border-radius: 6px; border: 1px solid #27272a; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
-  .bus-toggle:hover { border-color: #64748b;
- }
-  .bus-toggle input { cursor: pointer; width: 16px; height: 16px; margin: 0; }
-  .btn-text { background: transparent;
- border: none; color: #71717a; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 0.5rem; display: block; text-align: center; width: 100%;
- transition: color 0.1s; }
-  .btn-text:hover { color: #fafafa; }
-
-  /* ─── Mixer Discovery UI ─────────────────────────────── */
-  .discover-row { display: flex;
- align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; width: 100%; }
-  .discover-btn { flex: 1; justify-content: center; display: flex; gap: 0.4rem;
- }
-  .discovery-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 99px; display: flex; align-items: center; gap: 0.25rem;
- }
-  .discovery-badge.found { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }
-  .discovery-badge.notfound { background: rgba(239,68,68,0.15); color: #ef4444;
- border: 1px solid #ef4444; }
-  .bento-clickable h3 { margin-bottom: 0.25rem; font-size: 0.8rem; }
-  .bento-clickable .param-row { display: flex;
- justify-content: space-between; font-size: 0.65rem; margin-bottom: 0.15rem; align-items: center; color: #a1a1aa; }
-  .bento-clickable .param-row input[type="range"] { max-width: 45px; height: 3px;
- }
-  .bento-clickable .param-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
- }
-
-  /* ─── Matrix Grid Styling ─── */
-  .matrix-table-container { overflow: auto; max-height: 60vh; border: 1px solid #1e293b;
- border-radius: 8px; background: #0b1120; }
-  .routing-matrix-grid { border-collapse: collapse; text-align: center;
- }
-  .routing-matrix-grid th, .routing-matrix-grid td { padding: 0.4rem; border: 1px solid #1e293b; font-size: 0.75rem; white-space: nowrap;
- }
-  .routing-matrix-grid th { background: #111827; position: sticky; top: 0; z-index: 10; color: #cbd5e1; font-weight: 600;
- }
-  .row-header { background: #111827; font-weight: 600; color: #cbd5e1; text-align: left; padding-left: 1rem !important; position: sticky; left: 0;
- z-index: 5; }
-  .matrix-dot { width: 14px; height: 14px; border-radius: 50%; background: #334155; border: none; cursor: pointer; transition: 0.2s;
- margin: 0 auto; display: block; }
-  .matrix-dot:hover { background: #64748b; }
-  .matrix-dot.active { background: #f59e0b;
- box-shadow: 0 0 8px rgba(245,158,11,0.5); }
-
   .side-filter-btn {
     background: #1e293b;
     border: 1px solid #334155;

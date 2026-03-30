@@ -11,9 +11,7 @@
   /** @type {string | null} */
   export let selectedChannel = null;
   
-  export let cycleChannel = (dir) => {}; 
-  export let isFirstChannel = true;
-  export let isLastChannel = true;
+
 
   // Ensure store has correct number of slots, re-initialize whenever config.fx changes
   $: ensureFxSlots(config.fx || 4);
@@ -97,14 +95,44 @@
     display: flex;
     flex-direction: row;
     width: 100%;
-    height: 500px;
-    max-height: 65vh;
+    min-height: 480px;
+    max-height: 75vh;
     background: #0b0d12;
     border: 1px solid #1e293b;
     border-radius: 8px;
     overflow: hidden;
     font-family: 'Inter', sans-serif;
     box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  }
+
+  @media (max-width: 768px) {
+    .fx-container {
+      flex-direction: column;
+      height: auto;
+      max-height: none;
+    }
+    .fx-sidebar {
+      width: 100% !important;
+      border-right: none !important;
+      border-bottom: 1px solid #1e293b;
+      height: auto !important;
+    }
+    .fx-slot-list {
+      flex-direction: row !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      height: 60px;
+    }
+    .fx-slot-row {
+      border-bottom: none !important;
+      border-right: 1px solid #1e293b;
+      padding: 0.5rem 1rem !important;
+      white-space: nowrap;
+    }
+    .fx-slot-row.active {
+      border-left: none !important;
+      border-bottom: 3px solid #3b82f6;
+    }
   }
 
   .fx-workspace {

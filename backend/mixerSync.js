@@ -67,10 +67,30 @@ class MixerConnection extends EventEmitter {
                 { address: '/fx/1-4/type', pattern: '/fx/{N}/type', count: 4, pad: 0 }
             ],
             'X32RACK': [
+                { address: '/xinfo' },
                 { address: '/config/routing/user/in', count: 32, start: 1, suffix: true, pad: 2 },
                 { address: '/config/routing/user/out', count: 16, start: 1, suffix: true, pad: 2 },
+                // Config
                 { address: '/ch/01-32/config/name', pattern: '/ch/{N}/config/name', count: 32 },
-                { address: '/ch/01-32/eq', pattern: '/ch/{N}/eq', count: 32 }
+                { address: '/bus/01-16/config/name', pattern: '/bus/{N}/config/name', count: 16 },
+                { address: '/mtx/01-06/config/name', pattern: '/mtx/{N}/config/name', count: 6 },
+                { address: '/dca/1-8/config/name', pattern: '/dca/{N}/config/name', count: 8, pad: 0 },
+                // Audio
+                { address: '/ch/01-32/mix/fader', pattern: '/ch/{N}/mix/fader', count: 32 },
+                { address: '/ch/01-32/eq', pattern: '/ch/{N}/eq', count: 32 },
+                { address: '/bus/01-16/mix/fader', pattern: '/bus/{N}/mix/fader', count: 16 },
+                { address: '/mtx/01-06/mix/fader', pattern: '/mtx/{N}/mix/fader', count: 6 },
+                // FX
+                { address: '/fx/1-8/type', pattern: '/fx/{N}/type', count: 8, pad: 0 }
+            ],
+            'WING': [
+                { address: '/xinfo' },
+                // WING uses different paths usually, but keeping compatible pattern for now
+                { address: '/ch/01-48/config/name', pattern: '/ch/{N}/config/name', count: 48 },
+                { address: '/bus/01-16/config/name', pattern: '/bus/{N}/config/name', count: 16 },
+                { address: '/mtx/01-06/config/name', pattern: '/mtx/{N}/config/name', count: 6 },
+                { address: '/ch/01-48/mix/fader', pattern: '/ch/{N}/mix/fader', count: 48 },
+                { address: '/fx/1-8/type', pattern: '/fx/{N}/type', count: 8, pad: 0 }
             ]
         };
         return templates[type] || templates['XR18'];

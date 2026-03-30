@@ -11,12 +11,12 @@
   export let compAttack = 10;
   export let compRelease = 100;
   export let compMakeup = 0;
-  export let compScFreq = 100;
-  export let compScType = 0;
+  export let filterOn = false;
+  export let filterFreq = 100;
 
   $: logMin = Math.log10(20);
   $: logMax = Math.log10(20000);
-  $: logVal = Math.log10(compScFreq);
+  $: logVal = Math.log10(filterFreq);
   
   import Knob from "../EffectControls/Knob.svelte";
 
@@ -93,10 +93,10 @@
     <div class="graph-placeholder flex-center" style="padding: 1rem;">
       <div class="sc-knob-wrapper">
         <Knob 
-          value={compScFreq} 
+          value={filterFreq} 
           min={20} 
           max={20000} 
-          label={['2-POLE', 'LC', 'HC'][compScType]} 
+          label={filterOn ? 'HPF ON' : 'HPF OFF'} 
           color="#10b981" 
           interactive={false} 
           isLogarithmic={true} 
@@ -112,7 +112,7 @@
     display: flex;
     gap: 1rem;
     padding: 1rem;
-    height: 180px;
+    height: 160px;
     flex-shrink: 0;
   }
   .x32-graph-box {
@@ -127,9 +127,9 @@
   .graph-title {
     background: #1e293b;
     color: #cbd5e1;
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.3rem 0.75rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #334155;
@@ -148,6 +148,6 @@
     height: 100%;
   }
 
-  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(1.1); }
+  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(0.85); }
 </style>
 

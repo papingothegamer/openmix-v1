@@ -13,6 +13,11 @@
   export let onBypassEq = () => {};
   export let onCopyEq = () => {};
   export let onPasteEq = () => {};
+  export let config = {};
+
+  $: dcaLabel = config.dcas > 0 
+    ? (config.presetId === 'MACKIE_DL32S' ? 'VCAs' : 'DCAs')
+    : (config.muteGroups > 0 ? 'Mute Groups' : 'DCAs');
 
   function prev() { if (currentPage > 0) onPageChange(currentPage - 1); }
   function next() { if (currentPage < totalPages - 1) onPageChange(currentPage + 1); }
@@ -24,7 +29,7 @@
       <h4>Layers</h4>
       <button class="layer-btn" class:active={activeView === 'inputs'} on:click={() => onViewChange('inputs')}>INPUTS</button>
       <button class="layer-btn" class:active={activeView === 'outputs'} on:click={() => onViewChange('outputs')}>OUTPUTS</button>
-      <button class="layer-btn" class:active={activeView === 'dcas'} on:click={() => onViewChange('dcas')}>DCAs</button>
+      <button class="layer-btn" class:active={activeView === 'dcas'} on:click={() => onViewChange('dcas')}>{dcaLabel.toUpperCase()}</button>
     </div>
 
     <div class="section compact">

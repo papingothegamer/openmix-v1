@@ -17,6 +17,7 @@
   export let level = -60; 
   export let muted = false;
   export let soloed = false;
+  export let isStereo = false;
   
   // Fake meter values for demo purposes
   export let peakLevel = -60;
@@ -271,7 +272,12 @@
         <div style="width: 22px; height: 22px; border-radius: 2px; border: 1px solid #27272a; background: #18181b;"></div>
       {/if}
     </div>
-    <div class="channel-name" on:click={() => dispatch('nameClick')}>{name}</div>
+    <div class="channel-name" on:click={() => dispatch('nameClick')}>
+      {name}
+      {#if isStereo}
+        <span class="st-indicator" title="Stereo Bus">ST</span>
+      {/if}
+    </div>
   </div>
 
   <div class="gain-meter">
@@ -464,6 +470,8 @@
   .fader-value { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; background: #000; border-radius: 3px; padding: 4px 2px; margin-bottom: 6px; border: 1px solid #27272a; }
   .fader-value input { width: 100%; background: transparent; border: none; color: #60a5fa; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; outline: none; }
   .fader-value span { font-size: 0.55rem; color: #52525b; font-weight: bold; }
+
+  .st-indicator { font-size: 0.5rem; background: #3b82f6; color: white; padding: 1px 3px; border-radius: 2px; margin-left: 4px; font-weight: 900; vertical-align: middle; }
 
   .channel-number { width: 100%; text-align: center; font-size: 0.8rem; font-weight: 800; color: #52525b; padding: 4px 0; border-top: 2px solid #27272a; margin-top: auto; }
 </style>

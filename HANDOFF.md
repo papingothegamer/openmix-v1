@@ -1,12 +1,6 @@
-```markdown
-# OpenMix V1 — IDE Handoff Document
-> **Last updated:** 2026-03-25 | **Branch:** `main` | **Remote:** `https://github.com/papingothegamer/openmix-v1`
-
----
-
 ## 1. Project Overview
 
-**OpenMix** is an open-source, browser-based digital mixing controller for live audio setups. It targets Behringer/Midas rack mixers (XR18, X32, M32, WING) over a local Wi-Fi network using the **OSC** (Open Sound Control) protocol.
+**OpenMix** is a high-performance, browser-based digital mixing controller designed exclusively for **Behringer** and **Midas** ecosystem consoles (X32, M32, X-Air, M-Air, and WING) over a local Wi-Fi network using the **OSC** (Open Sound Control) protocol.
 
 The system has two user roles:
 - **FOH Engineer** — Full console access. Channel EQ, Routing, Scribble Strips, Scene Export/Import.
@@ -66,7 +60,7 @@ openmix-v1/
 ├── HANDOFF.md            ← This file
 └── README.md
 
-````
+```
 
 ---
 
@@ -93,7 +87,7 @@ cd ..
 
 # 4. Start both servers together
 npm run dev
-````
+```
 
 This starts:
 
@@ -357,7 +351,7 @@ Implemented a robust deep-sync engine that aligns the OpenMix 'Virtual Mixer' wi
 ### 14.8 Phase 6: Professional UI Refinement & Interaction (Finalized)
 This phase focused on elevating the UI to a 'production-ready' hardware-controller standard.
 - **Interactive Precision Typing**: Replaced all static parameter labels in the **Channel Modal** (Preamp, Gate, Comp, Output) with interactive numeric inputs. Users can now type precise values (e.g., gain, threshold, ratio) that synchronize instantly with both the physical sliders and the backend hardware via OSC.
-- **Adaptive Workspace**: Implemented conditional sidebar visibility. The **Sidebar** now hides automatically when the **CHANNEL** tab is active, providing maximum screen real-estate for the bento-style configuration grid.
+- **Adaptive Workspace**: Implemented conditional sidebar visibility. The **Sidebar** now hides automatically when the **CHANNEL** or **ROUTING** tabs are active, providing maximum screen real-estate for the bento-style configuration grid and the patching matrix respectively.
 - **Standardized View Headers**: Unified the layout and styling of headers across **Channel**, **EQ**, and **FX** tabs. All headers now feature the `TITLE: <span class="ch-name">...</span>` format with synchronized 16px navigation icons and professional color weighting.
 - **Visual UX Polish**:
   - **Custom Scrollbars**: Added a synchronized custom scrollbar signature for the **Routing Matrix**, ensuring a consistent dark-mode aesthetic.
@@ -384,3 +378,49 @@ This phase focused on ensuring literal bit-parity with the Behringer X-Air and M
     - **Routing Matrix**: Updated to the `/routing/` base addresses (replacing the deprecated `/config/routing/` structure).
 - **Backend Recognition**: Updated `backend/mixerSync.js` with hardware-aware sync templates. The backend now performs a `/xinfo` handshake to verify model capabilities before initializing the deep-sync state loop.
 - **HPF Logic Correction**: Standardized High-Pass Filter (HPF) addressing to use `/preamp/hpon` (binary state) and `/preamp/hpf` (frequency value), resolving a critical inversion bug.
+
+### 14.11 Phase 8: 3-Column Grid & High-Density Sends Layout (2026-03-30)
+This phase focused on finalizing the Sends Panel to handle large-format mixing configurations with professional, hardware-consistent organization.
+- **3-Column Grid Architecure**: Refactored the Sends Panel to use a strict `grid-template-columns: repeat(3, 1fr)` layout. Aux, FX, and Matrix sends now each occupy exactly one-third of the viewport, ensuring symmetry across all mixer types.
+- **High-Focus Pagination**: Reduced visible faders to 4 per column (`PAGE_SIZE = 4`) for a cleaner, more ergonomic touch experience. Pagination is now independently handled per section based on the hardware's bus count.
+- **Professional "Rack" Aesthetic**: Integrated the Send Point selection row and navigation controls into a dark-themed (#1f2937) header block that matches the EQ Editor and Effects Rack components.
+- **Ergonomic Fader Strip**: Standardized the `SendStrip` dimensions to 64px width and 126px height, ensuring faders are large enough for touch control but don't crowd the column borders.
+
+### 14.12 Phase 9: UI/UX Cleanup & Accessibility Compliance (2026-03-30)
+Performed a deep cleanup of the frontend codebase to satisfy compiler warnings and accessibility standards.
+- **A11y Event Handlers**: Added `role="button"`, `tabindex="0"`, and `on:keydown` handlers to all clickable `div` elements (Channel Strips, Bento Cards) in `App.svelte` to ensure full keyboard navigation support.
+- **Preamp Section Upgrade**: Removed the static, non-functional preamp frequency response graph from `ChannelModal.svelte`. Replaced it with a "Deluxe" fader-centric layout that centers control groups (Gain, HPF, Phantom) for maximum clarity and precise numeric input.
+- **CSS Housekeeping**: Pruned 20+ unused CSS selectors from `App.svelte` and fixed vendor-prefix warnings for the `appearance` property in the Channel Modal sliders.
+- **Export Cleanup**: Removed unused Svelte exports (`cycleChannel`, `isFirstChannel`) from `EffectsRack.svelte` to eliminate console noise during development.
+
+**ALL UI WARNINGS RESOLVED. CHANNEL MODAL & SENDS PANEL READY FOR FIELD USE.**
+
+### 14.13 Phase 10: Setup Wizard Restoration & Hardware-Aware Grid (2026-03-30)
+This final refinement pass focused on restoring essential layout functionality and ensuring the UI adapts gracefully to different mixer architectures.
+- **Setup Wizard Restoration**:
+    - Restored the **two-column layout** for the console configuration screen that was mistakenly pruned during CSS cleanup.
+    - Fixed a core regression by adding back `.wide-setup`, `.setup-col`, and `.setup-col-right` classes.
+    - Optimized the setup modal dimensions (`max-width: 840px`) to provide a more centered and professional "manual-style" configuration experience.
+- **Hardware-Aware Sends Panel**:
+    - Refactored the `SendsPanel` to dynamically toggle between **2-column** (Aux/FX) and **3-column** (Aux/FX/Matrix) layouts.
+    - **Dynamic Symmetry**: Removed the legacy greyed-out Matrix column for non-matrix mixers (XR18 series) to eliminate visual clutter and ensure professional alignment for smaller consoles.
+- **Code Stability & A11y**:
+    - Resolved a Svelte compiler error in `App.svelte` by cleaning up deprecated props from the `EffectsRack` component call.
+    - Added keyboard navigation support (`on:keydown`) to the role selection cards, ensuring a fully accessible entry flow.
+
+**SYSTEM READY FOR FIELD TESTING ON XR18 AND X32 HARDWARE.**
+
+---
+
+### 14.14 Phase 11: Exclusive Behringer/Midas Architecture Pivot (2026-03-30)
+To ensure maximum stability and a 1:1 hardware-accurate experience, the project scope was strictly limited to the Behringer and Midas OSC ecosystems.
+- **Preset Scrapping**: Removed all non-Behringer/Midas configurations (`Mackie DL`, `Soundcraft Ui`, `Allen & Heath CQ`).
+- **Brand-Centric Setup**:
+    - Renamed the "CUSTOM" preset to **"Generic OSC (Behringer Architecture)"** to clarify the protocol expectations.
+    - Updated the Setup Wizard dropdown to only present validated Behringer/Midas hardware (X32, M32, X-Air, M-Air, WING).
+- **Protocol Parity & Optimistic UI**:
+    - **OSC Standardized**: Unified all bento grid and modal mappings to the `/headamp/` (gain/phantom) and `/config/chlink/` (stereo link) standards for X32/XR18.
+    - **Zero-Latency Feedback**: Implemented optimistic store updates for Stereo Link and 48V toggles, ensuring the UI reacts instantly while commands are dispatched to the backend.
+    - **UI Alignment**: Enforced a strict 3-column grid for the dashboard with fixed-width numeric inputs (58px), providing a uniform "racked" appearance across all channel parameters.
+
+**PROJECT SCOPE FINALIZED: DEDICATED BEHRINGER/MIDAS CONTROLLER.**
