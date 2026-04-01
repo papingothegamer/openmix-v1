@@ -14,6 +14,10 @@
   export let scribbles = {};
   export let config = {};
   
+  // Received directly from App.svelte's live state
+  export let mainAssign = false;
+  export let stereoLink = false;
+  
   $: isXR = config?.presetId === 'XR18';
   
   const dispatch = createEventDispatcher();
@@ -24,79 +28,37 @@
     dispatch('close');
   }
   
-  // Internal State
-  let params = {
-    gain: 30,
-    phantom: false,
-    phase: false,
-    gateThresh: -40,
-    gateRange: 20,
-    gateAttack: 5,
-    gateHold: 50,
-    gateRel: 100,
-    compThresh: -20,
-    compRatio: 4,
-    compAttack: 10,
-    compRelease: 100,
-    compMakeup: 0,
-    outPan: 0,
-    outLevel: 0,
-    mainAssign: true,
-    stereoLink: false,
-    gateFilterOn: false,
-    gateFilterFreq: 100,
-    compFilterOn: false,
-    compFilterFreq: 100
-  };
-
-  function readCacheNumber(cache, address, fallback) {
-    if (!cache) return fallback;
-    const v = cache[address];
-    if (v === undefined || v === null) return fallback;
-    const raw = Array.isArray(v) ? v[0] : v;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : fallback;
-  }
-
-  // Hydrate params once per channelId open or on cache updates
-  $: if (channelId && $mixerState?.flatOscCache) {
-    const cache = $mixerState.flatOscCache;
-    const num = parseInt(channelId.replace(/\D/g, ''));
-    const chStr = String(num).padStart(2, '0');
-    const prefix = `/ch/${chStr}`;
-    const oddCh = num % 2 === 1 ? num : num - 1;
-
-    params = {
-      ...params,
-      gain: readCacheNumber(cache, `/headamp/${chStr}/gain`, params.gain),
-      phantom: readCacheNumber(cache, `/headamp/${chStr}/phantom`, 0) === 1,
-      phase: readCacheNumber(cache, `${prefix}/preamp/phase`, 0) === 1,
-      
-      gateThresh: readCacheNumber(cache, `${prefix}/gate/thr`, params.gateThresh),
-      gateRange: readCacheNumber(cache, `${prefix}/gate/range`, params.gateRange),
-      gateAttack: readCacheNumber(cache, `${prefix}/gate/att`, params.gateAttack),
-      gateHold: readCacheNumber(cache, `${prefix}/gate/hold`, params.gateHold),
-      gateRel: readCacheNumber(cache, `${prefix}/gate/rel`, params.gateRel),
-      gateFilterOn: readCacheNumber(cache, `${prefix}/gate/hpon`, 0) === 1,
-      gateFilterFreq: readCacheNumber(cache, `${prefix}/gate/hpf`, 100),
-      
-      compThresh: readCacheNumber(cache, `${prefix}/dyn/thr`, params.compThresh),
-      compRatio: readCacheNumber(cache, `${prefix}/dyn/ratio`, params.compRatio),
-      compAttack: readCacheNumber(cache, `${prefix}/dyn/att`, params.compAttack),
-      compRelease: readCacheNumber(cache, `${prefix}/dyn/rel`, params.compRelease),
-      compMakeup: readCacheNumber(cache, `${prefix}/dyn/makeup`, params.compMakeup),
-      compFilterOn: readCacheNumber(cache, `${prefix}/dyn/hpon`, 0) === 1,
-      compFilterFreq: readCacheNumber(cache, `${prefix}/dyn/hpf`, 100),
-      
-      outPan: readCacheNumber(cache, `${prefix}/mix/pan`, params.outPan),
-      outLevel: readCacheNumber(cache, `${prefix}/mix/fader`, params.outLevel),
-      mainAssign: readCacheNumber(cache, `${prefix}/mix/lr`, 1) === 1,
-      stereoLink: readCacheNumber(cache, `/config/chlink/${oddCh}`, 0) === 1
-    };
-  }
-
   // Helper to get raw channel number for OSC emits
   $: chNum = channelId ? String(parseInt(channelId.replace(/\D/g, ''))).padStart(2, '0') : '01';
+
+  // Internal State — hydrated from live OSC cache
+  let params = {};
+  let hasHydrated = false;
+
+  // Hydrate params from the live mixer state whenever channelId or cache changes
+  $: {
+    const cache = $mixerState?.flatOscCache || {};
+    const ch = chNum;
+    params = {
+      gain: cache[`/headamp/${ch}/gain`] ?? 30,
+      phantom: cache[`/headamp/${ch}/phantom`] === 1,
+      phase: cache[`/ch/${ch}/preamp/phase`] === 1,
+      gateThresh: cache[`/ch/${ch}/gate/thr`] ?? -40,
+      gateRange: cache[`/ch/${ch}/gate/range`] ?? 20,
+      gateAttack: cache[`/ch/${ch}/gate/att`] ?? 5,
+      gateHold: cache[`/ch/${ch}/gate/hold`] ?? 50,
+      gateRel: cache[`/ch/${ch}/gate/rel`] ?? 100,
+      compThresh: cache[`/ch/${ch}/dyn/thr`] ?? -20,
+      compRatio: cache[`/ch/${ch}/dyn/ratio`] ?? 4,
+      compAttack: cache[`/ch/${ch}/dyn/att`] ?? 10,
+      compRelease: cache[`/ch/${ch}/dyn/rel`] ?? 100,
+      compMakeup: cache[`/ch/${ch}/dyn/makeup`] ?? 0,
+      outPan: cache[`/ch/${ch}/mix/pan`] ?? 0,
+      outLevel: cache[`/ch/${ch}/mix/fader`] ?? 0,
+      mainAssign: mainAssign,
+    };
+    hasHydrated = true;
+  }
 
   // Receives unified update events from the child sections
   function handleParamUpdate(e) {
@@ -104,78 +66,21 @@
     params = { ...params, ...updatedVals };
     
     // OSC Emission mapping logic
-    let address = "";
-    let val = 0;
-
-    if ('gain' in updatedVals) {
-      address = `/headamp/${chNum}/gain`;
-      val = params.gain;
-    } else if ('phantom' in updatedVals) {
-      address = `/headamp/${chNum}/phantom`;
-      val = params.phantom ? 1 : 0;
-    } else if ('phase' in updatedVals) {
-      address = `/ch/${chNum}/preamp/phase`;
-      val = params.phase ? 1 : 0;
-    } else if ('gateThresh' in updatedVals) {
-      address = `/ch/${chNum}/gate/thr`;
-      val = params.gateThresh;
-    } else if ('gateRange' in updatedVals) {
-      address = `/ch/${chNum}/gate/range`;
-      val = params.gateRange;
-    } else if ('gateAttack' in updatedVals) {
-      address = `/ch/${chNum}/gate/att`;
-      val = params.gateAttack;
-    } else if ('gateHold' in updatedVals) {
-      address = `/ch/${chNum}/gate/hold`;
-      val = params.gateHold;
-    } else if ('gateRel' in updatedVals) {
-      address = `/ch/${chNum}/gate/rel`;
-      val = params.gateRel;
-    } else if ('gateFilterOn' in updatedVals) {
-      address = `/ch/${chNum}/gate/hpon`;
-      val = params.gateFilterOn ? 1 : 0;
-    } else if ('gateFilterFreq' in updatedVals) {
-      address = `/ch/${chNum}/gate/hpf`;
-      val = params.gateFilterFreq;
-    } else if ('compThresh' in updatedVals) {
-      address = `/ch/${chNum}/dyn/thr`;
-      val = params.compThresh;
-    } else if ('compRatio' in updatedVals) {
-      address = `/ch/${chNum}/dyn/ratio`;
-      val = params.compRatio;
-    } else if ('compAttack' in updatedVals) {
-      address = `/ch/${chNum}/dyn/att`;
-      val = params.compAttack;
-    } else if ('compRelease' in updatedVals) {
-      address = `/ch/${chNum}/dyn/rel`;
-      val = params.compRelease;
-    } else if ('compMakeup' in updatedVals) {
-      address = `/ch/${chNum}/dyn/makeup`;
-      val = params.compMakeup;
-    } else if ('compFilterOn' in updatedVals) {
-      address = `/ch/${chNum}/dyn/hpon`;
-      val = params.compFilterOn ? 1 : 0;
-    } else if ('compFilterFreq' in updatedVals) {
-      address = `/ch/${chNum}/dyn/hpf`;
-      val = params.compFilterFreq;
-    } else if ('outPan' in updatedVals) {
-      address = `/ch/${chNum}/mix/pan`;
-      val = params.outPan;
-    } else if ('outLevel' in updatedVals) {
-      address = `/ch/${chNum}/mix/fader`;
-      val = params.outLevel;
-    } else if ('mainAssign' in updatedVals) {
-      address = `/ch/${chNum}/mix/lr`;
-      val = params.mainAssign ? 1 : 0;
-    }
-
-    if (address) {
-      setOsc(address, val);
-      // Optimistic update to store
-      mixerState.update(prev => ({
-        ...prev,
-        flatOscCache: { ...(prev.flatOscCache || {}), [address]: val }
-      }));
+    if ('gain' in updatedVals) setOsc(`/headamp/${chNum}/gain`, params.gain);
+    if ('phantom' in updatedVals) setOsc(`/headamp/${chNum}/phantom`, params.phantom ? 1 : 0);
+    
+    if ('gateThresh' in updatedVals) setOsc(`/ch/${chNum}/gate/thr`, params.gateThresh);
+    if ('gateRange' in updatedVals) setOsc(`/ch/${chNum}/gate/range`, params.gateRange);
+    
+    if ('compThresh' in updatedVals) setOsc(`/ch/${chNum}/dyn/thr`, params.compThresh);
+    if ('compRatio' in updatedVals) setOsc(`/ch/${chNum}/dyn/ratio`, params.compRatio);
+    
+    if ('outPan' in updatedVals) setOsc(`/ch/${chNum}/mix/pan`, params.outPan);
+    if ('outLevel' in updatedVals) setOsc(`/ch/${chNum}/mix/fader`, params.outLevel);
+    
+    if ('mainAssign' in updatedVals) {
+      // Bounce the change back up to App.svelte where mainOutAssign is managed
+      dispatch('setMainOut', { state: params.mainAssign });
     }
   }
 </script>
@@ -217,7 +122,6 @@
             bind:gain={params.gain} 
             bind:phantom={params.phantom} 
             bind:phase={params.phase} 
-            stereoLink={params.stereoLink}
             on:update={handleParamUpdate} 
           />
         {:else if activeSection === 'gate'}
@@ -227,8 +131,6 @@
             bind:gateAttack={params.gateAttack} 
             bind:gateHold={params.gateHold} 
             bind:gateRel={params.gateRel} 
-            bind:filterOn={params.gateFilterOn}
-            bind:filterFreq={params.gateFilterFreq}
             on:update={handleParamUpdate} 
           />
         {:else if activeSection === 'compressor'}
@@ -238,8 +140,6 @@
             bind:compAttack={params.compAttack} 
             bind:compRelease={params.compRelease} 
             bind:compMakeup={params.compMakeup} 
-            bind:filterOn={params.compFilterOn}
-            bind:filterFreq={params.compFilterFreq}
             on:update={handleParamUpdate} 
           />
         {:else if activeSection === 'output'}
@@ -247,7 +147,7 @@
             bind:outPan={params.outPan} 
             bind:outLevel={params.outLevel} 
             bind:mainAssign={params.mainAssign} 
-            stereoLink={params.stereoLink}
+            stereoLink={stereoLink}
             on:update={handleParamUpdate} 
           />
         {/if}
@@ -263,7 +163,7 @@
   }
   .modal-container {
     background: #0b0f19; border: 1px solid #1e293b; border-radius: 12px;
-    width: 100%; max-width: 900px; height: auto; max-height: 680px;
+    width: 100%; max-width: 900px; height: 85vh; max-height: 700px;
     display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
   }
   .modal-header {
@@ -291,7 +191,7 @@
   .nav-item:hover { background: #1e293b; color: #e2e8f0; }
   .nav-item.active { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-left-color: #3b82f6; }
   
-  .content-area { flex: 1; overflow: hidden; padding: 1.25rem 1.5rem; background: #0b0f19; display: flex; flex-direction: column; }
+  .content-area { flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b0f19; display: flex; flex-direction: column; }
 
   .fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -308,17 +208,17 @@
   /* ========================================================
      GLOBAL STYLES FOR CHILD SECTIONS (FADERS & KNOBS)
      ======================================================== */
-  :global(.x32-panel) { display: flex; flex-direction: column; height: 100%; gap: 1rem; min-height: min-content; }
-  :global(.x32-top-graphs) { flex: 1; min-height: 160px; background: #020617; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; display: flex; position: relative; }
-  :global(.x32-bottom-faders) { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; background: #111827; padding: 1rem; border-radius: 8px; border: 1px solid #1e293b; flex-shrink: 0; }
+  :global(.x32-panel) { display: flex; flex-direction: column; height: 100%; gap: 1rem; min-height: 0; }
+  :global(.x32-top-graphs) { flex: 1 1 auto; min-height: 160px; max-height: 240px; background: #020617; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; display: flex; position: relative; }
+  :global(.x32-bottom-faders) { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; background: #111827; padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid #1e293b; flex-shrink: 0; }
   
-  :global(.fader-group) { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 50px; }
+  :global(.fader-group) { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 55px; }
   :global(.v-slider-val) { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #f8fafc; background: #020617; padding: 0.25rem 0.4rem; border-radius: 4px; border: 1px solid #334155; width: 100%; text-align: center; box-sizing: border-box; }
   :global(.v-slider-lbl) { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
   
   /* Vertical Slider Core Magic */
-  :global(.v-slider-wrapper) { height: 120px; width: 40px; display: flex; align-items: center; justify-content: center; position: relative; }
-  :global(.v-slider) { -webkit-appearance: none; appearance: none; width: 110px; height: 6px; background: #020617; outline: none; transform: rotate(-90deg); transform-origin: center; border-radius: 4px; border: 1px solid #1e293b; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); margin: 0; }
+  :global(.v-slider-wrapper) { height: 110px; width: 36px; display: flex; align-items: center; justify-content: center; position: relative; }
+  :global(.v-slider) { -webkit-appearance: none; appearance: none; width: 100px; height: 5px; background: #020617; outline: none; transform: rotate(-90deg); transform-origin: center; border-radius: 4px; border: 1px solid #1e293b; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); margin: 0; }
   
   /* Slider Thumbs */
   :global(.v-slider::-webkit-slider-thumb) { -webkit-appearance: none; width: 34px; height: 18px; border-radius: 4px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5); border: 2px solid #0f172a; }

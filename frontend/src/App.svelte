@@ -560,8 +560,15 @@
     return { srcs, dests, subTabs };
   })();
 
-  // Stereo link state: key = odd channel number, value = true if linked to next even channel
-  let stereoLinks = {}; // { 1: true, 3: true } means CH1↔CH2 and CH3↔CH4 are linked
+  // Stereo link state: derived reactively from OSC cache so rack always reflects link state
+  $: stereoLinks = (() => {
+    const cache = $mixerState?.flatOscCache || {};
+    const links = {};
+    for (let i = 1; i <= (config.inputs || 32); i += 2) {
+      if (cache[`/config/chlink/${i}`] === 1) links[i] = true;
+    }
+    return links;
+  })();
   let outputLinks = {}; 
 
 
@@ -632,18 +639,30 @@
   }
   
   function toggleMainOut(chId) {
-    // Fallback: If it's undefined, assume it's ON (standard Behringer default)
-    const isCurrentlyAssigned = mainOutAssign[chId] !== false;
-    const newState = !isCurrentlyAssigned;
+    const num = parseInt((chId || '').replace(/\D/g, ''));
+    const chStr = String(num).padStart(2, '0');
+
+    // Read current state from the OSC cache (same source as bento grid)
+    let address = '';
+    if (chId.startsWith("in_")) {
+      address = `/ch/${chStr}/mix/lr`;
+    } else if (chId.startsWith("fx_")) {
+      address = `/rtn/${num}/mix/lr`;
+    }
+
+    const currentVal = $mixerState?.flatOscCache?.[address];
+    const isCurrentlyOn = currentVal === 1;
+    const newState = !isCurrentlyOn;
     
     mainOutAssign = { ...mainOutAssign, [chId]: newState };
-    
-    if (chId.startsWith("in_")) {
-      const num = chId.replace("in_", "").padStart(2, "0");
-      setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
-    } else if (chId.startsWith("fx_")) {
-      const num = chId.replace("fx_", "");
-      setOsc(`/rtn/${num}/mix/lr`, newState ? 1 : 0);
+
+    if (address) {
+      // Optimistic cache update so all UIs reflect change immediately
+      mixerState.update(prev => {
+        const newCache = { ...(prev.flatOscCache || {}), [address]: newState ? 1 : 0 };
+        return { ...prev, flatOscCache: newCache };
+      });
+      setOsc(address, newState ? 1 : 0);
     }
 
     // Trigger visual toast
@@ -919,7 +938,7 @@
         scribbles = {};
         channelEqState = {};
         mainOutAssign = {};
-        stereoLinks = {};
+        // stereoLinks is derived reactively from OSC cache — no need to reset
         routingState = {};
         sendsState = {};
 
@@ -942,8 +961,8 @@
             channelEqState = migrateKeys(json.uiConfig.channelEqState);
           if (json.uiConfig.mainOutAssign)
             mainOutAssign = migrateKeys(json.uiConfig.mainOutAssign);
-          if (json.uiConfig.stereoLinks)
-            stereoLinks = json.uiConfig.stereoLinks; // Links are typically numeric keys or handled differently
+          // stereoLinks is now derived reactively from $mixerState.flatOscCache
+          // Scene import pushes OSC state which updates the cache automatically
           if (json.uiConfig.routingState)
             routingState = json.uiConfig.routingState;
           if (json.uiConfig.sendsState)
@@ -1267,11 +1286,10 @@
 
     {:else if !activeRole}
       <div class="setup-overlay fade-in">
-        <div class="setup-card">
-          <div class="setup-logo">OPENMIX</div>
-          <div class="step-header">
-            <h2 class="step-title">Select Your Role</h2>
-            <p class="step-desc">Choose your operating mode to get started.</p>
+        <div class="setup-card role-select-card">
+          <div class="role-select-header">
+            <div class="setup-logo">OPENMIX</div>
+            <p class="role-select-subtitle">Select your operating mode</p>
           </div>
           
           <div class="role-grid">
@@ -1284,21 +1302,13 @@
                 musicianToken = null;
                 connectAsFoh();
               }}
-              on:keydown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  activeRole = "foh";
-                  musicianAux = null;
-                  musicianTokenLoading = false;
-                  musicianToken = null;
-                  connectAsFoh();
-                }
-              }}
             >
-              <span class="role-icon"><Sliders size={24} /></span>
+              <div class="role-card-icon"><Sliders size={28} /></div>
               <div class="role-info">
                 <h3>FOH Engineer</h3>
-                <p>Full control over inputs, outputs, and routing.</p>
+                <p>Full system control — inputs, outputs, EQ, dynamics, routing.</p>
               </div>
+              <span class="role-arrow">→</span>
             </button>
             <button
               class="role-card"
@@ -1310,37 +1320,29 @@
                 selectedChannel = null;
                 activeTab = "mixer";
               }}
-              on:keydown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  activeRole = "musician";
-                  musicianAux = null;
-                  musicianTokenLoading = false;
-                  musicianToken = null;
-                  selectedChannel = null;
-                  activeTab = "mixer";
-                }
-              }}
             >
-              <span class="role-icon"><Headphones size={24} /></span>
+              <div class="role-card-icon musician-icon"><Headphones size={28} /></div>
               <div class="role-info">
                 <h3>Musician</h3>
-                <p>Control your personal monitor mix securely.</p>
+                <p>Personal monitor mix — secure, scoped to your AUX bus.</p>
               </div>
+              <span class="role-arrow">→</span>
             </button>
           </div>
-          <button class="btn-text" on:click={() => requiresSetup = true}>Re-run Console Setup</button>
+          <button class="btn-text" on:click={() => requiresSetup = true}>
+            <Settings size={14} /> Re-configure Console
+          </button>
         </div>
       </div>
     {:else}
       {#if activeRole === "musician" && !musicianAux}
         <div class="setup-overlay fade-in">
-          <div class="setup-card">
-            <div class="setup-logo">OPENMIX</div>
-            <div class="step-header">
-              <h2 class="step-title">Select Monitor Mix</h2>
-              <p class="step-desc">Choose the AUX output bus assigned to you.</p>
+          <div class="setup-card role-select-card">
+            <div class="role-select-header">
+              <div class="setup-logo">OPENMIX</div>
+              <p class="role-select-subtitle">Select your monitor bus</p>
             </div>
-            <div class="aux-grid" style="margin-top: 0.5rem; margin-bottom: 0;">
+            <div class="aux-grid">
               {#each config.visibleBuses || [] as auxNum}
                 <button
                   class="aux-btn"
@@ -1352,9 +1354,9 @@
                 </button>
               {/each}
             </div>
-            <div class="action-row" style="margin-top:1.5rem;">
-              <button class="btn-ghost" on:click={exitRole} style="width: 100%;"><ArrowLeft size={16} style="margin-right: 0.5rem;"/> Back to Roles</button>
-            </div>
+            <button class="btn-text" on:click={exitRole}>
+              <ArrowLeft size={14} /> Back to Roles
+            </button>
           </div>
         </div>
       {:else}
@@ -2071,7 +2073,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  EFFECTS RACK: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
+                  EFFECTS RACK
                 </h2>
                 <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
                    <div class="insert-control" style="background: #1e293b; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #334155; display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem;">
@@ -2262,13 +2264,31 @@
     {/if}
 
     {#if channelModalState.isOpen}
+      {@const modalChId = channelModalState.channelId}
+      {@const modalChNum = modalChId ? parseInt(modalChId.replace(/\D/g, '')) : 0}
       <ChannelModal
         {config}
-        channelId={channelModalState.channelId}
-        channelName={scribbles[channelModalState.channelId]?.name}
+        channelId={modalChId}
+        channelName={scribbles[modalChId]?.name}
         initialSection={channelModalState.section}
         scribbles={scribbles}
-        on:toggleMainOut={() => toggleMainOut(channelModalState.channelId)}
+        mainAssign={getBentoParam(modalChId, 'mix/lr', 0) === 1}
+        stereoLink={modalChId?.startsWith('in_') ? isLinked(modalChNum, stereoLinks) : false}
+        on:setMainOut={(e) => {
+          const newState = e.detail.state;
+          mainOutAssign[modalChId] = newState;
+          mainOutAssign = { ...mainOutAssign };
+          const num = String(modalChNum).padStart(2, '0');
+          if (modalChId.startsWith('in_')) {
+            // Optimistic cache update so bento grid reflects change immediately
+            mixerState.update(prev => {
+              const newCache = { ...(prev.flatOscCache || {}), [`/ch/${num}/mix/lr`]: newState ? 1 : 0 };
+              return { ...prev, flatOscCache: newCache };
+            });
+            setOsc(`/ch/${num}/mix/lr`, newState ? 1 : 0);
+          }
+        }}
+        on:toggleMainOut={() => toggleMainOut(modalChId)}
         on:close={() => (channelModalState.isOpen = false)}
       />
     {/if}
@@ -2739,38 +2759,45 @@
 
   .aux-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 1rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+    width: 100%;
   }
   .aux-btn {
-    background: rgba(15, 23, 42, 0.6);
-    border: 2px solid rgba(139, 92, 246, 0.3);
-    border-radius: 12px;
-    padding: 1.5rem 1rem;
+    background: #09090b;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    padding: 1.25rem 0.75rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
     color: inherit;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
   }
   .aux-btn:hover {
-    box-shadow: 0 12px 24px rgba(139, 92, 246, 0.3);
     border-color: #8b5cf6;
-    background: rgba(139, 92, 246, 0.15);
+    background: #111113;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+  }
+  .aux-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   .aux-num {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #8b5cf6;
   }
   .aux-label {
-    font-size: 0.8rem;
-    color: #94a3b8;
+    font-size: 0.75rem;
+    color: #52525b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .bento-grid {
@@ -3084,20 +3111,124 @@
   .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0;
  }
   .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .role-icon { font-size: 1.5rem; line-height: 1; margin-top: 2px; color: #fafafa; }
   .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
-  
-  .role-card { background: #09090b;
- border: 1px solid #27272a; border-radius: 6px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; cursor: pointer; text-align: left;
- transition: background 0.15s, border-color 0.15s; color: inherit; }
-  .role-card:hover { background: #1f1f22; border-color: #3b82f6;
- }
-  .role-info { display: flex; flex-direction: column;
- gap: 0.25rem; }
-  .role-info h3 { margin: 0; color: #fafafa; font-size: 0.95rem; font-weight: 600;
- }
-  .role-info p { margin: 0; color: #71717a; font-size: 0.8rem; line-height: 1.4;
- }
+
+  /* Role Selection Card */
+  .role-select-card {
+    max-width: 520px;
+    gap: 2rem;
+    padding: 2.5rem 2.5rem 2rem;
+  }
+  .role-select-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .role-select-subtitle {
+    margin: 0;
+    color: #71717a;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .role-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+  .role-card {
+    background: #09090b;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .role-card:hover {
+    background: #111113;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+  }
+  .role-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3b82f6;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .role-card:hover .role-card-icon {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+  }
+  .role-card-icon.musician-icon {
+    color: #8b5cf6;
+  }
+  .role-card:hover .role-card-icon.musician-icon {
+    background: rgba(139, 92, 246, 0.1);
+    color: #a78bfa;
+  }
+  .role-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .role-info h3 {
+    margin: 0;
+    color: #fafafa;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .role-info p {
+    margin: 0;
+    color: #52525b;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  .role-arrow {
+    color: #3f3f46;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: color 0.15s, transform 0.15s;
+  }
+  .role-card:hover .role-arrow {
+    color: #3b82f6;
+    transform: translateX(2px);
+  }
+  .btn-text {
+    background: transparent;
+    border: none;
+    color: #52525b;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin: 0 auto;
+  }
+  .btn-text:hover {
+    color: #a1a1aa;
+  }
   
   .form-group label { font-size: 0.7rem; font-weight: 600;
  color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }

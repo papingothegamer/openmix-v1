@@ -1,0 +1,318 @@
+# OpenMix Integrity Checklist — Manual Verification (No Mixer)
+
+> **Purpose**: Exhaustive pre-field-test checklist to verify every UI flow, interaction, and visual state **without** a physical mixer connected. Run through each section sequentially. Mark ✅ or ❌.
+>
+> **Setup**: `npm run dev` from root. Open `http://localhost:5173` in a Chromium-based browser at ≥ 1280×720.
+
+---
+
+## 1. Application Bootstrap
+
+| # | Check | Status |
+|---|-------|--------|
+| 1.1 | App loads without console errors (open DevTools → Console) | ☐ |
+| 1.2 | "OpenMix" brand text visible in the top-left navbar | ☐ |
+| 1.3 | Connection status indicator shows in the navbar (green "Connected" or red "Disconnected") | ☐ |
+| 1.4 | No blank white screen or hydration errors | ☐ |
+
+---
+
+## 2. Role Selection Screen
+
+| # | Check | Status |
+|---|-------|--------|
+| 2.1 | Two role cards visible: "FOH Engineer" (blue icon) and "Musician" (purple icon) | ☐ |
+| 2.2 | "OPENMIX" title and "Select your role" subtitle centered above cards | ☐ |
+| 2.3 | Cards are in a horizontal row (not stacked vertically) | ☐ |
+| 2.4 | Hovering FOH card shows blue ring effect + card lifts slightly | ☐ |
+| 2.5 | Hovering Musician card shows purple ring effect + card lifts slightly | ☐ |
+| 2.6 | Each card has: icon container, title, description text, right arrow | ☐ |
+| 2.7 | "Re-configure Console" link visible below the cards | ☐ |
+| 2.8 | Clicking "Re-configure Console" opens the Setup Wizard | ☐ |
+
+---
+
+## 3. Musician AUX Selection Flow
+
+| # | Check | Status |
+|---|-------|--------|
+| 3.1 | Clicking "Musician" card navigates to "Select your monitor bus" screen | ☐ |
+| 3.2 | AUX grid shows correct number of bus cards (matches config) | ☐ |
+| 3.3 | Each AUX card displays bus number and "Output N" label | ☐ |
+| 3.4 | AUX cards have purple-accent hover state | ☐ |
+| 3.5 | "← Back to Roles" link visible and functional | ☐ |
+| 3.6 | Clicking an AUX card enters the Musician mix view | ☐ |
+| 3.7 | Musician view shows fader strips for channels with the selected AUX master fader on the right | ☐ |
+| 3.8 | "Exit Monitor Mix" button returns to role selection | ☐ |
+
+---
+
+## 4. FOH Mixer View — Mixer Tab
+
+| # | Check | Status |
+|---|-------|--------|
+| 4.1 | Clicking "FOH Engineer" enters the mixer rack view | ☐ |
+| 4.2 | 6 top tabs visible: MIXER, CHANNEL, EQ, SENDS, FX, ROUTING | ☐ |
+| 4.3 | MIXER tab is active by default (highlighted) | ☐ |
+| 4.4 | Channel strips render with: Gate mini-graph, Comp mini-graph, Pan knob, M (mute) button, S (solo) button, fader, dB readout, channel number label | ☐ |
+| 4.5 | Right sidebar shows: LAYERS (Inputs/Outputs/DCAs), STRIPS (count ±), BANK (pagination) | ☐ |
+| 4.6 | Clicking INPUTS/OUTPUTS/DCAS switches the channel layer | ☐ |
+| 4.7 | Strip count +/- buttons change the number of visible strips | ☐ |
+| 4.8 | Bank pagination (< >) navigates through channel pages | ☐ |
+| 4.9 | Bank indicator shows "N / M" (current / total) accurately | ☐ |
+
+---
+
+## 5. FOH — Channel Strip Interactions
+
+| # | Check | Status |
+|---|-------|--------|
+| 5.1 | Fader thumb is draggable vertically | ☐ |
+| 5.2 | dB readout updates in real-time while dragging fader | ☐ |
+| 5.3 | Mute (M) button toggles red active state on click | ☐ |
+| 5.4 | Solo (S) button toggles active state on click | ☐ |
+| 5.5 | Pan knob position displays as "C" at default center | ☐ |
+| 5.6 | Clicking "C" label below the pan knob label does not cause errors | ☐ |
+| 5.7 | Channel number label visible below each strip | ☐ |
+
+---
+
+## 6. FOH — Stereo Link
+
+| # | Check | Status |
+|---|-------|--------|
+| 6.1 | Clicking the CHANNEL tab → selecting a channel shows the bento grid | ☐ |
+| 6.2 | "Stereo Link" card shows "CH N – CH N+1" with OFF label | ☐ |
+| 6.3 | Toggling stereo link changes the bento card state (ON/OFF) | ☐ |
+| 6.4 | Switching back to MIXER tab: linked channels show a "ST" badge or color pairing | ☐ |
+| 6.5 | Toggling link off: MIXER tab strips revert to independent appearance | ☐ |
+| 6.6 | Opening the Channel Modal on a linked channel: "LINKED" badge appears in the Output section | ☐ |
+
+---
+
+## 7. FOH — Channel Tab (Bento Grid)
+
+| # | Check | Status |
+|---|-------|--------|
+| 7.1 | Channel tab shows "CHANNEL: IN_N" header with < > navigation | ☐ |
+| 7.2 | < > arrows cycle through channels (wrap at boundaries or stop) | ☐ |
+| 7.3 | Bento grid cards visible: Channel Icon, Preamp, Gate, Compressor, EQ Preview, Output & Main Assign, Stereo Link | ☐ |
+| 7.4 | Preamp card shows: Gain (dB), 48V toggle, Phase toggle | ☐ |
+| 7.5 | Gate card shows: Threshold, Range, Attack, Hold, Release | ☐ |
+| 7.6 | Compressor card shows: Threshold, Ratio, Attack, Release, Makeup | ☐ |
+| 7.7 | Output & Main Assign card shows: Pan, Level, LR Assign toggle | ☐ |
+| 7.8 | LR Assign shows "OFF" text when not assigned | ☐ |
+| 7.9 | Clicking LR Assign toggles it ON (blue background) | ☐ |
+| 7.10 | Numeric input fields accept typed values (click → type → blur) | ☐ |
+
+---
+
+## 8. Channel Modal — General
+
+| # | Check | Status |
+|---|-------|--------|
+| 8.1 | Clicking any bento card opens the Channel Modal | ☐ |
+| 8.2 | Modal shows "CH N" label and channel name at top-left | ☐ |
+| 8.3 | X (close) button in top-right dismisses modal | ☐ |
+| 8.4 | Left sidebar shows sections: Preamp, Gate, Dynamics, Output | ☐ |
+| 8.5 | Clicking each sidebar item switches the modal content area | ☐ |
+| 8.6 | Active sidebar item has blue highlight with left border accent | ☐ |
+| 8.7 | Modal opens on the section matching the clicked bento card | ☐ |
+
+---
+
+## 9. Channel Modal — Preamp Section
+
+| # | Check | Status |
+|---|-------|--------|
+| 9.1 | Shows Gain fader/knob with dB readout | ☐ |
+| 9.2 | 48V toggle button works (active = red glow) | ☐ |
+| 9.3 | Phase toggle button works (active state visible) | ☐ |
+| 9.4 | All controls are interactive (draggable/clickable) | ☐ |
+
+---
+
+## 10. Channel Modal — Gate Section
+
+| # | Check | Status |
+|---|-------|--------|
+| 10.1 | Three graph panels visible: "GATE CURVE", "GAIN ENVELOPE", "SIDE CHAIN FILTER" | ☐ |
+| 10.2 | All three panel titles are fully visible (not clipped) | ☐ |
+| 10.3 | Gate Curve shows cyan polyline that responds to threshold changes | ☐ |
+| 10.4 | Gain Envelope shows attack/hold/release time-domain shape | ☐ |
+| 10.5 | Sidechain Filter shows a knob with label (e.g., "2-POLE") and frequency value | ☐ |
+| 10.6 | Five faders below: THR, RANGE, ATTACK, HOLD, REL | ☐ |
+| 10.7 | All fader labels are fully visible (not cut off at bottom) | ☐ |
+| 10.8 | Dragging faders updates both the value display and the graph above | ☐ |
+| 10.9 | Fader thumbs have blue gradient styling | ☐ |
+
+---
+
+## 11. Channel Modal — Dynamics Section
+
+| # | Check | Status |
+|---|-------|--------|
+| 11.1 | Three graph panels visible: "COMPRESSION CURVE", "COMPRESSION ENVELOPE", "SIDE CHAIN FILTER" | ☐ |
+| 11.2 | All three panel titles are fully visible (not clipped) | ☐ |
+| 11.3 | Compression Curve shows green polyline with knee at threshold | ☐ |
+| 11.4 | Compression Envelope shows attack/release shape | ☐ |
+| 11.5 | Sidechain Filter shows knob with "HPF ON/OFF" label | ☐ |
+| 11.6 | Five faders below: THR, RATIO, ATTACK, RELEASE, GAIN | ☐ |
+| 11.7 | All fader labels are fully visible (not cut off at bottom) | ☐ |
+| 11.8 | Dragging faders updates values and graphs interactively | ☐ |
+| 11.9 | Fader thumbs have green gradient styling | ☐ |
+
+---
+
+## 12. Channel Modal — Output Section
+
+| # | Check | Status |
+|---|-------|--------|
+| 12.1 | "L/R BUS ROUTING" header and "MAIN L/R BUS" button visible | ☐ |
+| 12.2 | MAIN L/R BUS button starts OFF (dark) when LR Assign is OFF in bento grid | ☐ |
+| 12.3 | Toggling MAIN L/R BUS to ON shows amber/active styling | ☐ |
+| 12.4 | Closing modal → bento grid LR Assign reflects the new state | ☐ |
+| 12.5 | Toggling LR Assign in bento grid → opening modal → Output section matches | ☐ |
+| 12.6 | Panorama slider visible with L/R labels and "C" center indicator | ☐ |
+| 12.7 | Level fader visible with dB readout | ☐ |
+| 12.8 | If channel is stereo-linked: "LINKED" badge appears | ☐ |
+| 12.9 | If channel is NOT linked: no LINKED badge shown | ☐ |
+
+---
+
+## 13. EQ Tab
+
+| # | Check | Status |
+|---|-------|--------|
+| 13.1 | EQ tab shows canvas-based parametric EQ curve | ☐ |
+| 13.2 | EQ band dots are visible on the curve (up to 8 colored dots) | ☐ |
+| 13.3 | Clicking/dragging a dot adjusts frequency (horizontal) and gain (vertical) | ☐ |
+| 13.4 | Band sidebar shows frequency, gain, Q values for active band | ☐ |
+| 13.5 | HPF/LPF filter types are selectable | ☐ |
+| 13.6 | EQ ON/OFF toggle functions | ☐ |
+
+---
+
+## 14. Sends Tab
+
+| # | Check | Status |
+|---|-------|--------|
+| 14.1 | Sends tab renders with multi-column layout (AUX / FX columns) | ☐ |
+| 14.2 | If mixer has matrix buses: 3-column layout (AUX / FX / Matrix) | ☐ |
+| 14.3 | If mixer lacks matrix buses: 2-column layout (AUX / FX only, no grey Matrix col) | ☐ |
+| 14.4 | Each send strip has a fader and level readout | ☐ |
+| 14.5 | Pre/Post send point toggle works per bus | ☐ |
+| 14.6 | Pagination arrows navigate through send buses per column | ☐ |
+
+---
+
+## 15. FX Tab
+
+| # | Check | Status |
+|---|-------|--------|
+| 15.1 | FX tab renders without errors | ☐ |
+| 15.2 | FX rack slots are visible (up to 4 for XR18, 8 for X32) | ☐ |
+| 15.3 | Clicking a slot shows FX parameters (if assigned) | ☐ |
+
+---
+
+## 16. Routing Tab
+
+| # | Check | Status |
+|---|-------|--------|
+| 16.1 | Routing tab shows the icon mode bar at top (Input, USB Returns, etc.) | ☐ |
+| 16.2 | Selecting a routing mode shows a patching matrix grid | ☐ |
+| 16.3 | Grid rows = Destinations, columns = Sources | ☐ |
+| 16.4 | Clicking an intersection dot toggles patch assignment | ☐ |
+| 16.5 | Toast notification appears on patch/unpatch | ☐ |
+| 16.6 | Matrix fits vertically without requiring excessive scrolling | ☐ |
+| 16.7 | Custom scrollbar styling applied (dark theme) | ☐ |
+
+---
+
+## 17. Navbar Actions
+
+| # | Check | Status |
+|---|-------|--------|
+| 17.1 | "Monitor" button opens the Monitor Modal | ☐ |
+| 17.2 | Monitor Modal shows solo source options | ☐ |
+| 17.3 | "Scribble Strips" button opens the Scribble Editor | ☐ |
+| 17.4 | Scribble Editor allows changing: name, icon, color | ☐ |
+| 17.5 | Changes persist after closing editor | ☐ |
+| 17.6 | "Export Scene" button triggers a JSON file download | ☐ |
+| 17.7 | Downloaded JSON contains `state.flatOscCache` and `uiConfig` keys | ☐ |
+| 17.8 | "Import Scene" button accepts a JSON file and restores state | ☐ |
+| 17.9 | After import: scribble strips, fader positions, and EQ reflect imported data | ☐ |
+| 17.10 | Fullscreen toggle button works | ☐ |
+| 17.11 | "Exit Role" button returns to the role selection screen | ☐ |
+
+---
+
+## 18. Scene Export/Import Roundtrip
+
+| # | Check | Status |
+|---|-------|--------|
+| 18.1 | Set specific values: rename CH 1 to "KICK", set fader to ~75%, toggle LR Assign ON | ☐ |
+| 18.2 | Export scene → file downloads | ☐ |
+| 18.3 | Refresh the page (hard reload) | ☐ |
+| 18.4 | Import the exported scene file | ☐ |
+| 18.5 | CH 1 name shows "KICK" | ☐ |
+| 18.6 | CH 1 fader is at ~75% | ☐ |
+| 18.7 | LR Assign state matches what was exported | ☐ |
+
+---
+
+## 19. Responsive & Layout
+
+| # | Check | Status |
+|---|-------|--------|
+| 19.1 | At 1280×720: all tabs render without horizontal overflow | ☐ |
+| 19.2 | At 1920×1080: layout fills space proportionally | ☐ |
+| 19.3 | Portrait orientation on mobile: "Rotate Your Device" message appears | ☐ |
+| 19.4 | Sidebar hides automatically on CHANNEL and ROUTING tabs | ☐ |
+| 19.5 | Sidebar is visible on MIXER, EQ, SENDS, FX tabs | ☐ |
+
+---
+
+## 20. Setup Wizard
+
+| # | Check | Status |
+|---|-------|--------|
+| 20.1 | Setup Wizard opens from "Re-configure Console" or initial load | ☐ |
+| 20.2 | Hardware preset dropdown shows only Behringer/Midas options | ☐ |
+| 20.3 | Selecting a preset populates Input/Output/AUX/FX counts | ☐ |
+| 20.4 | "Auto-Discover Mixer" button triggers discovery (may timeout without hardware — that's OK) | ☐ |
+| 20.5 | Manual IP input accepts a valid IP address | ☐ |
+| 20.6 | Clicking "Start Mixing" proceeds to the role selection screen | ☐ |
+| 20.7 | Two-column layout is intact (left = config, right = connection) | ☐ |
+
+---
+
+## 21. Console Errors & Warnings
+
+| # | Check | Status |
+|---|-------|--------|
+| 21.1 | No unhandled JavaScript errors in DevTools console during full walkthrough | ☐ |
+| 21.2 | No Svelte runtime warnings (missing props, reactivity issues) | ☐ |
+| 21.3 | No 404 errors for assets (icons, fonts) | ☐ |
+| 21.4 | No deprecation warnings from Svelte or Vite | ☐ |
+
+---
+
+## 22. Cross-Section State Consistency
+
+| # | Check | Status |
+|---|-------|--------|
+| 22.1 | Toggle LR Assign ON in bento grid → open Channel Modal Output → button is ON | ☐ |
+| 22.2 | Toggle LR Assign OFF in Channel Modal → close → bento grid shows OFF | ☐ |
+| 22.3 | Toggle Stereo Link ON in bento grid → MIXER tab shows ST badge → Channel Modal shows LINKED | ☐ |
+| 22.4 | Toggle Stereo Link OFF → all three views revert to unlinked state | ☐ |
+| 22.5 | Change fader in MIXER tab → switch to CHANNEL tab → Output section Level fader matches | ☐ |
+| 22.6 | Change gate threshold in Channel Modal → close → Gate bento card shows updated value | ☐ |
+| 22.7 | Change comp ratio in Channel Modal → close → Compressor bento card shows updated value | ☐ |
+| 22.8 | Toggle 48V in bento grid → open Channel Modal Preamp → 48V state matches | ☐ |
+| 22.9 | Apply scribble strip changes → channel labels update across MIXER tab, CHANNEL tab header, and Modal title | ☐ |
+
+---
+
+**SIGN-OFF**: If all checks pass ✅, the application is ready for live hardware testing.

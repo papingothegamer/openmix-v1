@@ -164,7 +164,7 @@ All top-level state is managed in `App.svelte`:
 | routingState    | Object | Bus routing         |
 | channelFxInsert | Object | FX slot assignments |
 | fxRack          | Object | Global FX parameters|
-| stereoLinks     | Object | Link pairs          |
+| stereoLinks     | Reactive| Derived from OSC cache|
 | mainOutAssign   | Object | LR assignment       |
 | activeRole      | String | 'foh' or null       |
 | activeTab       | String | UI tab              |
@@ -424,3 +424,50 @@ To ensure maximum stability and a 1:1 hardware-accurate experience, the project 
     - **UI Alignment**: Enforced a strict 3-column grid for the dashboard with fixed-width numeric inputs (58px), providing a uniform "racked" appearance across all channel parameters.
 
 **PROJECT SCOPE FINALIZED: DEDICATED BEHRINGER/MIDAS CONTROLLER.**
+
+---
+
+### 14.15 Phase 12: State Synchronization & UI Modernization (2026-03-31)
+
+This phase resolved critical state desynchronization bugs between the main dashboard and the Channel Modal, modernized the onboarding UI, and fixed the Gate/Dynamics section layout.
+
+#### Stereo Link Reactivity
+The `stereoLinks` variable was previously a static local dictionary (`let stereoLinks = {}`) that was only populated during JSON scene imports. As a result, toggling stereo link via the bento grid correctly fired the OSC command and updated `$mixerState.flatOscCache`, but the `isLinked()` helper function that drives the ChannelStrip visual indicators read from the never-updated local dictionary. The fix:
+- **Reactive Derivation**: `stereoLinks` is now a `$:` reactive statement that scans `$mixerState.flatOscCache` for `/config/chlink/{n}` entries. Any change to the cache (toggle, backend push, scene import) immediately propagates to all ChannelStrip components.
+- **Scene Import Alignment**: Removed the manual `stereoLinks = json.uiConfig.stereoLinks` assignment since the scene import already pushes OSC state into the cache, which the reactive derivation picks up automatically.
+
+#### Channel Modal Hydration & Output Section Sync
+The `<ChannelModal>` component had two synchronization failures:
+1. **mainAssign Desync**: The modal was rendered with `mainAssign={mainOutAssign[channelId] !== false}`. Since `mainOutAssign` was initialized as `{}`, every undefined lookup returned `true`, causing the Output section's "MAIN L/R BUS" button to always appear active regardless of actual state. **Fix**: Changed to `mainAssign={getBentoParam(channelId, 'mix/lr', 0) === 1}`, reading from the exact same OSC cache as the bento grid.
+2. **Static Default Params**: The modal initialized all internal parameters (gain, threshold, ratio, etc.) with hardcoded defaults instead of reading from the live mixer state. **Fix**: Added a reactive hydration block that reads all params from `$mixerState.flatOscCache` on every cache change, ensuring the modal always opens with accurate values.
+3. **Bidirectional Sync**: Added optimistic `mixerState.update()` calls to both `toggleMainOut()` and the modal's `on:setMainOut` handler so that toggling from either location immediately updates both UIs.
+
+#### Role Selection & Musician AUX UI Modernization
+The role selection screen had broken layout due to missing CSS definitions for `role-grid` and `btn-text` classes. The fix:
+- **Missing CSS**: Added complete CSS rules for `.role-grid`, `.role-card`, `.role-card-icon`, `.role-arrow`, `.role-select-card`, `.role-select-header`, `.role-select-subtitle`, and `.btn-text`.
+- **Minimalistic Design**: Both screens now use clean borders, subtle hover states with `box-shadow: 0 0 0 1px` ring effects, and properly sized icon containers with color-coded accents (blue for FOH, purple for Musician).
+- **Musician AUX Grid**: Unified the AUX bus selection card styling to match the role selection design language with consistent padding, border radius, and hover transitions.
+
+#### Gate & Dynamics Section Layout Fix
+The Gate and Dynamics sections inside the Channel Modal overflowed the modal viewport, cutting off fader labels at the bottom.
+- **Compact Graph Area**: Reduced `min-height` from `220px` to `160px` and added `max-height: 240px` to prevent the graph panels from consuming all available space.
+- **Shorter Faders**: Reduced `.v-slider-wrapper` height from `160px` to `110px` and `.v-slider` width from `150px` to `100px` for a more compact slider rail.
+- **Tighter Spacing**: Reduced gaps between panels (`1.5rem` → `1rem`), fader groups (`0.75rem` → `0.5rem`), and bottom-fader padding (`1.5rem` → `1rem 1.25rem`).
+- **Result**: All five fader labels (THR/RANGE/ATTACK/HOLD/REL for Gate; THR/RATIO/ATTACK/RELEASE/GAIN for Dynamics) are now fully visible within the modal without scrolling.
+
+#### Graph Component Panel Fix (GateGraph & CompressionGraph)
+Both graph components had their own local `.x32-top-graphs` CSS with `height: 160px; flex-shrink: 0`, which overrode the parent container's flex behavior and caused the "SIDECHAIN FILTER" panel to clip out of view.
+- **Fluid Container**: Replaced fixed `height: 160px` with `flex: 1; min-height: 0` so the graph area fills available space dynamically.
+- **Reduced Spacing**: Tightened `gap` and `padding` from `1rem` to `0.5rem` so all three panels (Curve, Envelope, Sidechain) fit without clipping.
+- **Min-Width Guard**: Added `min-width: 0` on `.x32-graph-box` to prevent flex items from exceeding their container width.
+- **Title Truncation**: Added `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` on `.graph-title` so long titles truncate gracefully.
+- **Knob Resize**: Reduced sidechain `Knob` size from `70` to `52` and removed the `transform: scale(0.85)` hack; the knob now renders at native size with less padding (`0.5rem` instead of `1rem`).
+
+**FILES MODIFIED:**
+- `frontend/src/App.svelte` — Reactive stereoLinks, ChannelModal props, role selection HTML/CSS
+- `frontend/src/lib/components/ChannelModal.svelte` — OSC cache hydration, compact x32-panel CSS
+- `frontend/src/lib/components/ChannelModal/Sections/OutputSection.svelte` — stereoLink/mainAssign binding
+- `frontend/src/lib/components/ChannelModalGraphs/GateGraph.svelte` — Fluid graph layout, smaller knob
+- `frontend/src/lib/components/ChannelModalGraphs/CompressionGraph.svelte` — Fluid graph layout, smaller knob
+
+**ALL SYNC BUGS RESOLVED. GATE/DYNAMICS LAYOUT & GRAPH PANELS FIXED. ROLE SELECTION MODERNIZED.**

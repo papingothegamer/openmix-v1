@@ -96,7 +96,7 @@
 
   <div class="x32-graph-box">
     <div class="graph-title">Side Chain Filter</div>
-    <div class="graph-placeholder flex-center" style="padding: 1rem;">
+    <div class="graph-placeholder flex-center" style="padding: 0.5rem;">
       <div class="sc-knob-wrapper">
         <Knob 
           value={gateScFreq} 
@@ -106,7 +106,7 @@
           color="#3b82f6" 
           interactive={false} 
           isLogarithmic={true} 
-          size={70} 
+          size={52} 
         />
       </div>
     </div>
@@ -116,13 +116,14 @@
 <style>
   .x32-top-graphs {
     display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    height: 160px;
-    flex-shrink: 0;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    flex: 1;
+    min-height: 0;
   }
   .x32-graph-box {
     flex: 1;
+    min-width: 0;
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 6px;
@@ -133,16 +134,20 @@
   .graph-title {
     background: #1e293b;
     color: #cbd5e1;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 700;
-    padding: 0.25rem 0.6rem;
+    padding: 0.2rem 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .graph-placeholder {
     flex: 1;
     position: relative;
+    min-height: 0;
   }
   .flex-center {
     display: flex;
@@ -154,6 +159,6 @@
     height: 100%;
   }
 
-  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; transform: scale(0.85); }
+  .sc-knob-wrapper { display: flex; align-items: center; justify-content: center; }
 </style>
 

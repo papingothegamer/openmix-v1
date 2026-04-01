@@ -18,6 +18,7 @@ OpenMix is a high-performance, browser-accessible digital mixer controller desig
   - **Musician Monitor View**: Touch-optimized, paginated console racks allowing performers zero-risk access strictly to their specific Auxiliary send mixes.
 - **X32-Style Channel Modals**: Deep-dive parameter control utilizing dynamic mathematically interactive SVGs for graphical `Gate` bounds, logarithmic `Compressor` ratios, and flat-tracking `<canvas>` based Parametric EQ filtering constraints.
 - **Scribble Strip Management**: Completely mutable labeling, icon switching (reading directly from hardware `.bmp` conversions), and visual tint assignment persisted gracefully across sessions.
+- **Reactive State Synchronization**: All UI components (mixer rack, bento grid, channel modal) read from a single source of truth (`$mixerState.flatOscCache`), ensuring stereo links, LR routing, and parameter changes are reflected instantly across all views.
 
 ---
 
@@ -25,20 +26,35 @@ OpenMix is a high-performance, browser-accessible digital mixer controller desig
 
 ### Prerequisites
 
-Ensure you have [Node.js](https://nodejs.org/) installed along with a stable sub-network connection bridging the hosting device and the digital rack mixer.
+Ensure you have [Node.js](https://nodejs.org/) (≥ 18 LTS) installed along with a stable sub-network connection bridging the hosting device and the digital rack mixer.
 
 ### Installation
 
 1. Clone or download this OpenMix repository.
-2. Open a terminal and install dependencies:
+2. Install all dependencies:
    ```bash
    npm install
+   cd frontend && npm install && cd ..
    ```
 3. Start the application stack (Backend OSC Hub + Frontend Vite Server):
    ```bash
    npm run dev
    ```
-4. Access the web controller from any device on your local network on `http://localhost:5173` (or your mapped local IP).
+4. Access the web controller from any device on your local network at `http://localhost:5173` (or your mapped local IP).
+
+---
+
+## Recent Changes (v0.12 — 2026-03-31)
+
+### State Synchronization Fixes
+- **Stereo Link Reactivity**: `stereoLinks` is now reactively derived from the OSC cache instead of a static dictionary. Toggling a link instantly updates all ChannelStrip badges, color pairings, and the Channel Modal.
+- **LR Assign Sync**: The Channel Modal Output section now reads `mainAssign` from the same OSC cache as the bento grid, eliminating the desync where the modal showed "ON" while the grid showed "OFF".
+- **Bidirectional Toggle**: Toggling LR Assign from either the bento grid or the modal now optimistically updates the shared cache so both UIs reflect the change immediately.
+
+### UI Modernization
+- **Role Selection**: Clean minimalistic card layout with color-coded icons (blue for FOH, purple for Musician), hover ring effects, and proper grid/flex styling.
+- **Musician AUX Selection**: Unified card design language with consistent spacing, border radius, and transitions.
+- **Gate & Dynamics Layout**: Compact panel arrangement ensuring all graph visualizations (Curve, Envelope, Sidechain Filter) and fader controls fit within the modal without overflow or label clipping.
 
 ---
 
