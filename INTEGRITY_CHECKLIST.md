@@ -83,7 +83,7 @@
 |---|-------|--------|
 | 6.1 | Clicking the CHANNEL tab → selecting a channel shows the bento grid | ☐ |
 | 6.2 | "Stereo Link" card shows "CH N – CH N+1" with OFF label | ☐ |
-| 6.3 | Toggling stereo link changes the bento card state (ON/OFF) | ☐ |
+| 6.3 | Toggling stereo link changes the bento card state (ON/OFF) | ✅ |
 | 6.4 | Switching back to MIXER tab: linked channels show a "ST" badge or color pairing | ☐ |
 | 6.5 | Toggling link off: MIXER tab strips revert to independent appearance | ☐ |
 | 6.6 | Opening the Channel Modal on a linked channel: "LINKED" badge appears in the Output section | ☐ |
@@ -101,8 +101,8 @@
 | 7.5 | Gate card shows: Threshold, Range, Attack, Hold, Release | ☐ |
 | 7.6 | Compressor card shows: Threshold, Ratio, Attack, Release, Makeup | ☐ |
 | 7.7 | Output & Main Assign card shows: Pan, Level, LR Assign toggle | ☐ |
-| 7.8 | LR Assign shows "OFF" text when not assigned | ☐ |
-| 7.9 | Clicking LR Assign toggles it ON (blue background) | ☐ |
+| 7.8 | LR Assign shows "OFF" text when not assigned | ✅ |
+| 7.9 | Clicking LR Assign toggles it ON (blue background) | ✅ |
 | 7.10 | Numeric input fields accept typed values (click → type → blur) | ☐ |
 
 ---
@@ -169,10 +169,10 @@
 | # | Check | Status |
 |---|-------|--------|
 | 12.1 | "L/R BUS ROUTING" header and "MAIN L/R BUS" button visible | ☐ |
-| 12.2 | MAIN L/R BUS button starts OFF (dark) when LR Assign is OFF in bento grid | ☐ |
-| 12.3 | Toggling MAIN L/R BUS to ON shows amber/active styling | ☐ |
-| 12.4 | Closing modal → bento grid LR Assign reflects the new state | ☐ |
-| 12.5 | Toggling LR Assign in bento grid → opening modal → Output section matches | ☐ |
+| 12.2 | MAIN L/R BUS button starts OFF (dark) when LR Assign is OFF in bento grid | ✅ |
+| 12.3 | Toggling MAIN L/R BUS to ON shows amber/active styling | ✅ |
+| 12.4 | Closing modal → bento grid LR Assign reflects the new state | ✅ |
+| 12.5 | Toggling LR Assign in bento grid → opening modal → Output section matches | ✅ |
 | 12.6 | Panorama slider visible with L/R labels and "C" center indicator | ☐ |
 | 12.7 | Level fader visible with dB readout | ☐ |
 | 12.8 | If channel is stereo-linked: "LINKED" badge appears | ☐ |
@@ -210,9 +210,9 @@
 
 | # | Check | Status |
 |---|-------|--------|
-| 15.1 | FX tab renders without errors | ☐ |
-| 15.2 | FX rack slots are visible (up to 4 for XR18, 8 for X32) | ☐ |
-| 15.3 | Clicking a slot shows FX parameters (if assigned) | ☐ |
+| 15.1 | FX tab renders without errors | ✅ |
+| 15.2 | FX rack slots are visible (up to 4 for XR18, 8 for X32) | ✅ |
+| 15.3 | Clicking a slot shows FX parameters (if assigned) | ✅ |
 
 ---
 
@@ -303,15 +303,15 @@
 
 | # | Check | Status |
 |---|-------|--------|
-| 22.1 | Toggle LR Assign ON in bento grid → open Channel Modal Output → button is ON | ☐ |
-| 22.2 | Toggle LR Assign OFF in Channel Modal → close → bento grid shows OFF | ☐ |
-| 22.3 | Toggle Stereo Link ON in bento grid → MIXER tab shows ST badge → Channel Modal shows LINKED | ☐ |
-| 22.4 | Toggle Stereo Link OFF → all three views revert to unlinked state | ☐ |
-| 22.5 | Change fader in MIXER tab → switch to CHANNEL tab → Output section Level fader matches | ☐ |
-| 22.6 | Change gate threshold in Channel Modal → close → Gate bento card shows updated value | ☐ |
-| 22.7 | Change comp ratio in Channel Modal → close → Compressor bento card shows updated value | ☐ |
-| 22.8 | Toggle 48V in bento grid → open Channel Modal Preamp → 48V state matches | ☐ |
-| 22.9 | Apply scribble strip changes → channel labels update across MIXER tab, CHANNEL tab header, and Modal title | ☐ |
+| 22.1 | Toggle LR Assign ON in bento grid → open Channel Modal Output → button is ON | ✅ |
+| 22.2 | Toggle LR Assign OFF in Channel Modal → close → bento grid shows OFF | ✅ |
+| 22.3 | Toggle Stereo Link ON in bento grid → MIXER tab shows ST badge → Channel Modal shows LINKED | ✅ |
+| 22.4 | Toggle Stereo Link OFF → all three views revert to unlinked state | ✅ |
+| 22.5 | Change fader in MIXER tab → switch to CHANNEL tab → Output section Level fader matches | ✅ |
+| 22.6 | Change gate threshold in Channel Modal → close → Gate bento card shows updated value | ✅ |
+| 22.7 | Change comp ratio in Channel Modal → close → Compressor bento card shows updated value | ✅ |
+| 22.8 | Toggle 48V in bento grid → open Channel Modal Preamp → 48V state matches | ✅ |
+| 22.9 | Apply scribble strip changes → channel labels update across MIXER tab, CHANNEL tab header, and Modal title | ✅ |
 
 ---
 

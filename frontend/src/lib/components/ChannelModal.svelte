@@ -35,29 +35,47 @@
   let params = {};
   let hasHydrated = false;
 
+  // Extract numeric value from OSC cache entry (handles plain number, array, or {type, value} objects)
+  function extractVal(raw, fallback) {
+    if (raw === undefined || raw === null) return fallback;
+    let v = raw;
+    if (Array.isArray(v)) v = v[0];
+    if (v !== null && typeof v === 'object' && 'value' in v) v = v.value;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   // Hydrate params from the live mixer state whenever channelId or cache changes
   $: {
     const cache = $mixerState?.flatOscCache || {};
     const ch = chNum;
     params = {
-      gain: cache[`/headamp/${ch}/gain`] ?? 30,
-      phantom: cache[`/headamp/${ch}/phantom`] === 1,
-      phase: cache[`/ch/${ch}/preamp/phase`] === 1,
-      gateThresh: cache[`/ch/${ch}/gate/thr`] ?? -40,
-      gateRange: cache[`/ch/${ch}/gate/range`] ?? 20,
-      gateAttack: cache[`/ch/${ch}/gate/att`] ?? 5,
-      gateHold: cache[`/ch/${ch}/gate/hold`] ?? 50,
-      gateRel: cache[`/ch/${ch}/gate/rel`] ?? 100,
-      compThresh: cache[`/ch/${ch}/dyn/thr`] ?? -20,
-      compRatio: cache[`/ch/${ch}/dyn/ratio`] ?? 4,
-      compAttack: cache[`/ch/${ch}/dyn/att`] ?? 10,
-      compRelease: cache[`/ch/${ch}/dyn/rel`] ?? 100,
-      compMakeup: cache[`/ch/${ch}/dyn/makeup`] ?? 0,
-      outPan: cache[`/ch/${ch}/mix/pan`] ?? 0,
-      outLevel: cache[`/ch/${ch}/mix/fader`] ?? 0,
+      gain: extractVal(cache[`/headamp/${ch}/gain`], 30),
+      phantom: extractVal(cache[`/headamp/${ch}/phantom`], 0) === 1,
+      phase: extractVal(cache[`/ch/${ch}/preamp/phase`], 0) === 1,
+      gateThresh: extractVal(cache[`/ch/${ch}/gate/thr`], -40),
+      gateRange: extractVal(cache[`/ch/${ch}/gate/range`], 20),
+      gateAttack: extractVal(cache[`/ch/${ch}/gate/att`], 5),
+      gateHold: extractVal(cache[`/ch/${ch}/gate/hold`], 50),
+      gateRel: extractVal(cache[`/ch/${ch}/gate/rel`], 100),
+      compThresh: extractVal(cache[`/ch/${ch}/dyn/thr`], -20),
+      compRatio: extractVal(cache[`/ch/${ch}/dyn/ratio`], 4),
+      compAttack: extractVal(cache[`/ch/${ch}/dyn/att`], 10),
+      compRelease: extractVal(cache[`/ch/${ch}/dyn/rel`], 100),
+      compMakeup: extractVal(cache[`/ch/${ch}/dyn/makeup`], 0),
+      outPan: extractVal(cache[`/ch/${ch}/mix/pan`], 0),
+      outLevel: extractVal(cache[`/ch/${ch}/mix/fader`], 0),
       mainAssign: mainAssign,
     };
     hasHydrated = true;
+  }
+
+  // Helper: optimistic cache update so all UIs reflect changes immediately
+  function optimisticUpdate(address, value) {
+    mixerState.update(prev => ({
+      ...prev,
+      flatOscCache: { ...(prev.flatOscCache || {}), [address]: value }
+    }));
   }
 
   // Receives unified update events from the child sections
@@ -65,18 +83,42 @@
     const updatedVals = e.detail;
     params = { ...params, ...updatedVals };
     
-    // OSC Emission mapping logic
-    if ('gain' in updatedVals) setOsc(`/headamp/${chNum}/gain`, params.gain);
-    if ('phantom' in updatedVals) setOsc(`/headamp/${chNum}/phantom`, params.phantom ? 1 : 0);
+    // OSC Emission mapping logic + optimistic cache updates
+    if ('gain' in updatedVals) {
+      setOsc(`/headamp/${chNum}/gain`, params.gain);
+      optimisticUpdate(`/headamp/${chNum}/gain`, params.gain);
+    }
+    if ('phantom' in updatedVals) {
+      setOsc(`/headamp/${chNum}/phantom`, params.phantom ? 1 : 0);
+      optimisticUpdate(`/headamp/${chNum}/phantom`, params.phantom ? 1 : 0);
+    }
     
-    if ('gateThresh' in updatedVals) setOsc(`/ch/${chNum}/gate/thr`, params.gateThresh);
-    if ('gateRange' in updatedVals) setOsc(`/ch/${chNum}/gate/range`, params.gateRange);
+    if ('gateThresh' in updatedVals) {
+      setOsc(`/ch/${chNum}/gate/thr`, params.gateThresh);
+      optimisticUpdate(`/ch/${chNum}/gate/thr`, params.gateThresh);
+    }
+    if ('gateRange' in updatedVals) {
+      setOsc(`/ch/${chNum}/gate/range`, params.gateRange);
+      optimisticUpdate(`/ch/${chNum}/gate/range`, params.gateRange);
+    }
     
-    if ('compThresh' in updatedVals) setOsc(`/ch/${chNum}/dyn/thr`, params.compThresh);
-    if ('compRatio' in updatedVals) setOsc(`/ch/${chNum}/dyn/ratio`, params.compRatio);
+    if ('compThresh' in updatedVals) {
+      setOsc(`/ch/${chNum}/dyn/thr`, params.compThresh);
+      optimisticUpdate(`/ch/${chNum}/dyn/thr`, params.compThresh);
+    }
+    if ('compRatio' in updatedVals) {
+      setOsc(`/ch/${chNum}/dyn/ratio`, params.compRatio);
+      optimisticUpdate(`/ch/${chNum}/dyn/ratio`, params.compRatio);
+    }
     
-    if ('outPan' in updatedVals) setOsc(`/ch/${chNum}/mix/pan`, params.outPan);
-    if ('outLevel' in updatedVals) setOsc(`/ch/${chNum}/mix/fader`, params.outLevel);
+    if ('outPan' in updatedVals) {
+      setOsc(`/ch/${chNum}/mix/pan`, params.outPan);
+      optimisticUpdate(`/ch/${chNum}/mix/pan`, params.outPan);
+    }
+    if ('outLevel' in updatedVals) {
+      setOsc(`/ch/${chNum}/mix/fader`, params.outLevel);
+      optimisticUpdate(`/ch/${chNum}/mix/fader`, params.outLevel);
+    }
     
     if ('mainAssign' in updatedVals) {
       // Bounce the change back up to App.svelte where mainOutAssign is managed

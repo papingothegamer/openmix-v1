@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import {
     socket,
     isConnected,
@@ -70,12 +71,15 @@
   let channelFxInsert = {}; // Keyed by channelId: slotIndex (0-3) or null
   let perChannelFx = {}; // Keyed by channelId: { slots: [...] }
   let rackSlotIndex = 0;
-  let previousChannel = null;
+  let _lastFxChannel = null;
 
-  $: if (selectedChannel) {
+  $: if (selectedChannel && selectedChannel !== _lastFxChannel) {
     // 1. Save current FX rack state for the PREVIOUS channel before switching context
-    if (previousChannel && previousChannel !== selectedChannel) {
-      perChannelFx[previousChannel] = { slots: JSON.parse(JSON.stringify($fxState.slots)) };
+    //    Use get() to read the store WITHOUT creating a reactive dependency.
+    //    This prevents the feedback loop where fxState changes re-trigger this block.
+    if (_lastFxChannel) {
+      const currentFx = get(fxState);
+      perChannelFx[_lastFxChannel] = { slots: JSON.parse(JSON.stringify(currentFx.slots)) };
     }
     
     // 2. Load or Initialize FX rack state for the NEW channel
@@ -85,9 +89,9 @@
       perChannelFx[selectedChannel] = { slots: freshSlots };
     }
     
-    // Hydro $fxState with this channel's context
+    // Hydrate $fxState with this channel's context
     loadFxState(perChannelFx[selectedChannel]);
-    previousChannel = selectedChannel;
+    _lastFxChannel = selectedChannel;
 
     // Standard reactive slot focus logic
     const ins = channelFxInsert[selectedChannel];
@@ -168,7 +172,10 @@
   $: isFirstChannel = (() => {
     if (!selectedChannel || selectedChannel === "main_LR") return true;
     const [type, numStr] = selectedChannel.split("_");
-    return parseInt(numStr, 10) <= 1;
+    if (type === "in" || type === "out" || type === "bus" || type === "dca") {
+      return parseInt(numStr, 10) <= 1;
+    }
+    return true;
   })();
 
   $: isLastChannel = (() => {
@@ -565,7 +572,7 @@
     const cache = $mixerState?.flatOscCache || {};
     const links = {};
     for (let i = 1; i <= (config.inputs || 32); i += 2) {
-      if (cache[`/config/chlink/${i}`] === 1) links[i] = true;
+      if (extractOscValue(cache[`/config/chlink/${i}`], 0) === 1) links[i] = true;
     }
     return links;
   })();
@@ -575,7 +582,7 @@
   function toggleStereoLink(ch) {
     const num = typeof ch === 'string' ? parseInt(ch.replace(/\D/g, '')) : ch;
     const oddCh = num % 2 === 1 ? num : num - 1;
-    const isLinked = $mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1;
+    const isLinked = extractOscValue($mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`], 0) === 1;
     const newState = !isLinked;
     
     // Optimistic cache update for immediate UI feedback
@@ -650,7 +657,7 @@
       address = `/rtn/${num}/mix/lr`;
     }
 
-    const currentVal = $mixerState?.flatOscCache?.[address];
+    const currentVal = extractOscValue($mixerState?.flatOscCache?.[address], 0);
     const isCurrentlyOn = currentVal === 1;
     const newState = !isCurrentlyOn;
     
@@ -769,11 +776,7 @@
   }
 
   function readFlatOscNumber(address, fallback) {
-    const cache = $mixerState?.flatOscCache || {};
-    if (cache[address] === undefined || cache[address] === null) return fallback;
-    const raw = Array.isArray(cache[address]) ? cache[address][0] : cache[address];
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : fallback;
+    return extractOscValue(($mixerState?.flatOscCache || {})[address], fallback);
   }
 
   function readFlatOscBool(address, fallback = false) {
@@ -1123,7 +1126,23 @@
     editingChannel = null;
   }
 
-  function getBentoParam(id, path, fallback) {
+  /**
+   * Extract a robust numeric value from the OSC cache.
+   * The cache can hold values in different formats:
+   *  - Plain number (from optimistic updates): 1
+   *  - Array of OSC args (from backend echo): [{type: 'i', value: 1}]
+   *  - Array of plain values: [1]
+   */
+  function extractOscValue(raw, fallback) {
+    if (raw === undefined || raw === null) return fallback;
+    let v = raw;
+    if (Array.isArray(v)) v = v[0];
+    if (v !== null && typeof v === 'object' && 'value' in v) v = v.value;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function getBentoParam(cache, id, path, fallback) {
     if (!id) return fallback;
     const num = parseInt(id.replace(/\D/g, ''));
     const chStr = String(num).padStart(2, '0');
@@ -1138,9 +1157,7 @@
       address = `/bus/${chStr}/${path}`;
     }
 
-    const val = $mixerState?.flatOscCache?.[address];
-    if (val === undefined || val === null) return fallback;
-    return Array.isArray(val) ? val[0] : val;
+    return extractOscValue(cache?.[address], fallback);
   }
 
   function updateBentoParam(id, path, value) {
@@ -1481,6 +1498,7 @@
                         peakLevel={activeView === "inputs"
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
+                        pan={getBentoParam($mixerState.flatOscCache, sId, 'mix/pan', 0)}
                         eqCurvePath={computeMiniEqPath(sId)}
                         gateThresh={
                           activeView === "inputs"
@@ -1750,7 +1768,7 @@
                         min="0"
                         max="60"
                         step="0.5"
-                        value={getBentoParam(selectedChannel, 'preamp/gain', 30)}
+                        value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/gain', 30)}
                         on:change={(e) => updateBentoParam(selectedChannel, 'preamp/gain', e.currentTarget.value)}
                         on:click|stopPropagation
                       />
@@ -1760,20 +1778,20 @@
                       <span>48V</span>
                       <button 
                         class="bento-toggle-btn" 
-                        class:active-yellow={getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1}
-                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phantom', (getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1 ? 0 : 1))}
+                        class:active-yellow={getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phantom', 0) == 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phantom', (getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phantom', 0) == 1 ? 0 : 1))}
                       >
-                        {getBentoParam(selectedChannel, 'preamp/phantom', 0) === 1 ? 'ON' : 'OFF'}
+                        {getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phantom', 0) == 1 ? 'ON' : 'OFF'}
                       </button>
                     </div>
                     <div class="param-row">
                       <span>Phase</span>
                       <button 
                         class="bento-toggle-btn" 
-                        class:active={getBentoParam(selectedChannel, 'preamp/phase', 0) === 1}
-                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phase', (getBentoParam(selectedChannel, 'preamp/phase', 0) === 1 ? 0 : 1))}
+                        class:active={getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phase', 0) == 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'preamp/phase', (getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phase', 0) == 1 ? 0 : 1))}
                       >
-                        {getBentoParam(selectedChannel, 'preamp/phase', 0) === 1 ? '180°' : '0°'}
+                        {getBentoParam($mixerState.flatOscCache, selectedChannel, 'preamp/phase', 0) == 1 ? '180°' : '0°'}
                       </button>
                     </div>
                   </div>
@@ -1807,7 +1825,7 @@
                       class="bento-input"
                       min="-80"
                       max="0"
-                      value={getBentoParam(selectedChannel, 'gate/thr', -40)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/thr', -40)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/thr', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1820,7 +1838,7 @@
                       class="bento-input"
                       min="0"
                       max="60"
-                      value={getBentoParam(selectedChannel, 'gate/range', 20)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/range', 20)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/range', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1833,7 +1851,7 @@
                       class="bento-input"
                       min="0"
                       max="120"
-                      value={getBentoParam(selectedChannel, 'gate/att', 5)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/att', 5)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/att', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1846,7 +1864,7 @@
                       class="bento-input"
                       min="0"
                       max="500"
-                      value={getBentoParam(selectedChannel, 'gate/hold', 50)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/hold', 50)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/hold', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1883,7 +1901,7 @@
                       class="bento-input"
                       min="-60"
                       max="0"
-                      value={getBentoParam(selectedChannel, 'dyn/thr', -20)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/thr', -20)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/thr', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1897,7 +1915,7 @@
                       min="1"
                       max="20"
                       step="0.1"
-                      value={getBentoParam(selectedChannel, 'dyn/ratio', 4)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/ratio', 4)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/ratio', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1910,7 +1928,7 @@
                       class="bento-input"
                       min="0"
                       max="100"
-                      value={getBentoParam(selectedChannel, 'dyn/att', 10)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/att', 10)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/att', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1923,7 +1941,7 @@
                       class="bento-input"
                       min="5"
                       max="500"
-                      value={getBentoParam(selectedChannel, 'dyn/rel', 100)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/rel', 100)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/rel', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -1937,7 +1955,7 @@
                       min="0"
                       max="24"
                       step="0.5"
-                      value={getBentoParam(selectedChannel, 'dyn/makeup', 0)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/makeup', 0)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/makeup', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2001,7 +2019,7 @@
                       class="bento-input"
                       min="-100"
                       max="100"
-                      value={getBentoParam(selectedChannel, 'mix/pan', 0)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'mix/pan', 0)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'mix/pan', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2015,7 +2033,7 @@
                       min="-90"
                       max="10"
                       step="0.5"
-                      value={getBentoParam(selectedChannel, 'mix/fader', 0)}
+                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'mix/fader', 0)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'mix/fader', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2026,10 +2044,10 @@
                       <span>LR Assign</span>
                       <button 
                         class="bento-toggle-btn" 
-                        class:active={getBentoParam(selectedChannel, 'mix/lr', 0) === 1}
-                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'mix/lr', (getBentoParam(selectedChannel, 'mix/lr', 0) === 1 ? 0 : 1))}
+                        class:active={getBentoParam($mixerState.flatOscCache, selectedChannel, 'mix/lr', 0) == 1}
+                        on:click|stopPropagation={() => updateBentoParam(selectedChannel, 'mix/lr', (getBentoParam($mixerState.flatOscCache, selectedChannel, 'mix/lr', 0) == 1 ? 0 : 1))}
                       >
-                        {getBentoParam(selectedChannel, 'mix/lr', 0) === 1 ? 'ON' : 'OFF'}
+                        {getBentoParam($mixerState.flatOscCache, selectedChannel, 'mix/lr', 0) == 1 ? 'ON' : 'OFF'}
                       </button>
                     </div>
                   {/if}
@@ -2044,11 +2062,11 @@
                       <span>CH {oddCh} ↔ CH {oddCh + 1}</span>
                       <button
                         class="bento-toggle-btn"
-                        class:active={$mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1}
+                        class:active={extractOscValue($mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`], 0) == 1}
                         on:click|stopPropagation={() => toggleStereoLink(oddCh)}
                         aria-label="Toggle Stereo Link"
                       >
-                        {$mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`] === 1 ? 'LINKED' : 'OFF'}
+                        {extractOscValue($mixerState?.flatOscCache?.[`/config/chlink/${oddCh}`], 0) == 1 ? 'LINKED' : 'OFF'}
                       </button>
                     </div>
                     <p class="bento-hint">
@@ -2272,7 +2290,7 @@
         channelName={scribbles[modalChId]?.name}
         initialSection={channelModalState.section}
         scribbles={scribbles}
-        mainAssign={getBentoParam(modalChId, 'mix/lr', 0) === 1}
+        mainAssign={getBentoParam($mixerState.flatOscCache, modalChId, 'mix/lr', 0) === 1}
         stereoLink={modalChId?.startsWith('in_') ? isLinked(modalChNum, stereoLinks) : false}
         on:setMainOut={(e) => {
           const newState = e.detail.state;
