@@ -14,7 +14,7 @@
   $: outputGain = params.outputGain ?? 0;
 
   // VU Meter Logic
-  let needleAngle = 30; // Rest position (Right side for GR)
+  let needleAngle = -60; // Rest position (Far Left for GR)
   let smoothedGR = 1.0;
   let unsubscribe;
 
@@ -32,13 +32,13 @@
         // Smooth the needle movement
         smoothedGR = smoothedGR * 0.7 + currentGR * 0.3;
         
-        // Map 1.0 (No GR) to +30deg (Right)
-        // Map 0.0 (Full GR) to -30deg (Left)
-        needleAngle = (smoothedGR - 0.5) * 60;
+        // Map 1.0 (No GR) to -60deg (Left)
+        // Map 0.0 (Full GR) to +60deg (Right)
+        needleAngle = (0.5 - smoothedGR) * 120;
       } else {
         // Idle breathing if no signal/meters
         const jitter = (Math.random() - 0.5) * 0.4;
-        needleAngle = 30 + jitter;
+        needleAngle = -60 + jitter;
       }
     });
   });
@@ -65,7 +65,7 @@
               <path d="M 15 48 A 40 40 0 0 1 85 48" fill="none" stroke="#facc15" stroke-width="12" />
               
               <!-- Scale -->
-              <g stroke="#000" stroke-width="0.5">
+              <g stroke="#f8fafc" stroke-width="0.6">
                 {#each Array(11) as _, i}
                   {@const angle = -150 + i * 12}
                   {@const r1 = 38}

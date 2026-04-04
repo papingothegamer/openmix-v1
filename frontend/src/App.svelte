@@ -45,61 +45,66 @@
     Speaker
   } from "lucide-svelte";
 
-  let fohMeters = new Array(16).fill(-60);
+  let fohMeters = $state(new Array(16).fill(-60));
 
   // Navigation / Focus State
-  let activeRole = null; // 'foh' or null
-  let activeTab = "mixer"; // 'mixer', 'channel', 'eq', 'sends', 'routing', 'fx'
-  let routingMode = "INPUT"; // 'INPUT', 'USB_RTN', 'USB_SEND', 'ULTRANET', 'AUX_OUT', 'MAIN_OUT', 'AES50_A', 'AES50_B'
-  let routingSubTab = "CH1-16"; 
-  let routingSignalTap = "POST_FADER";
-  let activeView = "inputs"; // 'inputs', 'outputs', 'dcas'
-  let currentPage = 1;
-  let channelsPerPage = 8;
-  let stripsPerPage = 8; // User-configurable visible strips
+  let activeRole = $state(null); // 'foh' or null
+  let activeTab = $state("mixer"); // 'mixer', 'channel', 'eq', 'sends', 'routing', 'fx'
+  let routingMode = $state("INPUT"); // 'INPUT', 'USB_RTN', 'USB_SEND', 'ULTRANET', 'AUX_OUT', 'MAIN_OUT', 'AES50_A', 'AES50_B'
+  let routingSubTab = $state("CH1-16"); 
+  let routingSignalTap = $state("POST_FADER");
+  let activeView = $state("inputs"); // 'inputs', 'outputs', 'dcas'
+  let currentPage = $state(1);
+  let channelsPerPage = $state(8);
+  let stripsPerPage = $state(8); // User-configurable visible strips
 
   // Scribble Strip / Global Selectors
-  let scribbleEditMode = false;
-  let showMonitorModal = false;
-  let editingChannel = null;
-  let selectedChannel = "in_1";
-  $: if (activeRole === 'foh' && !selectedChannel) {
-    selectedChannel = 'in_1';
-  }
+  let scribbleEditMode = $state(false);
+  let showMonitorModal = $state(false);
+  let editingChannel = $state(null);
+  let selectedChannel = $state("in_1");
+  
+  $effect(() => {
+    if (activeRole === 'foh' && !selectedChannel) {
+      selectedChannel = 'in_1';
+    }
+  });
 
   // Musician Monitor Mix — which aux bus they control
-  let musicianAux = null;
-  let musicianTokenLoading = false;
-  let musicianToken = null;
-  let channelFxInsert = {}; // Keyed by channelId: slotIndex (0-3) or null
-  let perChannelFx = {}; // Keyed by channelId: { slots: [...] }
-  let rackSlotIndex = 0;
-  let _lastFxChannel = null;
+  let musicianAux = $state(null);
+  let musicianTokenLoading = $state(false);
+  let musicianToken = $state(null);
+  let channelFxInsert = $state({}); // Keyed by channelId: slotIndex (0-3) or null
+  let perChannelFx = $state({}); // Keyed by channelId: { slots: [...] }
+  let rackSlotIndex = $state(0);
+  let _lastFxChannel = $state(null);
 
-  $: if (selectedChannel && selectedChannel !== _lastFxChannel) {
-    // 1. Save current FX rack state for the PREVIOUS channel before switching context
-    //    Use get() to read the store WITHOUT creating a reactive dependency.
-    //    This prevents the feedback loop where fxState changes re-trigger this block.
-    if (_lastFxChannel) {
-      const currentFx = get(fxState);
-      perChannelFx[_lastFxChannel] = { slots: JSON.parse(JSON.stringify(currentFx.slots)) };
-    }
-    
-    // 2. Load or Initialize FX rack state for the NEW channel
-    if (!perChannelFx[selectedChannel]) {
-      // Initialize fresh 4-slot rack for this channel
-      const freshSlots = Array(4).fill(null).map(() => ({ preset: 'Empty', bypass: false, params: {}, level: 0, type: 'generic' }));
-      perChannelFx[selectedChannel] = { slots: freshSlots };
-    }
-    
-    // Hydrate $fxState with this channel's context
-    loadFxState(perChannelFx[selectedChannel]);
-    _lastFxChannel = selectedChannel;
+  $effect(() => {
+    if (selectedChannel && selectedChannel !== _lastFxChannel) {
+      // 1. Save current FX rack state for the PREVIOUS channel before switching context
+      //    Use get() to read the store WITHOUT creating a reactive dependency.
+      //    This prevents the feedback loop where fxState changes re-trigger this block.
+      if (_lastFxChannel) {
+        const currentFx = get(fxState);
+        perChannelFx[_lastFxChannel] = { slots: JSON.parse(JSON.stringify(currentFx.slots)) };
+      }
+      
+      // 2. Load or Initialize FX rack state for the NEW channel
+      if (!perChannelFx[selectedChannel]) {
+        // Initialize fresh 4-slot rack for this channel
+        const freshSlots = Array(4).fill(null).map(() => ({ preset: 'Empty', bypass: false, params: {}, level: 0, type: 'generic' }));
+        perChannelFx[selectedChannel] = { slots: freshSlots };
+      }
+      
+      // Hydrate $fxState with this channel's context
+      loadFxState(perChannelFx[selectedChannel]);
+      _lastFxChannel = selectedChannel;
 
-    // Standard reactive slot focus logic
-    const ins = channelFxInsert[selectedChannel];
-    if (typeof ins === 'number') rackSlotIndex = ins;
-  }
+      // Standard reactive slot focus logic
+      const ins = channelFxInsert[selectedChannel];
+      if (typeof ins === 'number') rackSlotIndex = ins;
+    }
+  });
 
   function connectAsFoh() {
     // Clear auth token so backend defaults to master_admin_token/FOH.
@@ -202,16 +207,16 @@
   }
 
   // Chevron boundary detection
-  $: isFirstChannel = (() => {
+  const isFirstChannel = $derived.by(() => {
     if (!selectedChannel || selectedChannel === "main_LR") return true;
     const [type, numStr] = selectedChannel.split("_");
     if (type === "in" || type === "out" || type === "bus" || type === "dca") {
       return parseInt(numStr, 10) <= 1;
     }
     return true;
-  })();
+  });
 
-  $: isLastChannel = (() => {
+  const isLastChannel = $derived.by(() => {
     if (!selectedChannel || selectedChannel === "main_LR") return true;
     const [type, numStr] = selectedChannel.split("_");
     const num = parseInt(numStr, 10);
@@ -219,7 +224,7 @@
     if (type === "out" || type === "bus") return num >= config.outputs;
     if (type === "dca") return num >= (config.dcas || 8);
     return true;
-  })();
+  });
 
   let eqComponent;
   let clipboardEq = null;
@@ -254,8 +259,8 @@
     }
   }
 
-  let requiresSetup = localStorage.getItem("openmix_setup") !== "true";
-  let config = {
+  let requiresSetup = $state(localStorage.getItem("openmix_setup") !== "true");
+  let config = $state({
     inputs: 16,
     outputs: 6,
     matrices: 6,
@@ -263,14 +268,14 @@
     fx: 4,
     presetId: "CUSTOM",
     visibleBuses: [1, 2, 3, 4, 5, 6],
-  };
+  });
 
   // Mixer connection config
-  let mixerConfig = JSON.parse(
+  let mixerConfig = $state(JSON.parse(
     localStorage.getItem("openmix_mixer") || '{"ip":"","port":10024}',
-  );
+  ));
 
-  let discoveryStatus = "idle"; // 'idle' | 'scanning' | 'found' | 'notfound'
+  let discoveryStatus = $state("idle"); // 'idle' | 'scanning' | 'found' | 'notfound'
 
   function startDiscovery() {
     discoveryStatus = "scanning";
@@ -287,14 +292,18 @@
   }
 
   // Main LR cannot route to sends/FX/routing
-  $: disabledTabs =
-    selectedChannel === "main_LR" ? ["sends", "fx", "routing"] : [];
-  $: if (disabledTabs.includes(activeTab)) {
-    activeTab = "channel";
-  }
+  const disabledTabs = $derived(
+    selectedChannel === "main_LR" ? ["sends", "fx", "routing"] : []
+  );
+  
+  $effect(() => {
+    if (disabledTabs.includes(activeTab)) {
+      activeTab = "channel";
+    }
+  });
 
   // Watch config outputs to expand visibleBuses if CUSTOM mode expands globally without setting explicit visibility
-  $: {
+  $effect(() => {
     if (
       config.outputs > 0 &&
       (!config.visibleBuses || config.visibleBuses.length === 0)
@@ -304,22 +313,22 @@
         (_, i) => i + 1,
       );
     }
-  }
+  });
 
   // Scribble state array tracking
-  let scribbles = {};
+  let scribbles = $state({});
 
   // Phase 13 Parametric Nodes Reference
 
   // Per-channel EQ state persistence (survives tab switches)
-  let channelEqState = {};
+  let channelEqState = $state({});
 
   // Sends tab: per-channel per-bus state { level: 0-1, prePost: 0|1 }
-  let sendsState = {};
+  let sendsState = $state({});
 
   // Routing Architecture Phase 3.8 (X-AIR Layout)
   // Routing Architecture Phase 4 (OSC Integration)
-  let routingState = {}; // { [dest_id]: src_id }
+  let routingState = $state({}); // { [dest_id]: src_id }
 
   /**
    * Maps UI Route IDs to Hardware OSC Paths and Values
@@ -405,7 +414,7 @@
   }
 
   // 3. Reactive Hydration (Mixer -> Frontend UI)
-  $: {
+  $effect(() => {
     const cache = $mixerState.flatOscCache;
     const configInputs = config.inputs || 16;
     const isXR = config.presetId === 'XR18';
@@ -469,10 +478,10 @@
 
       routingState = { ...routingState };
     }
-  }
+  });
   
   // Available Modes based on Preset
-  $: availableRoutingModes = (() => {
+  const availableRoutingModes = $derived.by(() => {
     const preset = MixerPresets[config.presetId] || MixerPresets.CUSTOM;
     const modes = [
       { id: 'INPUT', name: 'Input', icon: Mic2 },
@@ -487,17 +496,17 @@
       modes.push({ id: 'AES50_B', name: 'AES50-B', icon: Network });
     }
     return modes;
-  })();
+  });
 
   // Sync SubTab when Mode changes
-  $: {
+  $effect(() => {
     if (routingMode === 'INPUT') routingSubTab = "CH1-16";
     if (routingMode === 'USB_RTN') routingSubTab = "CH1-16";
     if (routingMode === 'USB_SEND') routingSubTab = "CH1-16";
-  }
+  });
 
   // Reactive Matrix Sets (Phase 3.8.2: DEST=ROWS, SRC=COLS)
-  $: patchSet = (() => {
+  const patchSet = $derived.by(() => {
     const preset = MixerPresets[config.presetId] || MixerPresets.CUSTOM;
     let srcs = [];
     let dests = [];
@@ -598,17 +607,17 @@
     }
 
     return { srcs, dests, subTabs };
-  })();
+  });
 
   // Stereo link state: derived reactively from OSC cache so rack always reflects link state
-  $: stereoLinks = (() => {
+  const stereoLinks = $derived.by(() => {
     const cache = $mixerState?.flatOscCache || {};
     const links = {};
     for (let i = 1; i <= (config.inputs || 32); i += 2) {
       if (extractOscValue(cache[`/config/chlink/${i}`], 0) === 1) links[i] = true;
     }
     return links;
-  })();
+  });
   let outputLinks = {}; 
 
 
@@ -646,8 +655,8 @@
   let mainOutAssign = {}; // { 'in_1': true, 'in_2': true, ... }
   
   // Monitor / Phones Source
-  let monitorSource = "LR"; // Fallback
-  $: soloSources = (() => {
+  let monitorSource = $state("LR"); // Fallback
+  const soloSources = $derived.by(() => {
     const base = [
       ...(config.monitorSources || [
         { id: "LR", name: "Main LR" },
@@ -670,7 +679,7 @@
     }
     
     return [...base, ...busSources];
-  })();
+  });
 
   function setMonitorSource(src) {
     monitorSource = src;
@@ -737,7 +746,7 @@
     }
   }
 
-  $: currentEqBands = channelEqState[selectedChannel] || null;
+  const currentEqBands = $derived(channelEqState[selectedChannel] || null);
 
   // Mini EQ path computation for ChannelStrip previews
   function computeMiniEqPath(chId, w = 100, h = 40) {
@@ -832,8 +841,9 @@
   });
 
   // Hydrate sendsState from backend mixerState.flatOscCache when available
-  $: if ($mixerState && $mixerState.flatOscCache) {
-    const cache = $mixerState.flatOscCache || {};
+  $effect(() => {
+    if ($mixerState && $mixerState.flatOscCache) {
+      const cache = $mixerState.flatOscCache || {};
     
     // Completely rebuild updated state to clear any ghost elements from old sessions
     const updated = {}; 
@@ -902,7 +912,8 @@
       }
     });
     sendsState = updated;
-  }
+    }
+  });
 
   function completeSetup() {
     scribbles = {};
@@ -1077,57 +1088,74 @@
   }
 
   // Derived channels layout arrays depending on user config
-  $: presetHardLinks =
+  const presetHardLinks = $derived(
     config.presetId !== "CUSTOM"
       ? MixerPresets[config.presetId]?.hardLinks?.inputs || {}
-      : {};
-  $: inputChannels = Array.from(
-    { length: config.inputs },
-    (_, i) => i + 1,
-  ).filter((ch) => !presetHardLinks[ch]?.hidden);
-  $: outputChannels = [
+      : {}
+  );
+  
+  const inputChannels = $derived(
+    Array.from(
+      { length: config.inputs },
+      (_, i) => i + 1,
+    ).filter((ch) => !presetHardLinks[ch]?.hidden)
+  );
+  
+  const outputChannels = $derived([
     ...(config.visibleBuses || Array.from({ length: config.outputs }, (_, i) => i + 1)),
     ...Array.from({ length: config.matrices || 0 }, (_, i) => -(i + 1))
-  ];
-  $: dcaChannels = Array.from(
-    { length: (config.dcas || 0) + (config.muteGroups || 0) }, 
-    (_, i) => i + 1
+  ]);
+  
+  const dcaChannels = $derived(
+    Array.from(
+      { length: (config.dcas || 0) + (config.muteGroups || 0) }, 
+      (_, i) => i + 1
+    )
   );
-  $: fxChannels = Array.from({ length: config.fx || 4 }, (_, i) => i + 1);
-  $: currentChannels =
+  
+  const fxChannels = $derived(Array.from({ length: config.fx || 4 }, (_, i) => i + 1));
+  
+  const currentChannels = $derived(
     activeView === "inputs"
       ? inputChannels
       : activeView === "outputs"
         ? outputChannels
-        : dcaChannels;
-  $: fohMeters = $rawMeters || [];
+        : dcaChannels
+  );
+
+  $effect(() => {
+    fohMeters = $rawMeters || [];
+  });
   
   // Fluid Pagination Logic
-  let containerWidth = 0;
+  let containerWidth = $state(0);
   const STRIP_WIDTH = 90;
   // Standard layout size
 
-  $: channelsPerPage = stripsPerPage;
-  $: totalPages = Math.ceil(
-    currentChannels.length / Math.max(1, channelsPerPage),
-  );
-  $: displayedChannels = currentChannels.slice(
-    currentPage * channelsPerPage,
-    (currentPage + 1) * channelsPerPage,
-  );
+  const totalPages = $derived(Math.ceil(
+    currentChannels.length / Math.max(1, stripsPerPage),
+  ));
+  
+  const displayedChannels = $derived(currentChannels.slice(
+    currentPage * stripsPerPage,
+    (currentPage + 1) * stripsPerPage,
+  ));
+  
   // Musician pagination
-  let musicianPage = 0;
-  $: musicianTotalPages = Math.ceil(
+  let musicianPage = $state(0);
+  const musicianTotalPages = $derived(Math.ceil(
     inputChannels.length / Math.max(1, stripsPerPage),
-  );
-  $: musicianDisplayedChannels = inputChannels.slice(
+  ));
+  
+  const musicianDisplayedChannels = $derived(inputChannels.slice(
     musicianPage * stripsPerPage,
     (musicianPage + 1) * stripsPerPage,
-  );
+  ));
+  
   // Watch for layer switches to reset bank
-  $: {
+  $effect(() => {
     if (activeView) currentPage = 0;
-  }
+  });
 
   function applyPreset() {
     if (config.presetId !== "CUSTOM") {

@@ -8,6 +8,7 @@
   import Utility from './EffectModules/Utility.svelte';
   import FairComp from './EffectModules/FairComp.svelte';
   import Pitch from './EffectModules/Pitch.svelte';
+  import Enhancer from './EffectModules/Enhancer.svelte';
   import SmallSlider from './EffectControls/SmallSlider.svelte';
   import Toggle from './EffectControls/Toggle.svelte';
   import { setSlot } from '../fxState.js';
@@ -55,6 +56,7 @@
     if (type === 'compressor' || type === 'limiter' || type === 'deesser') return Compression;
     if (type === 'flanger') return Flanger;
     if (type === 'phaser') return Phaser;
+    if (type === 'enhancer') return Enhancer;
     return Utility;
   }
 
