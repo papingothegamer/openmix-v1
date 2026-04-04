@@ -1,117 +1,92 @@
 <script>
   import Knob from '../EffectControls/Knob.svelte';
-  import { setOsc } from '../../socket.js';
+  export let params = {};
+  export let preset = '';
+  export let onParamChange = (key, value) => {};
+  export let slotIndex = 0;
 
-  export let index = 0;
-  export let params = {
-    type: 'Stereo Delay',
-    time: 0.5,
-    feedback: 0.4,
-    mix: 0.5
-  };
-
-  const delayTypes = ['Stereo Delay', 'Pingpong', 'Tape Echo', 'Analog'];
-
-  function updateParam(key, value) {
-    params[key] = value;
-    emitOsc();
-  }
-
-  function emitOsc() {
-    const rtnNum = index + 1;
-    setOsc(`/rtn/${rtnNum}/fxtype`, delayTypeToIndex(params.type));
-    setOsc(`/rtn/${rtnNum}/fxparam/1`, params.time);
-    setOsc(`/rtn/${rtnNum}/fxparam/2`, params.feedback);
-    setOsc(`/rtn/${rtnNum}/fxparam/3`, params.mix);
-  }
-
-  function delayTypeToIndex(type) {
-    const idx = delayTypes.indexOf(type);
-    return idx >= 0 ? idx : 0;
-  }
+  $: time = params.time ?? 50;
+  $: feedback = params.feedback ?? 40;
+  $: damping = params.damping ?? 30;
+  $: mix = params.mix ?? 50;
 </script>
 
 <div class="effect-module delay">
-  <div class="module-header">
-    <h3>DELAY</h3>
-    <select value={params.type} on:change={(e) => updateParam('type', e.currentTarget.value)} class="preset-select">
-      {#each delayTypes as type}
-        <option value={type}>{type}</option>
-      {/each}
-    </select>
-  </div>
+  <div class="rack-metal">
+    <div class="fx-header">
+      <span class="brand">OPENMIX</span>
+      <span class="model">{preset.toUpperCase()}</span>
+    </div>
 
-  <div class="controls-grid">
-    <Knob
-      label="Time"
-      value={params.time}
-      min={0}
-      max={100}
-      onChange={(v) => updateParam('time', v)}
-    />
-    <Knob
-      label="Feedback"
-      value={params.feedback}
-      min={0}
-      max={100}
-      onChange={(v) => updateParam('feedback', v)}
-    />
-    <Knob
-      label="Mix"
-      value={params.mix}
-      min={0}
-      max={100}
-      onChange={(v) => updateParam('mix', v)}
-    />
+    <div class="knobs-row">
+      <Knob
+        label="Time"
+        value={time}
+        min={0}
+        max={100}
+        onChange={(v) => onParamChange('time', v)}
+      />
+      <Knob
+        label="Feedback"
+        value={feedback}
+        min={0}
+        max={100}
+        onChange={(v) => onParamChange('feedback', v)}
+      />
+      <Knob
+        label="Damping"
+        value={damping}
+        min={0}
+        max={100}
+        onChange={(v) => onParamChange('damping', v)}
+      />
+      <Knob
+        label="Mix"
+        value={mix}
+        min={0}
+        max={100}
+        onChange={(v) => onParamChange('mix', v)}
+      />
+    </div>
   </div>
 </div>
 
 <style>
   .effect-module {
-    background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-    padding: 1.5rem;
+    width: 100%;
+    height: 100%;
+    display: flex;
+  }
+
+  .rack-metal {
+    flex: 1;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid #334155;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
   }
 
-  .module-header {
+  .fx-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #2a2a2a;
+    align-items: baseline;
+    gap: 1rem;
     padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 1rem;
   }
+  .brand { color: #64748b; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+  .model { color: #22d3ee; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
 
-  .module-header h3 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #e0e0e0;
-  }
-
-  .preset-select {
-    background: #2a2a2a;
-    color: #00CED1;
-    border: 1px solid #3a3a3a;
-    border-radius: 4px;
-    padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-
-  .preset-select:hover {
-    border-color: #00CED1;
-  }
-
-  .controls-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 0.5rem;
+  .knobs-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 1.5rem;
+    align-items: center;
+    flex: 1;
   }
 </style>

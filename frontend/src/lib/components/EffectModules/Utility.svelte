@@ -1,46 +1,28 @@
 <script>
-  import Knob from '../EffectControls/Knob.svelte';
+  import GraphicEQ from './GraphicEQ.svelte';
   export let params = {};
-  export let preset = '';
+  export let preset = 'Empty';
   export let onParamChange = (key, value) => {};
   export let slotIndex = 0;
-
-  $: rate = params.rate ?? 30;
-  $: depth = params.depth ?? 60;
-  $: mix = params.mix ?? 50;
 </script>
 
-<div class="effect-module chorus">
-  <div class="rack-metal">
-    <div class="fx-header">
-      <span class="brand">OPENMIX</span>
-      <span class="model">{preset.toUpperCase()}</span>
+<div class="effect-module utility">
+  {#if preset === 'Graphic EQ'}
+    <GraphicEQ {params} {onParamChange} {preset} {slotIndex} />
+  {:else}
+    <div class="rack-metal">
+      <div class="fx-header">
+        <span class="brand">OPENMIX</span>
+        <span class="model">UTILITY MODULE</span>
+      </div>
+      <div class="utility-empty">
+        <div class="empty-msg">
+          <h3>SYSTEM UTILITY</h3>
+          <p>No active effect processor loaded in this slot.</p>
+        </div>
+      </div>
     </div>
-
-    <div class="knobs-row">
-      <Knob
-        label="Rate"
-        value={rate}
-        min={0}
-        max={100}
-        onChange={(v) => onParamChange('rate', v)}
-      />
-      <Knob
-        label="Depth"
-        value={depth}
-        min={0}
-        max={100}
-        onChange={(v) => onParamChange('depth', v)}
-      />
-      <Knob
-        label="Mix"
-        value={mix}
-        min={0}
-        max={100}
-        onChange={(v) => onParamChange('mix', v)}
-      />
-    </div>
-  </div>
+  {/if}
 </div>
 
 <style>
@@ -74,11 +56,13 @@
   .brand { color: #64748b; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
   .model { color: #22d3ee; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
 
-  .knobs-row {
-    display: flex;
-    justify-content: space-around;
-    gap: 1.5rem;
-    align-items: center;
+  .utility-empty {
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .empty-msg { text-align: center; }
+  .empty-msg h3 { color: #475569; letter-spacing: 4px; font-size: 1rem; margin-bottom: 0.5rem; }
+  .empty-msg p { color: #334155; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
 </style>

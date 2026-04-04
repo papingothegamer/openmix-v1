@@ -42,8 +42,10 @@
 | 3.4 | AUX cards have purple-accent hover state | ☐ |
 | 3.5 | "← Back to Roles" link visible and functional | ☐ |
 | 3.6 | Clicking an AUX card enters the Musician mix view | ☐ |
-| 3.7 | Musician view shows fader strips for channels with the selected AUX master fader on the right | ☐ |
-| 3.8 | "Exit Monitor Mix" button returns to role selection | ☐ |
+| 3.7 | AUX selection grid is centered in the viewport (place-items: center) | ☐ |
+| 3.8 | AUX cards display custom names from scribble strips if available | ☐ |
+| 3.9 | Musician view shows fader strips for channels with the selected AUX master fader on the right | ☐ |
+| 3.10| "Exit Monitor Mix" button returns to role selection | ☐ |
 
 ---
 
@@ -101,9 +103,8 @@
 | 7.5 | Gate card shows: Threshold, Range, Attack, Hold, Release | ☐ |
 | 7.6 | Compressor card shows: Threshold, Ratio, Attack, Release, Makeup | ☐ |
 | 7.7 | Output & Main Assign card shows: Pan, Level, LR Assign toggle | ☐ |
-| 7.8 | LR Assign shows "OFF" text when not assigned | ✅ |
-| 7.9 | Clicking LR Assign toggles it ON (blue background) | ✅ |
 | 7.10 | Numeric input fields accept typed values (click → type → blur) | ☐ |
+| 7.11 | Clicking the EQ Preview card redirects to the EQ tab | ☐ |
 
 ---
 
@@ -212,7 +213,21 @@
 |---|-------|--------|
 | 15.1 | FX tab renders without errors | ✅ |
 | 15.2 | FX rack slots are visible (up to 4 for XR18, 8 for X32) | ✅ |
-| 15.3 | Clicking a slot shows FX parameters (if assigned) | ✅ |
+| 15.3 | Slot header shows "FX SLOT N" and the category (Utility/Reverb/etc.) | ☐ |
+| 15.4 | "Category" dropdown shows Reverb, Delay, Chorus, Utility, etc. | ☐ |
+| 15.5 | "Effect Type" dropdown updates correctly when Category changes | ☐ |
+| 15.6 | Switching from Hall Reverb to Vintage Room (same category) resets the visualizer | ☐ |
+| 15.7 | Adjusting FX knobs (e.g., Decay) updates the UI and emits OSC | ☐ |
+| 15.8 | Bypass toggle in the slot header turns red and dims the module | ☐ |
+| 15.9 | Level slider in the sidebar updates the Return value in real-time | ☐ |
+| 15.10| Graphic EQ: Double-clicking a fader resets it to 0dB | ☐ |
+| 15.11| Graphic EQ: Dragging across faders (Glide) draws a curve accurately | ☐ |
+| 15.12| Graphic EQ: Curve preview canvas matches the fader positions | ☐ |
+| 15.13| Fair Comp: VU needle "jitters" or moves slightly (simulated breathing) | ☐ |
+| 15.14| Fair Comp: Controls (Input, Thr, Time, Output) use cyan and blue themes | ☐ |
+| 15.15| Pitch Shifter: Blue LCD display highlights "STEREO PITCH" | ☐ |
+| 15.16| Pitch Shifter: LCD display shows numeric semi-tone value (e.g., +2 SEMI) | ☐ |
+| 15.17| Header Standard: All FX headers show "OPENMIX" brand and model name | ☐ |
 
 ---
 
@@ -245,6 +260,8 @@
 | 17.9 | After import: scribble strips, fader positions, and EQ reflect imported data | ☐ |
 | 17.10 | Fullscreen toggle button works | ☐ |
 | 17.11 | "Exit Role" button returns to the role selection screen | ☐ |
+| 17.12 | Loading an incompatible scene file (e.g. X32 on XR18) triggers a warning toast | ☐ |
+| 17.13 | Loading a compatible scene file restores state successfully | ☐ |
 
 ---
 

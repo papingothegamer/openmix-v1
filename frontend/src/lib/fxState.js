@@ -56,7 +56,8 @@ export function setSlot(idx, patch) {
     const presetChanged = nextPreset !== current.preset;
     const presetMeta = getPresetMeta(nextPreset);
     
-    const rtnNum = idx + 1; // OSC paths use 1-based indexing (e.g., /rtn/1/)
+    const rtnNum = idx + 1; 
+    const rtnNumStr = rtnNum.toString().padStart(2, '0'); // Helper for 2-digit indexing common in OSC
 
     const merged = {
       ...current,
@@ -66,41 +67,47 @@ export function setSlot(idx, patch) {
 
     merged.type = patch && patch.type ? patch.type : (presetChanged ? presetMeta.type : current.type);
 
-    // 1. Handle Preset Change
+    // 1. Handle Bypass (Mute/On)
+    if (patch && patch.hasOwnProperty('bypass')) {
+      setOsc(`/rtn/${rtnNumStr}/mix/on`, patch.bypass ? 0 : 1);
+    }
+
+    // 2. Handle Level (Fader)
+    if (patch && patch.hasOwnProperty('level')) {
+      // Convert 0-100 to 0.0-1.0 for OSC faders
+      setOsc(`/rtn/${rtnNumStr}/mix/fader`, patch.level / 100);
+    }
+
+    // 3. Handle Preset Change
     if (presetChanged) {
-      // Apply the default parameters for the new preset
       merged.params = {
         ...cloneParams(presetMeta.defaultParams),
         ...cloneParams(patch?.params)
       };
       
-      // Tell the mixer to change the effect type
-      setOsc(`/rtn/${rtnNum}/fxtype`, presetMeta.oscTypeIndex);
+      setOsc(`/rtn/${rtnNumStr}/fxtype`, presetMeta.oscTypeIndex);
       
-      // Blast all default parameter values to the mixer so it matches the UI
       Object.entries(merged.params).forEach(([key, value]) => {
         const oscSuffix = presetMeta.oscMap[key];
         if (oscSuffix && typeof value === 'number') {
-          setOsc(`/rtn/${rtnNum}${oscSuffix}`, value);
+          setOsc(`/rtn/${rtnNumStr}${oscSuffix}`, value);
         }
       });
     } 
-    // 2. Handle Parameter Adjustments (e.g. user moving a knob)
-    else {
+    // 4. Handle Parameter Adjustments
+    else if (patch?.params) {
       merged.params = {
         ...cloneParams(current.params),
-        ...cloneParams(patch?.params)
+        ...cloneParams(patch.params)
       };
 
-      // If specific parameters were changed, send only those to the mixer
-      if (patch?.params) {
-        Object.entries(patch.params).forEach(([key, value]) => {
-          const oscSuffix = presetMeta.oscMap[key];
-          if (oscSuffix && current.params[key] !== value) {
-            setOsc(`/rtn/${rtnNum}${oscSuffix}`, value);
-          }
-        });
-      }
+      Object.entries(patch.params).forEach(([key, value]) => {
+        const oscSuffix = presetMeta.oscMap[key];
+        // Safeguard: only send if key exists in map and value is a number
+        if (oscSuffix && typeof value === 'number' && current.params[key] !== value) {
+          setOsc(`/rtn/${rtnNumStr}${oscSuffix}`, value);
+        }
+      });
     }
 
     slots[idx] = normalizeSlot(merged);

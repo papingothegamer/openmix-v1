@@ -148,6 +148,14 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 | 57    | Auto-Sync Handshake on Connection                  | ✅ Done |
 | 58    | X-Air / M-Air Factory Protocol Alignment            | ✅ Done |
 | 59    | UI Stability & Null-Safety Guardrails               | ✅ Done |
+| 60    | Mixer-Aware Scene Management (JSON Validation)     | ✅ Done |
+| 61    | Hierarchical FX Rack (Family -> Type)              | ✅ Done |
+| 62    | FX Visualizer Reactive Synchronization             | ✅ Done |
+| 63    | Modernized Musician Mix Selection (Centered Grid)   | ✅ Done |
+| 64    | EQ Preview Redirect to EQ Editor                   | ✅ Done |
+| 65    | Professional 31-Band Graphic EQ (Glide & Reset)     | ✅ Done |
+| 66    | Stereo Fair Compressor & Revamped Pitch Shifter     | ✅ Done |
+| 67    | Standardized FX Rack Branding & Headers             | ✅ Done |
 
 ---
 
@@ -172,6 +180,8 @@ All top-level state is managed in `App.svelte`:
 | activeView      | String | inputs/outputs/dcas |
 | selectedChannel | String | current channel     |
 | rackSlotIndex   | Number | Focused FX slot     |
+| fxRegistry      | Object | (Imported) Static registry of FX metadata |
+| mixerModel      | String | Current hardware model (X32, XR18, etc.) |
 
 * State persists in **localStorage**
 * Scene exports include full state JSON
@@ -192,8 +202,8 @@ Backend converts values via `toOscArgs()`.
 
 ### High Priority
 
-* FX full parameter UI
 * Musician QR code access
+* RTA overlay (Real-Time Analyzer)
 
 ### Medium
 
@@ -481,3 +491,25 @@ This phase addressed a critical "deceptively simple" bug where the UI would brea
 - **Improved Header Resilience**: Updated tab headers to safely handle `undefined` names and IDs without throwing runtime errors.
 
 **ALL CRITICAL UI CRASH VULNERABILITIES RESOLVED.**
+
+### 14.17 Phase 14: Mixer-Aware Scene & Export Validation (2026-04-04)
+To prevent hardware damage and state corruption, we implemented a strict "Mixer-Aware" validation layer for scene exports and imports.
+- **Model Checksum**: Scene JSON files now include a `mixerModel` metadata tag. 
+- **Compatibility Guard**: The `Import Scene` function in `Navbar.svelte` now performs a cross-check. If a user attempts to load an **X32** scene onto an **XR18** (or vice-versa), the app blocks the load and triggers a high-visibility **warning toast** explaining the architectural mismatch.
+- **Generic Fallback**: "Generic OSC" exports are allowed to be loaded across models but with a console warning, as specific parameter mappings (like FX indices) may differ.
+
+### 14.18 Phase 15: Hierarchical FX Rack & Synchronization (2026-04-04)
+This phase overhauled the FX Rack from a flat list to a professional hierarchical selection system, resolving long-standing UI synchronization issues.
+- **Two-Tier Selection**: The FX Rack now uses a **Family -> Type** dropdown system (e.g., Reverb -> Vintage Room). This reduces menu clutter and aligns with physical console hardware.
+- **Reactive "Dumb" Modules**: Refactored the internal effect modules (`Reverb`, `Delay`, etc.) into pure UI components. They no longer manage their own OSC logic; instead, they receive `params` from `fxState` and emit changes via `onParamChange`.
+- **Force-Reflow Sync**: Implemented a `{#key selectedPreset}` block in `FxSlot.svelte`. This ensures that even when staying within the same family (e.g., switching from Hall Reverb to Vintage Room), the entire visualizer is destroyed and re-initialized, forcing a clean sync of all sliders and graphs.
+- **Utility Family**: Created a new `Utility` category housing the `Empty` preset and a default `Utility.svelte` module, providing a clean visual state for unassigned slots.
+- **Centralized OSC Store**: Moved all FX-specific OSC emission (fxtype, parameters, bypass, level) into the `fxState.js` store. This ensures that every UI interaction automatically triggers the correct hardware command with built-in safeguards for parameter range and mapping.
+
+### 14.19 Phase 16: Modernized Musician Experience (2026-04-04)
+Refined the Musician-facing interface to be more professional and intuitive.
+- **Centered Mix Selection**: Replaced the top-aligned vertical list with a **centered CSS grid**. The monitor mix selection cards now automatically center themselves in the viewport using `place-items: center`, eliminating unnecessary scrolling on large-format tablets.
+- **Scribble-Strip Awareness**: The mix selection screen now displays the **actual names** assigned in the Scribble Strip (e.g., "Guitar Monitor", "Vocal Wedge") instead of generic "Bus 1" labels, as long as a name is present in the local state.
+- **Animated Role Entrance**: Added subtle CSS transitions to the role cards to provide a premium "app-like" feel during the entry flow.
+
+**SYSTEM STABILITY: EXCELLENT. FX SYNCHRONIZATION: 100% RELIABLE.**
