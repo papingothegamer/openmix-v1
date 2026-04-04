@@ -2,9 +2,9 @@
   import Knob from '../EffectControls/Knob.svelte';
 
   export let params = {};
-  export let preset = 'Stereo Enhancer';
+  export let preset = 'Stereo Enhancer'; // used by dynamic loader
   export let onParamChange = (key, value) => {};
-  export let slotIndex = 0;
+  export let slotIndex = 0; // used by dynamic loader
 
   $: highGain = params.highGain ?? 50;
   $: lowGain = params.lowGain ?? 30;

@@ -4,9 +4,9 @@
   import Knob from '../EffectControls/Knob.svelte';
 
   export let params = {};
-  export let preset = 'Stereo Fair Comp';
+  export let preset = 'Stereo Fair Comp'; // used by dynamic loader
   export let onParamChange = (key, value) => {};
-  export let slotIndex = 0; // 0-3 for XR18 FX slots
+  export let slotIndex = 0; // used by dynamic loader
 
   $: threshold = params.threshold ?? -20;
   $: time = params.time ?? 50;

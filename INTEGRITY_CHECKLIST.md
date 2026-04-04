@@ -223,11 +223,13 @@
 | 15.10| Graphic EQ: Double-clicking a fader resets it to 0dB | ☐ |
 | 15.11| Graphic EQ: Dragging across faders (Glide) draws a curve accurately | ☐ |
 | 15.12| Graphic EQ: Curve preview canvas matches the fader positions | ☐ |
-| 15.13| Fair Comp: VU needle "jitters" or moves slightly (simulated breathing) | ☐ |
-| 15.14| Fair Comp: Controls (Input, Thr, Time, Output) use cyan and blue themes | ☐ |
-| 15.15| Pitch Shifter: Blue LCD display highlights "STEREO PITCH" | ☐ |
-| 15.16| Pitch Shifter: LCD display shows numeric semi-tone value (e.g., +2 SEMI) | ☐ |
-| 15.17| Header Standard: All FX headers show "OPENMIX" brand and model name | ☐ |
+| 15.13| Fair Comp: VU needle rests at **0 (far left)** and moves **right** on compression | ☐ |
+| 15.14| Fair Comp: Meter face is yellow with white scale ticks and black text | ☐ |
+| 15.15| Fair Comp: Controls (Input, Thr, Time, Output) use standard black dials | ☐ |
+| 15.16| Stereo Enhancer: Pink-themed UI loads with Low/High/Mix controls | ☐ |
+| 15.17| Stereo Enhancer: "Phase Compensated Excitation" shimmer visualizer is active | ☐ |
+| 15.18| Pitch Shifter: LCD display shows numeric semi-tone value (e.g., +2 SEMI) | ☐ |
+| 15.19| Header Standard: All FX headers show "OPENMIX" brand and model name | ☐ |
 
 ---
 
@@ -286,8 +288,8 @@
 | 19.1 | At 1280×720: all tabs render without horizontal overflow | ☐ |
 | 19.2 | At 1920×1080: layout fills space proportionally | ☐ |
 | 19.3 | Portrait orientation on mobile: "Rotate Your Device" message appears | ☐ |
-| 19.4 | Sidebar hides automatically on CHANNEL and ROUTING tabs | ☐ |
-| 19.5 | Sidebar is visible on MIXER, EQ, SENDS, FX tabs | ☐ |
+| 19.4 | Sidebar hides automatically on CHANNEL, ROUTING, and FX tabs | ☐ |
+| 19.5 | Sidebar is visible on MIXER, EQ, and SENDS tabs | ☐ |
 
 ---
 

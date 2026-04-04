@@ -1,9 +1,9 @@
 <script>
   import GraphicEQ from './GraphicEQ.svelte';
   export let params = {};
-  export let preset = 'Empty';
+  export let preset = 'Empty'; // used by dynamic loader
   export let onParamChange = (key, value) => {};
-  export let slotIndex = 0;
+  export let slotIndex = 0; // used by dynamic loader
 </script>
 
 <div class="effect-module utility">
