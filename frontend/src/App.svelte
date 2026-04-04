@@ -2004,19 +2004,11 @@
                   role="button"
                   tabindex="0"
                   on:click={() => {
-                    channelModalState = {
-                      isOpen: true,
-                      channelId: selectedChannel,
-                      section: "eq",
-                    };
+                    activeTab = "eq";
                   }}
                   on:keydown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      channelModalState = {
-                        isOpen: true,
-                        channelId: selectedChannel,
-                        section: "eq",
-                      };
+                      activeTab = "eq";
                     }
                   }}
                 >
