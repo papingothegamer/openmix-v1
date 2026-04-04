@@ -169,6 +169,21 @@
     connectAsFoh();
   }
 
+  // ── Hardware Lifecycle: Meters ──────────────────────────────────────────────
+  $effect(() => {
+    if (activeTab === 'fx' && $isConnected) {
+      // Start/Refresh the high-speed meter stream from mixer
+      const meterPulse = setInterval(() => {
+        setOsc('/meters', ['/meters/5', 0, 0, 1]); // Request FX meters
+      }, 7000); 
+      
+      // Immediate pulse
+      setOsc('/meters', ['/meters/5', 0, 0, 1]);
+
+      return () => clearInterval(meterPulse);
+    }
+  });
+
   // Channel Modal State
   let channelModalState = { isOpen: false, channelId: "", section: "preamp" };
 

@@ -68,7 +68,8 @@
               <g stroke="#000" stroke-width="0.5">
                 {#each Array(11) as _, i}
                   {@const angle = -150 + i * 12}
-                  {@const r1 = 38, r2 = 42}
+                  {@const r1 = 38}
+                  {@const r2 = 42}
                   <line x1={50 + r1 * Math.cos(angle * Math.PI / 180)} 
                         y1={50 + r1 * Math.sin(angle * Math.PI / 180)} 
                         x2={50 + r2 * Math.cos(angle * Math.PI / 180)} 

@@ -32,7 +32,6 @@
           value={semi} 
           min={-12} 
           max={12} 
-          step={1}
           onChange={(v) => onParamChange('semi', Math.round(v))} 
         />
         <Knob 
