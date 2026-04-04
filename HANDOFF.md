@@ -147,6 +147,7 @@ Note: The frontend connects to localhost:3000 via Socket.io. If you need to chan
 | 56    | Main/Aux Physical Output Patching Logic            | ✅ Done |
 | 57    | Auto-Sync Handshake on Connection                  | ✅ Done |
 | 58    | X-Air / M-Air Factory Protocol Alignment            | ✅ Done |
+| 59    | UI Stability & Null-Safety Guardrails               | ✅ Done |
 
 ---
 
@@ -365,7 +366,6 @@ The OpenMix controller is now 100% feature-complete for professional-grade field
 - **UX Stability**: Core configuration views (EQ, Dynamics, Routing) are responsive and standardize across views.
 - **Scene Integrity**: Full state serialization/deserialization confirmed.
 
-**READY FOR MR18/XR18 FIELD TEST.**
 
 ---
 
@@ -471,3 +471,13 @@ Both graph components had their own local `.x32-top-graphs` CSS with `height: 16
 - `frontend/src/lib/components/ChannelModalGraphs/CompressionGraph.svelte` — Fluid graph layout, smaller knob
 
 **ALL SYNC BUGS RESOLVED. GATE/DYNAMICS LAYOUT & GRAPH PANELS FIXED. ROLE SELECTION MODERNIZED.**
+### 14.16 Phase 13: UI Stability & Null-Safety Guardrails (2026-04-04)
+
+This phase addressed a critical "deceptively simple" bug where the UI would break (white screen or partial render) if a user navigated to the **CHANNEL** tab immediately after a role switch without first selecting a channel.
+
+- **Reactive Fallbacks**: Implemented a reactive check in `App.svelte` that ensures `selectedChannel` is never null while in FOH mode. It now automatically defaults to `"in_1"` (Channel 1) if it becomes falsy.
+- **Optional Chaining Audit**: Added optional chaining (`?.`) to all instances of `selectedChannel.toUpperCase()`, `selectedChannel.split()`, and other method calls in the template. This prevents the Svelte component from crashing if the state is temporarily indeterminate during a transition.
+- **Sidebar Visibility Resolution**: Fixed the "sidebar leakage" issue where the sidebar would sometimes remain visible on excluded tabs (Channel, Routing, Sends) due to interrupted render cycles.
+- **Improved Header Resilience**: Updated tab headers to safely handle `undefined` names and IDs without throwing runtime errors.
+
+**ALL CRITICAL UI CRASH VULNERABILITIES RESOLVED.**

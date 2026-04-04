@@ -313,6 +313,17 @@
 | 22.8 | Toggle 48V in bento grid → open Channel Modal Preamp → 48V state matches | ✅ |
 | 22.9 | Apply scribble strip changes → channel labels update across MIXER tab, CHANNEL tab header, and Modal title | ✅ |
 
+## 23. Stability & Edge Cases (Role Switching)
+
+| # | Check | Status |
+|---|-------|--------|
+| 23.1 | Enter Musician role → Return to Role Selection → Enter FOH role → **Immediately** click CHANNEL tab | ☐ |
+| 23.2 | Verify 23.1 does NOT cause a white screen or crash | ☐ |
+| 23.3 | Verify 23.1 shows Channel 1 (in_1) by default in the bento grid | ☐ |
+| 23.4 | Verify Sidebar is HIDDEN during 23.1 | ☐ |
+| 23.5 | Rapidly click between MIXER and CHANNEL tabs → UI remains responsive and stable | ☐ |
+| 23.6 | Click EQ tab → verify "EQ EDITOR: VIEW" (or name) shows correctly without crashing | ☐ |
+
 ---
 
 **SIGN-OFF**: If all checks pass ✅, the application is ready for live hardware testing.

@@ -63,6 +63,9 @@
   let showMonitorModal = false;
   let editingChannel = null;
   let selectedChannel = "in_1";
+  $: if (activeRole === 'foh' && !selectedChannel) {
+    selectedChannel = 'in_1';
+  }
 
   // Musician Monitor Mix — which aux bus they control
   let musicianAux = null;
@@ -199,14 +202,14 @@
   }
 
   function handleCopyEq() {
-    if (eqComponent) {
+    if (eqComponent && selectedChannel) {
       clipboardEq = eqComponent.copyEq();
       showToast(`EQ Copied from ${selectedChannel.toUpperCase()}`, "success");
     }
   }
 
   function handlePasteEq() {
-    if (eqComponent && clipboardEq) {
+    if (eqComponent && clipboardEq && selectedChannel) {
       eqComponent.pasteEq(clipboardEq);
       showToast(`EQ Pasted to ${selectedChannel.toUpperCase()}`, "success");
     } else if (!clipboardEq) {
@@ -1648,7 +1651,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  EQ EDITOR: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
+                  EQ EDITOR: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase() || ''}</span>
                 </h2>
                 <div class="nav-group">
                   <button
@@ -1680,7 +1683,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  CHANNEL: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase()}</span>
+                  CHANNEL: <span class="ch-name">{scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase() || ''}</span>
                 </h2>
                 <div class="nav-group">
                   <button
@@ -2053,7 +2056,7 @@
                   {/if}
                 </div>
 
-                {#if selectedChannel.startsWith("in_")}
+                {#if selectedChannel?.startsWith("in_")}
                   {@const chNum = parseInt(selectedChannel.replace("in_", ""))}
                   {@const oddCh = chNum % 2 === 1 ? chNum : chNum - 1}
                   <div class="bento-card">
@@ -2105,7 +2108,7 @@
                               const current = channelFxInsert[selectedChannel];
                               channelFxInsert[selectedChannel] = (current === i) ? null : i;
                               channelFxInsert = {...channelFxInsert};
-                              showToast(`FX Slot ${i+1} ${channelFxInsert[selectedChannel] === i ? 'Inserted' : 'Removed'} for ${selectedChannel.toUpperCase()}`, "info");
+                              showToast(`FX Slot ${i+1} ${channelFxInsert[selectedChannel] === i ? 'Inserted' : 'Removed'} for ${selectedChannel?.toUpperCase() || 'UNKNOWN'}`, "info");
                             }}
                           >
                           {i+1}
@@ -2222,7 +2225,7 @@
             <div class="macro-view fade-in">
               <div class="view-header-inline">
                 <h2 class="title-left">
-                  {activeTab.toUpperCase()} VIEW: {scribbles[selectedChannel]?.name || selectedChannel.toUpperCase()}
+                  {activeTab?.toUpperCase() || 'VIEW'} VIEW: {scribbles[selectedChannel]?.name || selectedChannel?.toUpperCase() || ''}
                 </h2>
                 <div class="nav-group">
                   <button
