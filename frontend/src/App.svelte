@@ -146,6 +146,21 @@
     });
   }
 
+  function isGenericName(name, id) {
+    if (!name) return true;
+    const n = id.split('_').pop();
+    const normalized = name.toLowerCase().trim();
+    const genericPatterns = [
+      `bus ${n}`, `bus${n}`,
+      `mixbus ${n}`, `mixbus${n}`,
+      `aux ${n}`, `aux${n}`,
+      `output ${n}`, `output${n}`,
+      `matrix ${n}`, `matrix${n}`,
+      `ch ${n}`, `ch${n}`
+    ];
+    return genericPatterns.some(p => normalized === p.toLowerCase());
+  }
+
   function exitRole() {
     activeRole = null;
     musicianAux = null;
@@ -900,6 +915,7 @@
     }
     const sceneLayout = {
       name: "OpenMix Export",
+      mixerType: config.presetId,
       timestamp: Date.now(),
       state: { flatOscCache: $mixerState.flatOscCache },
       uiConfig: {
@@ -940,6 +956,17 @@
             : new TextDecoder().decode(result);
         const json = JSON.parse(text);
         
+        // MIXER AWARENESS: Prevent cross-loading incompatible architectures
+        const filePreset = json.mixerType || (json.uiConfig?.config?.presetId);
+        const currentPreset = config.presetId;
+
+        if (filePreset && filePreset !== currentPreset) {
+          const fileLabel = MixerPresets[filePreset]?.name || filePreset;
+          const currentLabel = MixerPresets[currentPreset]?.name || currentPreset;
+          showToast(`Incompatible Scene: This file is for ${fileLabel}, but you are connected to ${currentLabel}.`, "error");
+          return;
+        }
+
         // WIPE EXISTING STATE TO PREVENT LEFTOVERS FROM PREVIOUS SESSIONS
         scribbles = {};
         channelEqState = {};
@@ -1357,26 +1384,32 @@
     {:else}
       {#if activeRole === "musician" && !musicianAux}
         <div class="setup-overlay fade-in">
-          <div class="setup-card role-select-card">
+          <div class="setup-card role-select-card musician-select-card">
             <div class="role-select-header">
               <div class="setup-logo">OPENMIX</div>
               <p class="role-select-subtitle">Select your monitor bus</p>
             </div>
             <div class="aux-grid">
               {#each config.visibleBuses || [] as auxNum}
+                {@const id = `bus_${auxNum}`}
+                {@const name = scribbles[id]?.name}
                 <button
                   class="aux-btn"
                   disabled={musicianTokenLoading}
                   on:click={() => requestMusicianTokenAndConnect(auxNum)}
                 >
-                  <span class="aux-num">AUX {auxNum}</span>
-                  <span class="aux-label">{scribbles[`bus_${auxNum}`]?.name || `Output ${auxNum}`}</span>
+                  <span class="aux-num">{auxNum.toString().padStart(2, '0')}</span>
+                  {#if !isGenericName(name, id)}
+                    <span class="aux-name-label">{name}</span>
+                  {/if}
                 </button>
               {/each}
             </div>
-            <button class="btn-text" on:click={exitRole}>
-              <ArrowLeft size={14} /> Back to Roles
-            </button>
+            <div class="selection-footer">
+              <button class="btn-text secondary" on:click={exitRole}>
+                <ArrowLeft size={14} /> Back to Roles
+              </button>
+            </div>
           </div>
         </div>
       {:else}
@@ -2780,36 +2813,58 @@
 
   .aux-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 0.75rem;
     width: 100%;
+    margin-top: 1rem;
+    justify-items: center;
   }
   .aux-btn {
     background: #09090b;
     border: 1px solid #27272a;
-    border-radius: 8px;
-    padding: 1.25rem 0.75rem;
+    border-radius: 10px;
+    padding: 1.5rem 0.5rem;
     text-align: center;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     color: inherit;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.5rem;
     align-items: center;
+    width: 100%;
+    max-width: 120px;
+    position: relative;
+    overflow: hidden;
+  }
+  .aux-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.2s;
   }
   .aux-btn:hover {
     border-color: #8b5cf6;
-    background: #111113;
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+    background: #18181b;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.2);
   }
-  .aux-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .aux-btn:hover::after { opacity: 1; }
+  .aux-btn:active { transform: translateY(0); }
+  .aux-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .aux-num { 
+    font-family: 'JetBrains Mono', monospace; 
+    font-size: 1.5rem; 
+    font-weight: 800; 
+    color: #fafafa;
+    line-height: 1;
+    letter-spacing: -0.02em;
   }
-  .aux-num {
-    font-size: 1.1rem;
-    font-weight: 800;
+  .aux-name-label {
+    font-size: 0.7rem;
+    font-weight: 600;
     color: #8b5cf6;
   }
   .aux-label {
@@ -3137,8 +3192,27 @@
   /* Role Selection Card */
   .role-select-card {
     max-width: 520px;
-    gap: 2rem;
+    gap: 1.5rem;
     padding: 2.5rem 2.5rem 2rem;
+    transition: max-width 0.3s ease;
+  }
+  .role-select-card.musician-select-card {
+    max-width: 1024px;
+    width: 95vw;
+  }
+  .selection-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #27272a;
+  }
+  .btn-text.secondary {
+    color: #71717a;
+    background: transparent;
+  }
+  .btn-text.secondary:hover {
+    color: #fafafa;
   }
   .role-select-header {
     display: flex;
