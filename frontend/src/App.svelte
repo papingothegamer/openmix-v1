@@ -2314,7 +2314,7 @@
             </div>
           {/if}
 
-          {#if activeRole === "foh" && !["channel", "routing", "sends"].includes(activeTab)}
+          {#if activeRole === "foh" && !["channel", "routing", "sends", "fx"].includes(activeTab)}
             <Sidebar
               {config}
               {activeTab}
