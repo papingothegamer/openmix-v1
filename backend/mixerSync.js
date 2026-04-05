@@ -123,6 +123,7 @@ class MixerConnection extends EventEmitter {
         this.isSyncing = true;
         this.syncProgress = 0;
         this.emit('syncStatus', { active: true, progress: 0 });
+        this.drawTerminalProgressBar(0);
 
         const template = this.getSyncTemplate(mixerType);
         let totalRequests = 0;
@@ -159,6 +160,7 @@ class MixerConnection extends EventEmitter {
             this.syncProgress = Math.round(((i + 1) / totalRequests) * 100);
             if (i % 20 === 0) {
                 this.emit('syncStatus', { active: true, progress: this.syncProgress });
+                this.drawTerminalProgressBar(this.syncProgress);
             }
             // Add a tiny delay to not swamp the network stack (handled by sendOsc throttle, but explicit help)
             if (i % 50 === 0) await new Promise(r => setTimeout(r, 50));
@@ -167,8 +169,22 @@ class MixerConnection extends EventEmitter {
         this.isSyncing = false;
         this.hasSyncedOnce = true;
         this.emit('syncStatus', { active: false, progress: 100 });
+        this.drawTerminalProgressBar(100);
         this.emit('syncComplete', { mixerType });
         console.log(`[MixerSync] Deep sync complete.`);
+    }
+
+    drawTerminalProgressBar(progress) {
+        const width = 40;
+        const fillSpaces = Math.round((progress / 100) * width);
+        const emptySpaces = width - fillSpaces;
+        const bar = '█'.repeat(fillSpaces) + '░'.repeat(emptySpaces);
+        
+        process.stdout.write(`\r[MixerSync] Syncing: [${bar}] ${progress}%`);
+        
+        if (progress >= 100) {
+            process.stdout.write('\n');
+        }
     }
 
     connect() {
