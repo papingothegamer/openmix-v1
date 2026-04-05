@@ -357,4 +357,31 @@
 
 ---
 
+## 25. Live Hardware Testing (Saturday Field Test)
+
+| # | Check | Status |
+|---|-------|--------|
+| 25.1 | Auto-Discovery successfully locates the hardware (XR18/X32) over the church Wi-Fi subnet | ☐ |
+| 25.2 | The UI automatically switches the `presetId` (Hardware Model) based on the discovered OSC fingerprint | ☐ |
+| 25.3 | Check the running terminal `npm run dev`: The simulated progress bar `[████░░░░] 50%` draws flawlessly inline | ☐ |
+| 25.4 | The frontend connection modal completes 100% of the sync without stalling at 18% | ☐ |
+| 25.5 | Moving a physical fader on the hardware console corresponds with near zero-latency to the Web UI | ☐ |
+| 25.6 | Changing an EQ band on the Web UI alters the digital parametric EQ on the master bus | ☐ |
+| 25.7 | Console `/xremote` keep-alive maintains connection beyond 10 seconds without dropping packets | ☐ |
+
+---
+
+## 26. Expected Problems & Failsafes
+
+**Problem: Church network blocks UDP Broadcast packets (Auto-Discovery fails).**
+- **Failsafe Added**: You can completely bypass Auto-Discovery. Find the mixer IP from the physical router or X-Touch terminal. Enter it manually in the Setup Wizard. The recently added code failsafe ensures the frontend forces the backend to use the correct `presetId` directly, completely avoiding backend fallback loops.
+
+**Problem: Slow Wi-Fi causing sync loops to drop.**
+- **Failsafe Present**: The OSC sync engine utilizes a `throttleDelayMs = 5` inside `flushQueue()` preventing the backend from flooding the router's UDP buffer. If the interface stalls, the Svelte 5 loop is no longer cyclic and will properly catch up to whatever payload arrives.
+
+**Problem: The mixer configuration is slightly strange (P16 routing vs traditional Aux).**
+- **Failsafe Present**: The Svelte 5 frontend utilizes strict optional chaining (`?.`) when hydrating values from `$mixerState.flatOscCache`. If the XR18 returns unexpected addresses, Svelte will safely default those UI elements to undefined or "off" rather than throwing white-screen crashes.
+
+---
+
 **SIGN-OFF**: If all checks pass ✅, the application is ready for live hardware testing.

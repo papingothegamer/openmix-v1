@@ -289,6 +289,17 @@
         mixerConfig.ip = result.ip;
         mixerConfig.port = result.port;
         mixerConfig = { ...mixerConfig };
+        
+        const nameToUpper = (result.name || '').toUpperCase();
+        if (nameToUpper.includes('XR') || nameToUpper.includes('MR') || nameToUpper.includes('X18') || nameToUpper.includes('M18')) {
+          config.presetId = 'XR18';
+        } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
+          config.presetId = 'X32RACK';
+        } else if (nameToUpper.includes('WING')) {
+          config.presetId = 'WING';
+        }
+        config = { ...config };
+
         discoveryStatus = "found";
       } else {
         discoveryStatus = "notfound";
@@ -949,6 +960,7 @@
       socket.emit("configureMixer", {
         ip: mixerConfig.ip,
         port: mixerConfig.port || 10024,
+        presetId: config.presetId
       });
     }
     requiresSetup = false;
