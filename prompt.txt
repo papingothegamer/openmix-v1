@@ -1,0 +1,626 @@
+i got these when trying to connect to the mixer:
+
+Unchecked runtime.lastError: The message port closed before a response was received.Understand this error
+CatchErrors.js:6 updated at
+    at $effect (App.svelte:487:8)
+console.error @ CatchErrors.js:6
+infinite_loop_guard @ runtime-KfQBkUm3.js?v=d19b14da:2146
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1801
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864
+#process @ runtime-KfQBkUm3.js?v=d19b14da:1864Understand this error
+runtime-KfQBkUm3.js?v=d19b14da:392 Uncaught Svelte error: effect_update_depth_exceeded
+Maximum update depth exceeded. This typically indicates that an effect reads and writes the same piece of state
+https://svelte.dev/e/effect_update_depth_exceeded
+
+browser log:
+
+
+SES Removing unpermitted intrinsics
+client:841 WebSocket connection to 'ws://localhost:5173/?token=3VYcOeHKwmPW' failed: 
+createConnection @ client:841Understand this error
+(index):1 Unchecked runtime.lastError: The message port closed before a response was received.Understand this error
+browser-polyfill.js:1 Returning a Promise is the preferred way to send a reply from an onMessage/onMessageExternal listener, as the sendResponse will be removed from the specs (See https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/runtime/onMessage) Error
+    at n (chrome-extension://dacdinoicboceafielngnmjjplncljhj/lib/js/browser-polyfill.js:1:8113)
+n @ browser-polyfill.js:1Understand this warning
+:3000/socket.io/?EIO=4&transport=polling&t=lr1hd0xu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+client:851 WebSocket connection to 'ws://localhost:5173/?token=3VYcOeHKwmPW' failed: 
+createConnection @ client:851Understand this error
+CatchErrors.js:6 [vite] failed to connect to websocket.
+your current setup:
+  (browser) localhost:5173/ <--[HTTP]--> localhost:5173/ (server)
+  (browser) localhost:5173/ <--[WebSocket (failing)]--> localhost:5173/ (server)
+Check out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .
+console.error @ CatchErrors.js:6Understand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lr5b93gu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lr896kiw:1  Failed to load resource: net::ERR_NETWORK_CHANGEDUnderstand this error
+inpage.js:1 Uncaught (in promise) i: Failed to connect to MetaMask
+    at Object.connect (inpage.js:1:63533)
+    at async s (inpage.js:1:61036)Caused by: Error: MetaMask extension not found
+    at inpage.js:1:57986Understand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lrc76vib:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lrjzg1z2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+6(index):1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lrq5iqsy:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lrwbrqg3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ls2hybwg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ls8o6krw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lsebcjp1:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lsjydsfp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lspnadqp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lsvtis6u:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lt1zqjxu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lt88v6u4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ltec6uvm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ltkie04x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ltqomjez:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ltwutave:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lu3121bk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lu97g0au:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lufdhmg3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lulkw82t:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lurpyoop:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=luxw6fwg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lv42emev:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lva8otte:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lvgeu5gz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lvml2g6v:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lvssw1fj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lvyxibrr:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lw53pohe:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lwb9ybr7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lwhg605z:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lwnmewzp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lwtsm04o:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lwzyuis1:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lx651rbq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lxcb9s9o:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lxihj3wk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lxonpyc3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lxutxx65:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ly106hpl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ly78lifn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lydcmj1u:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lyjittxo:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lypp27fj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lyvvaccu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lz21i3mg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lz87qoem:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lzedycs0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lzkk6nkn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lzqqef2y:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=lzwwlr7x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m032tlvv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m0992h7m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m0ffasrf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m0llikaf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m0rrqs69:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m0xxy67m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1445wtw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1aaehlr:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1ggmm26:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1mmuaqz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1st24ua:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m1yzam31:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m255hnq0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m2bbq5ga:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m2hhy2jv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m2no5zai:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m2tud7ue:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m300mt3s:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m368630x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m3cd2vbf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m3ijazjj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m3opicgx:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m3uvqopn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m411x7ca:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m4786uok:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m4deds6e:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m4jklxgp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m4pqt7k6:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m4vx1tjz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m5239qhk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m589i97s:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m5efq6x7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m5klyxsq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m5qs62i0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m5wye91f:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m634m36o:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m69au634:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m6fh2uzj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m6ln9vrv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m6rtisnk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m6xzqfcn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m745yqxl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m7ac6pi0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m7gidy5r:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m7mom879:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m7suudy4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m7z12fzr:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m8579mgk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m8bdi8hu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m8hjqk4u:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m8npy9bp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m8wf8kqu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m935jxjw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m99xaywm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m9g9p7x2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m9mfyhq9:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m9sm6vao:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=m9ysdhei:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ma4ym6li:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mab4uxln:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mahb1v89:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=manhaqrz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=matnh7qw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=maztqg72:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mb5zyyn0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mbc67pv9:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mbicf4r5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mboili3w:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mbuouytl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mc0v1edf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mc71osf6:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mcd7h657:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mcjdq99h:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mcpjyrlk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mcvq6md4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=md1wd8k9:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=md82lw7k:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mde8u014:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mdkf2qft:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mdqlae3s:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mdwrieu2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=me2xqj03:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=me93y9kj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mefa6jzl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=melgefr1:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mermmjms:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mexsty0f:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mf3z1f1g:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mfa5a38j:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mfgbikyl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mfmhrvul:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mfsnxs8e:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mfyu5lie:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mg50d1v4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mgb6lvga:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mghctgrp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mgnj28e8:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mgtpbap2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mgzwxvhn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mh61qlkp:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mhc7yoyf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mhie6yap:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mhoko70p:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mhuqmb2v:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mi0xgrq3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mi732cs4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mid9apx0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mijfia68:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=miplqyyf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mivryjaf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mj1y6ddr:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mj84e0z5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mjeamjch:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mjkgup9m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mjqn2o84:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mjwt9lih:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mk309yfw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mk95rkm3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mkfbxfxf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mkli6atf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mkroexcw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mkxum9xf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ml40v6hn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mla7101l:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mlgdalqw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mlmjh53d:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mlspqlcw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mlyvydaz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mm525zn9:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mmb8dyqr:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mmhellob:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mmnku2ju:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mmtr3vs5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mmzxar4c:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mn63iuvh:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mnc9q2tg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mnifyphk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mnom719l:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mnuseiy4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mo0ylbdn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mo74tcqa:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=modb1f0s:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mojh9ixu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mopni9dx:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=movtpvqs:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mp1zykia:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mp866196:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mpecd6bx:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mpkip0ek:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mpqoupcm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mpwv1xry:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mq31af3r:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mq97ifcy:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mqfdphai:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mqljyqly:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mqrq56qq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mqxwdzek:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mr42lmjf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mra8tjz0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mrgf2v3y:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mrmlatci:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mrsrindx:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mryxqmg7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ms53yyxm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=msba6kww:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mshgecdj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=msnmlru3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mstsux22:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mszz27fu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mt67psvs:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mtcbi8v9:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mtihp07n:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mtonywaq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mtuu7vr7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mu2jy9m0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mu8q6tr3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=muewd3re:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mul2m3dx:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mur8u7io:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=muxf2lol:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mv3lafew:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mv9ri6as:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mvfxqk92:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mvm3yo5e:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mvsa5zfj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mvygedf0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mw4ml304:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mwatovrw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mwgz2ka1:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mwn5acy3:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mwtbikc0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mwzhr9we:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mx5ny0sn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mxbu7vo5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mxi0djqk:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mxo6m3ic:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mxucu3uh:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=my0j2dt7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=my6papf0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mycvij7j:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=myj1qzda:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=myp7y9zq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=myve626u:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mz1kesa7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mz7qm6rb:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mzdwu0i2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mzk31sqo:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mzq9agnt:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=mzwfirtl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n02lqp9m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n08rxr93:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n0ey6bjf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n0l4easg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n0ram45t:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n0xguaxs:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n13n27sb:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n19taygy:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n1fzilsg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n1m7wxqy:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n1sbxfsi:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n1yi6rzv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n24od5yo:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n2aulwuw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n2h0umbz:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n2n73ont:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n2td9v6t:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n2zjh1fn:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n35pqq1e:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n3bvyemg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n3i25k9x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n3o8ev9m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n3uemtza:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n40kuonb:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n46r2agl:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n4cxag5a:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n4j3hmhu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n4p9q0af:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n4vfyz2v:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n51m5nmm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n57sdxp8:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n5dym1vf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n5k4t11a:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n5qb10mw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n5wh9rb4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n62nic97:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n68tp484:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n6ezyu9n:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n6l66h67:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n6rce58y:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n6ximr3h:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n73ouo6s:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n79v1ge5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n7g19lqf:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n7m7hcot:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n7sdqmkj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n7yjx0ln:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n84q5jlu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n8aweeve:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n8h2lumd:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n8n8u4sv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n8tf1lwm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n8zla6lq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n95rjz1g:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n9bxqyzh:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n9i3yehb:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n9oa6gko:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=n9uged3x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=na0mmbu7:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=na6sto40:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nacz2abh:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=naj5aaio:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=napbiai0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=navhpy0e:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nb1nyew0:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nb7u57ar:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nbe0e1i8:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nbk6m92q:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nbqct0st:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nbwj29om:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nc2pa2su:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nc8vie8l:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ncf1p8py:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ncl7xqcu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ncre6zla:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ncxke1ai:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nd3qlxfm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nd9wuhbu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ndg32b8r:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ndm99fpd:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ndsfhxmm:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ndylpxol:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ne4ryceq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=neay6jni:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=neh4ewag:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nenangth:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=netgu9r2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nezn2dwb:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nf5takfv:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nfbzhmvc:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nfi5q91x:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nfobxrkt:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nfui6rn5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ng0oezpg:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ng6umr1m:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ngd0u1x5:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ngj72t8h:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ngpd9rvc:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ngvjig5t:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nh1pq9et:1  Failed to load resource: net::ERR_NETWORK_CHANGEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nh7469xj:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nhdae9w2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nhjgmwwq:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nhpmu88b:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nhvt2jtd:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ni1z9xqe:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=ni85iogu:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nifva3v2:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nim1idc7:1  Failed to load resource: net::ERR_NETWORK_CHANGEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nirfy975:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nix321lw:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nj2q1op4:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+:3000/socket.io/?EIO=4&transport=polling&t=nj96ut3g:1  Failed to load resource: net::ERR_CONNECTION_REFUSEDUnderstand this error
+CatchErrors.js:6 updated at
+    at $effect (App.svelte:487:8)
+console.error @ CatchErrors.js:6Understand this error
+runtime-KfQBkUm3.js?v=d19b14da:1196 Uncaught Svelte error: effect_update_depth_exceeded
+Maximum update depth exceeded. This typically indicates that an effect reads and writes the same piece of state
+https://svelte.dev/e/effect_update_depth_exceededUnderstand this error
+
+(index):1 Unchecked runtime.lastError: The message port closed before a response was received.
+
+App.svelte:855 updated at
+    at $effect (App.svelte:487:8)
+XMLHttpRequest.send		
+(anonymous)	@	App.svelte:855
+runtime-KfQBkUm3.js?v=d19b14da:392 Uncaught Svelte error: effect_update_depth_exceeded
+Maximum update depth exceeded. This typically indicates that an effect reads and writes the same piece of state
+https://svelte.dev/e/effect_update_depth_exceeded
+XMLHttpRequest.send		
+(anonymous)	@	App.svelte:855

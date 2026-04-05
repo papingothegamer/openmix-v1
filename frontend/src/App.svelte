@@ -485,8 +485,6 @@
           routingState[i === 1 ? 'sock_main_l' : 'sock_main_r'] = srcId;
         }
       }
-
-      routingState = { ...routingState };
     }
   });
   

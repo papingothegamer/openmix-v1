@@ -47,7 +47,7 @@ function discoverMixer(timeoutMs = 4000) {
                 const match = str.match(/X(?:R\d+|\d{2}|AIR|18|32|M32|WING)[^\0]*/i);
                 if (match) name = match[0].replace(/\0/g, '').trim();
             } catch (_) {}
-            done({ ip: remote.address, port: MIXER_OSC_PORT, name });
+            done({ ip: remote.address, port: remote.port, name });
         });
 
         socket.on('error', (err) => {
@@ -57,13 +57,15 @@ function discoverMixer(timeoutMs = 4000) {
 
         socket.bind(() => {
             socket.setBroadcast(true);
-            socket.send(XINFO_PACKET, 0, XINFO_PACKET.length, MIXER_OSC_PORT, '255.255.255.255', (err) => {
-                if (err) {
-                    console.error('[Discovery] Broadcast send failed:', err.message);
-                    done(null);
-                } else {
-                    console.log('[Discovery] /xinfo broadcast sent — waiting for reply...');
-                }
+            const ports = [10024, 10023, 2223];
+            ports.forEach(port => {
+                socket.send(XINFO_PACKET, 0, XINFO_PACKET.length, port, '255.255.255.255', (err) => {
+                    if (err) {
+                        console.error(`[Discovery] Broadcast send to ${port} failed:`, err.message);
+                    } else {
+                        console.log(`[Discovery] /xinfo broadcast sent to ${port} — waiting for reply...`);
+                    }
+                });
             });
         });
 
