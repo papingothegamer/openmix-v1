@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { blur } from "svelte/transition";
   import { get } from "svelte/store";
   import {
     socket,
@@ -7,8 +8,10 @@
     mixerState,
     rawMeters,
     meterLight,
+    syncProgress,
     setOsc,
     setSocketAuthToken,
+    forceRefresh,
   } from "./lib/socket";
   import ChannelStrip from "./lib/components/ChannelStrip.svelte";
   import Navbar from "./lib/components/Navbar.svelte";
@@ -190,7 +193,7 @@
   });
 
   // Channel Modal State
-  let channelModalState = { isOpen: false, channelId: "", section: "preamp" };
+  let channelModalState = $state({ isOpen: false, channelId: "", section: "preamp" });
 
   function cycleChannel(dir) {
     if (!selectedChannel || selectedChannel === "main_LR") return;
@@ -226,7 +229,7 @@
     return true;
   });
 
-  let eqComponent;
+  let eqComponent = $state();
   let clipboardEq = null;
 
   function handleResetEq() {
@@ -268,6 +271,8 @@
     fx: 4,
     presetId: "CUSTOM",
     visibleBuses: [1, 2, 3, 4, 5, 6],
+    monitorSources: [],
+    muteGroups: [],
   });
 
   // Mixer connection config
@@ -314,6 +319,11 @@
       );
     }
   });
+
+  function handleForceRefresh() {
+    forceRefresh(config.presetId);
+    showToast("Requesting full sync from hardware...", "info");
+  }
 
   // Scribble state array tracking
   let scribbles = $state({});
@@ -618,7 +628,7 @@
     }
     return links;
   });
-  let outputLinks = {}; 
+  let outputLinks = $state({}); 
 
 
   function toggleStereoLink(ch) {
@@ -652,7 +662,7 @@
   }
 
   // Main output assignment per channel
-  let mainOutAssign = {}; // { 'in_1': true, 'in_2': true, ... }
+  let mainOutAssign = $state({}); // { 'in_1': true, 'in_2': true, ... }
   
   // Monitor / Phones Source
   let monitorSource = $state("LR"); // Fallback
@@ -747,6 +757,22 @@
   }
 
   const currentEqBands = $derived(channelEqState[selectedChannel] || null);
+
+  // Initialize flat EQ for channels that have never been synced/edited
+  $effect(() => {
+    if (selectedChannel && !channelEqState[selectedChannel]) {
+      channelEqState[selectedChannel] = [
+        { id: 1, type: 'hpf12', freq: 20,  gain: 0, q: 0.71, logVal: 1.301, enabled: false },
+        { id: 2, type: 'loshelf', freq: 200, gain: 0, q: 0.71, logVal: 2.301, enabled: true },
+        { id: 3, type: 'peq',  freq: 500, gain: 0, q: 1.0,  logVal: 2.699, enabled: true },
+        { id: 4, type: 'peq',  freq: 1000,gain: 0, q: 1.0,  logVal: 3.0,   enabled: true },
+        { id: 5, type: 'peq',  freq: 2000,gain: 0, q: 1.0,  logVal: 3.301, enabled: true },
+        { id: 6, type: 'peq',  freq: 4000,gain: 0, q: 1.0,  logVal: 3.602, enabled: true },
+        { id: 7, type: 'hishelf', freq: 8000,gain: 0, q: 0.71, logVal: 3.903, enabled: true },
+        { id: 8, type: 'lpf12',  freq: 20000,gain: 0, q: 0.71, logVal: 4.301, enabled: false }
+      ];
+    }
+  });
 
   // Mini EQ path computation for ChannelStrip previews
   function computeMiniEqPath(chId, w = 100, h = 40) {
@@ -1108,7 +1134,7 @@
   
   const dcaChannels = $derived(
     Array.from(
-      { length: (config.dcas || 0) + (config.muteGroups || 0) }, 
+      { length: (config.dcas || 0) + (config.muteGroups?.length || 0) }, 
       (_, i) => i + 1
     )
   );
@@ -1124,7 +1150,7 @@
   );
 
   $effect(() => {
-    fohMeters = $rawMeters || [];
+    fohMeters = $rawMeters['/meters/1'] || new Array(16).fill(-60);
   });
   
   // Fluid Pagination Logic
@@ -2332,7 +2358,6 @@
             />
           {/if}
         </div>
-      {/if}
     {/if}
 
     {#if activeRole === "foh" && editingChannel}
@@ -2381,7 +2406,6 @@
         on:close={() => (channelModalState.isOpen = false)}
       />
     {/if}
-  </div>
     <MonitorModal 
       show={showMonitorModal} 
       currentSource={monitorSource}
@@ -2390,7 +2414,32 @@
       on:close={() => showMonitorModal = false}
     />
     <Toast />
-  </main>
+    {/if}
+  </div>
+</main>
+
+{#if $isConnected && $syncProgress.active}
+  <div class="sync-overlay" transition:blur={{ duration: 300 }}>
+    <div class="sync-card">
+      <div class="sync-icon">
+        <RotateCcw size={48} class="spin-heavy" />
+      </div>
+      <div class="sync-content">
+        <h2>Transferring from Mixer</h2>
+        <p>Retrieving all volume, EQ, and FX parameters from your {config.presetId}...</p>
+        
+        <div class="sync-progress-bar">
+          <div class="sync-progress-fill" style="width: {$syncProgress.progress}%"></div>
+        </div>
+        
+        <div class="sync-stats">
+          <span class="sync-percent">{$syncProgress.progress}%</span>
+          <span class="sync-label">Stay connected via WiFi</span>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   :global(#app) {
@@ -3398,5 +3447,110 @@
     background: #3b82f6;
     color: white;
     border-color: #60a5fa;
+  }
+
+  /* Sync Overlay Styles */
+  .sync-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(2, 6, 23, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .sync-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 24px;
+    padding: 3rem;
+    max-width: 500px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.9) translateY(20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .sync-icon {
+    width: 96px;
+    height: 96px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    color: #3b82f6;
+    border: 1px solid #334155;
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+
+  :global(.spin-heavy) {
+    animation: spin 2s linear infinite;
+  }
+
+  .sync-content h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+  }
+
+  .sync-content p {
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+  }
+
+  .sync-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #1e293b;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .sync-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 999px;
+    transition: width 0.3s ease-out;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+  }
+
+  .sync-stats {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .sync-percent {
+    color: #3b82f6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .sync-label {
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 </style>

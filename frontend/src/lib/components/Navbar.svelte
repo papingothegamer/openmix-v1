@@ -1,6 +1,6 @@
 <script>
-  import { isConnected, syncProgress } from '../socket';
-  import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2, Loader2 } from 'lucide-svelte';
+  import { isConnected, syncProgress, mixerState } from '../socket';
+  import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2, Loader2, RotateCcw } from 'lucide-svelte';
 
   export let activeRole = null;
   export let scribbleEditMode = false;
@@ -13,6 +13,7 @@
   export let onExitRole = () => {};
   export let onFileLoad = () => {};
 
+  export let onForceRefresh = () => {};
   export let onExportScene = () => {};
   export let onScribbleEdit = () => {};
 
@@ -29,8 +30,16 @@
   <div class="logo"><span class="highlight">Open</span>Mix</div>
   <div class="toolbar">
     <div class="status-indicator" class:connected={$isConnected}>
-      <div class="ping-dot"></div>
-      <span>{$isConnected ? 'Connected' : 'Offline'}</span>
+      <div class="ping-dot" class:online={$mixerState.hasSyncedOnce}></div>
+      <span>
+        {#if !$isConnected}
+          Server Offline
+        {:else if !$mixerState.hasSyncedOnce}
+          Mixer Standby
+        {:else}
+          Mixer Online
+        {/if}
+      </span>
     </div>
 
     {#if $syncProgress.active}
@@ -54,11 +63,14 @@
       <button class="btn-sm scribble-btn" class:active={scribbleEditMode} on:click={onScribbleEdit}>
         <Tag size={14} /> Scribble Strips
       </button>
-      <button class="btn-sm export-btn" on:click={onExportScene}>
-        <DownloadCloud size={14} /> Export Scene
+      <button class="btn-sm" on:click={onForceRefresh} title="Force Refresh from Hardware">
+        <RotateCcw size={14} class={$syncProgress.active ? 'spin' : ''} /> Refresh
       </button>
-      <label class="btn-sm upload-btn">
-        <UploadCloud size={14} /> Import Scene
+      <button class="btn-sm export-btn" on:click={onExportScene} title="Download Scene as JSON">
+        <DownloadCloud size={14} /> Export
+      </button>
+      <label class="btn-sm upload-btn" title="Import Scene from JSON">
+        <UploadCloud size={14} /> Import
         <input type="file" accept=".json" on:change={onFileLoad} style="display: none;" />
       </label>
       <button class="btn-sm" on:click={toggleFullscreen} title="Toggle Fullscreen UI"><Maximize size={14} /></button>
@@ -84,8 +96,9 @@
   .status-indicator { display: flex; align-items: center; gap: 0.5rem;
     font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #1e293b; }
   .status-indicator.connected { color: #10b981; }
-  .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
-  .connected .ping-dot { background-color: #10b981;
+  .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #64748b; }
+  .status-indicator.connected .ping-dot { background-color: #f59e0b; }
+  .status-indicator.connected .ping-dot.online { background-color: #10b981;
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
   .btn-sm { background: transparent; color: #cbd5e1; border: 1px solid #334155;

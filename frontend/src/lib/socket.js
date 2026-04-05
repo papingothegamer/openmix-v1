@@ -11,7 +11,7 @@ export const socket = io(SOCKET_URL, {
 
 // Svelte stores for reactivity
 export const isConnected = writable(false);
-export const mixerState = writable({ buses: {}, channels: {}, meters: [], flatOscCache: {} });
+export const mixerState = writable({ buses: {}, channels: {}, meters: [], flatOscCache: {}, hasSyncedOnce: false });
 export const rawMeters = writable({}); // Keyed by address: { '/meters/0': [], '/meters/5': [] }
 export const meterLight = writable('off'); 
 export const syncProgress = writable({ active: false, progress: 0 });
@@ -66,4 +66,8 @@ socket.on('oscData', (data) => {
 // Helper functions for sending OSC
 export const setOsc = (address, args) => {
     socket.emit('setOsc', { address, args });
+};
+
+export const forceRefresh = (presetId) => {
+    socket.emit('forceRefresh', { presetId });
 };

@@ -347,16 +347,22 @@
 
       const ro = new ResizeObserver(entries => {
           for (const entry of entries) {
-              width = entry.contentRect.width;
-              height = entry.contentRect.height;
-              drawEQ();
+              const newWidth = entry.contentRect.width;
+              const newHeight = entry.contentRect.height;
+              if (width !== newWidth || height !== newHeight) {
+                  width = newWidth;
+                  height = newHeight;
+                  requestAnimationFrame(drawEQ);
+              }
           }
       });
       ro.observe(canvas.parentElement);
       return () => ro.disconnect();
   });
 
-  $: if (mounted && ctx && bands) drawEQ();
+  $: if (mounted && ctx && bands && width && height) {
+      tick().then(() => requestAnimationFrame(drawEQ));
+  }
 </script>
 
 <svelte:window on:click={closeDropdowns} />
@@ -443,7 +449,7 @@
 
     <!-- Center Canvas Engine -->
     <div class="canvas-wrapper">
-        <canvas bind:this={canvas} {width} {height}
+        <canvas bind:this={canvas}
                 on:mousedown={handleMouseDown}
                 on:mousemove={handleMouseMove}
                 on:mouseup={handleMouseUp}

@@ -32,6 +32,7 @@ class MixerConnection extends EventEmitter {
         // Sync State Tracking
         this.isSyncing = false;
         this.syncProgress = 0;
+        this.hasSyncedOnce = false;
     }
 
     // Phase 4 Hardware Sync Templates
@@ -96,8 +97,28 @@ class MixerConnection extends EventEmitter {
         return templates[type] || templates['XR18'];
     }
 
-    async requestFullSync(mixerType = 'XR18') {
+    async requestFullSync(mixerType = 'XR18', isForce = false) {
         if (this.isSyncing) return;
+        
+        // Prevent sync overlay and network flood if no actual mixer is connected
+        if (!this.mixerIp) {
+            console.log(`[MixerSync] Skipping deep sync: No Mixer IP configured.`);
+            this.emit('syncComplete', { mixerType });
+            return;
+        }
+
+        // Avoid re-syncing constantly on role navigation unless the user explicitly forces it
+        if (this.hasSyncedOnce && !isForce) {
+            console.log(`[MixerSync] Already synced with ${this.mixerIp}. Skipping full sync.`);
+            this.emit('syncComplete', { mixerType });
+            return;
+        }
+
+        // Ensure handshake is active before syncing
+        if (!this.keepAliveInterval) {
+            this.startKeepAlive();
+        }
+
         console.log(`[MixerSync] Starting deep sync for ${mixerType}...`);
         this.isSyncing = true;
         this.syncProgress = 0;
@@ -144,20 +165,24 @@ class MixerConnection extends EventEmitter {
         }
 
         this.isSyncing = false;
+        this.hasSyncedOnce = true;
         this.emit('syncStatus', { active: false, progress: 100 });
+        this.emit('syncComplete', { mixerType });
         console.log(`[MixerSync] Deep sync complete.`);
     }
 
     connect() {
         this.udpPort.open();
         this.udpPort.on('ready', () => {
-            console.log(`[MixerSync] OSC UDP Port ready. Establishing link to ${this.mixerIp}:${this.mixerPort}...`);
-            this.startKeepAlive();
+            console.log(`[MixerSync] OSC UDP Port ready. Passive mode enabled (waiting for client sync request).`);
         });
     }
 
-    startKeepAlive() {
+    startKeepAlive(autoSyncType = null) {
         // Behringer XR18 requires /xremote every 10 seconds to keep sending asynchronous updates (like meters/faders)
+        if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+        
+        console.log(`[MixerSync] Starting keep-alive handshake (IP: ${this.mixerIp})`);
         this.keepAliveInterval = setInterval(() => {
             this.sendOsc('/xremote', []);
         }, 9000);
@@ -165,7 +190,10 @@ class MixerConnection extends EventEmitter {
         // Handshake
         this.sendOsc('/xremote', []);
         
-        // Note: requestFullSync used to be here, now triggered by server.js via socket.emit('requestSync')
+        // Auto-trigger sync if requested
+        if (autoSyncType) {
+            this.requestFullSync(autoSyncType);
+        }
     }
 
     sendOsc(address, args = []) {
@@ -201,16 +229,18 @@ class MixerConnection extends EventEmitter {
         flushNext();
     }
 
-    reconfigure(newIp, newPort = 10024) {
+    reconfigure(newIp, newPort = 10024, mixerType = 'XR18') {
         if (this.keepAliveInterval) {
             clearInterval(this.keepAliveInterval);
             this.keepAliveInterval = null;
         }
         this.mixerIp = newIp;
         this.mixerPort = newPort;
-        // Re-send /xremote to new target to handshake
-        this.startKeepAlive();
-        console.log(`[MixerSync] Reconfigured → ${newIp}:${newPort}`);
+        this.hasSyncedOnce = false; // Reset sync status for new target
+        
+        // Re-send /xremote to new target to handshake AND trigger a fresh sync
+        this.startKeepAlive(mixerType);
+        console.log(`[MixerSync] Reconfigured → ${newIp}:${newPort} (${mixerType})`);
     }
 
     handleIncomingOsc(msg, info) {

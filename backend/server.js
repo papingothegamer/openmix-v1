@@ -53,19 +53,32 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('configureMixer', ({ ip, port }) => {
+    socket.on('configureMixer', ({ ip, port, presetId }) => {
         if (!ip) return;
         const newPort = parseInt(port) || 10024;
-        console.log(`[MixerConfig] Reconfiguring to ${ip}:${newPort}`);
-        mixer.reconfigure(ip, newPort);
-        socket.emit('mixerConfigured', { ip, port: newPort });
+        let mixerType = 'XR18';
+        if (presetId && presetId.includes('X32')) mixerType = 'X32RACK';
+        if (presetId === 'WING') mixerType = 'WING';
+
+        console.log(`[MixerConfig] Reconfiguring to ${ip}:${newPort} as ${mixerType}`);
+        mixer.reconfigure(ip, newPort, mixerType);
+        socket.emit('mixerConfigured', { ip, port: newPort, presetId });
     });
 
     socket.on('requestSync', ({ presetId }) => {
         // Map preset IDs to sync templates
         let mixerType = 'XR18';
-        if (presetId && presetId.includes('X32')) mixerType = 'X32RACK';
-        mixer.requestFullSync(mixerType);
+        if (presetId && (presetId.includes('X32') || presetId === 'X32')) mixerType = 'X32RACK';
+        if (presetId === 'WING') mixerType = 'WING';
+        mixer.requestFullSync(mixerType, false);
+    });
+
+    socket.on('forceRefresh', ({ presetId }) => {
+        console.log('[MixerSync] Force refresh requested by client');
+        let mixerType = 'XR18';
+        if (presetId && (presetId.includes('X32') || presetId === 'X32')) mixerType = 'X32RACK';
+        if (presetId === 'WING') mixerType = 'WING';
+        mixer.requestFullSync(mixerType, true);
     });
 });
 

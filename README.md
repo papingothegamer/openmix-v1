@@ -44,6 +44,15 @@ Ensure you have [Node.js](https://nodejs.org/) (≥ 18 LTS) installed along with
 
 ---
 
+## Recent Changes (v0.13 — 2026-04-05)
+
+### Deep Compile-Time Stability & Error Hardening
+- **Strict Svelte 5 Compliance**: Swept application runtime warnings involving reactivity parameters. Safely enclosed component constructors (`eqComponent`) inside Svelte 5 `$state()` runes to guarantee structural updates properly trigger in the DOM rendering loop.
+- **Null-Safety on Critical Buffers**: Introduced robust bounds-checking for OSC metering parameters (`fohMeters`) mitigating crash risks associated with object-arrays misalignments and uninitialized default behaviors (`{} => []`).
+- **Data-Type Coercion Safeguards**: Hardened derivation logics mapping hardware attributes (e.g. `muteGroups`) from implicit coercion string concatenation variables to deliberate array definitions (`[].length`), reinforcing UI load operations for non-connected offline behaviors.
+
+---
+
 ## Recent Changes (v0.12 — 2026-03-31)
 
 ### State Synchronization Fixes

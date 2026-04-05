@@ -39,7 +39,10 @@ function handleConnection(socket, mixer, io) {
     }
 
     // Push initial sink state
-    socket.emit('syncState', mixer.getVirtualState());
+    socket.emit('syncState', { 
+        ...mixer.getVirtualState(),
+        hasSyncedOnce: mixer.hasSyncedOnce 
+    });
 
     // Handling inbound OSC requests
     // Helper: coerce raw JS values to typed OSC argument objects
