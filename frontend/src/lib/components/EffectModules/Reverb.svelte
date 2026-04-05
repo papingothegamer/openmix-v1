@@ -3,6 +3,7 @@
   export let params = {};
   export let preset = '';
   export let onParamChange = (key, value) => {};
+  export let slotIndex = 0;
 
   $: size = params.size ?? 50;
   $: decay = params.decay ?? 20;

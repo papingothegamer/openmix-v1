@@ -230,6 +230,7 @@
 | 15.17| Stereo Enhancer: "Phase Compensated Excitation" shimmer visualizer is active | ☐ |
 | 15.18| Pitch Shifter: LCD display shows numeric semi-tone value (e.g., +2 SEMI) | ☐ |
 | 15.19| Header Standard: All FX headers show "OPENMIX" brand and model name | ☐ |
+| 15.20| Empty Slots: Uninitialized modules show a premium dashed-metal layout with an icon | ☐ |
 
 ---
 

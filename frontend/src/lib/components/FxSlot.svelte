@@ -126,9 +126,7 @@
       
       {#if selectedPreset === 'Empty'}
         <div class="empty-module">
-          <div class="empty-badge">EMPTY SLOT</div>
-          <h3>No effect loaded</h3>
-          <p>{selectedMeta.description || 'Choose a category and type to begin.'}</p>
+
         </div>
       {/if}
     </div>
@@ -218,10 +216,12 @@
     justify-content: center;
   }
   
-  .empty-module { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; max-width: 420px; text-align: center;}
-  .empty-badge { padding: 0.3rem 0.55rem; border-radius: 999px; border: 1px solid #3a3a3a; color: #00CED1; background: #2a2a2a; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; }
-  .empty-module h3 { margin: 0; font-size: 1.3rem; color: #e0e0e0; }
-  .empty-module p { margin: 0; color: #999; line-height: 1.5; }
+  .empty-module { height: 100%; display: flex; align-items: center; justify-content: center; padding: 2rem; flex: 1; min-height: 0;}
+  .empty-rack-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; max-width: 500px; padding: 2rem; text-align: center; border: 2px dashed #1e293b; border-radius: 12px; background: rgba(15, 23, 42, 0.4); }
+  .empty-icon { color: #475569; margin-bottom: -0.5rem; }
+  .empty-badge { padding: 0.35rem 0.65rem; border-radius: 999px; border: 1px solid rgba(34, 211, 238, 0.3); color: #22d3ee; background: rgba(34, 211, 238, 0.05); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.5rem;}
+  .empty-rack-slot h3 { margin: 0; margin-bottom: 0.5rem; font-size: 1.4rem; font-weight: 800; color: #f8fafc; letter-spacing: 0.05em; }
+  .empty-rack-slot p { margin: 0; color: #94a3b8; font-size: 0.9rem; line-height: 1.6; max-width: 320px; }
 
   .send-panel {
     display: grid;

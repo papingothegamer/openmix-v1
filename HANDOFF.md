@@ -514,10 +514,11 @@ Refined the Musician-facing interface to be more professional and intuitive.
 
 **SYSTEM STABILITY: EXCELLENT. FX SYNCHRONIZATION: 100% RELIABLE.**
 
-
 ### 14.20 Phase 17: Syntax Hardening and Null-Safety Resolution (2026-04-05)
 
 This phase focused on silencing Svelte compiler warnings and securing data assignments against potentially null references, further improving application stability under strict TypeScript/JSDoc checking.
-- **Mute Groups Initialization**: Fixed a compilation mismatch where adding a number to config.muteGroups (which initializes to []) resulted in unintended string concatenation. Resolved by securely checking config.muteGroups?.length.
-- **Meter Array Integrity**: Resolved a structural oversight where  (an Object map by OSC address) was assigned directly to fohMeters, which expected a flat array. Adjusted the derivation to correctly extract array levels via ['/meters/1'] while applying a null-safe fallback of -60dB values.
-- **Component Reactivity Scope**: Addressed a missing $state(...) rune for the eqComponent reference inside App.svelte ensuring dynamic component updates to the graphical editor mount are tracked correctly by Svelte 5.
+- **Mute Groups Initialization**: Fixed a compilation mismatch where adding a number to `config.muteGroups` (which initializes to `[]`) resulted in unintended string concatenation. Resolved by securely checking `config.muteGroups?.length`.
+- **Meter Array Integrity**: Resolved a structural oversight where `$rawMeters` (an Object map by OSC address) was assigned directly to `fohMeters`, which expected a flat array. Adjusted the derivation to correctly extract array levels via `$rawMeters['/meters/1']` while applying a null-safe fallback of `-60dB` values.
+- **Component Reactivity Scope**: Addressed a missing `$state()` rune for the `eqComponent` reference inside `App.svelte` ensuring dynamic component updates to the graphical editor mount are tracked correctly by Svelte 5.
+- **Dynamic FX Component Consistency**: Enforced uniform property exposure (`export let slotIndex`) across all `svelte:component` FX modules (including generic instances like `Reverb.svelte`) to satisfy strict typing evaluation without throwing compiler-time object properties mismatch errors in `FxSlot.svelte`.
+- **Premium Empty States**: Upgraded the aesthetics of uninitialized `FxSlot` modules with a responsive dashed-metal UI layout matching the dark mode rack chassis aesthetic.
