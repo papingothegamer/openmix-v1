@@ -374,7 +374,10 @@
 ## 26. Expected Problems & Failsafes
 
 **Problem: Church network blocks UDP Broadcast packets (Auto-Discovery fails).**
-- **Failsafe Added**: You can completely bypass Auto-Discovery. Find the mixer IP from the physical router or X-Touch terminal. Enter it manually in the Setup Wizard. The recently added code failsafe ensures the frontend forces the backend to use the correct `presetId` directly, completely avoiding backend fallback loops.
+- **Failsafe Added**: Auto-Discovery now maps every active network interface (VPNs, Ethernet, Wi-Fi) and calculates explicit subnet broadcast IPs (e.g., `192.168.1.255`), which bypasses many Windows routing failures. If that still fails, you can find the mixer IP from the physical router or X-Touch terminal and enter it manually. The frontend forces the backend to use the correct `presetId` directly, completely avoiding fallback loops.
+
+**Problem: Offline IP Configuration / Bad IP Address Entered.**
+- **Failsafe Present**: The system now strictly verifies return OSC packets. If you enter an incorrect IP address or the router drops it, the top-right navbar will safely remain in **"Mixer Standby"** (grey/yellow) instead of falsely reporting "Mixer Online". It waits until the physical console responds to flip green.
 
 **Problem: Slow Wi-Fi causing sync loops to drop.**
 - **Failsafe Present**: The OSC sync engine utilizes a `throttleDelayMs = 5` inside `flushQueue()` preventing the backend from flooding the router's UDP buffer. If the interface stalls, the Svelte 5 loop is no longer cyclic and will properly catch up to whatever payload arrives.

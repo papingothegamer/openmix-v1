@@ -4,6 +4,7 @@
  */
 
 const dgram = require('dgram');
+const os = require('os');
 
 const MIXER_OSC_PORT = 10024;
 // Hardcoded /xinfo OSC message (no-args, null-terminated)
@@ -17,6 +18,24 @@ function buildXinfoPacket() {
     buf.write(address, 0, 'ascii');
     buf.write(typetag, address.length, 'ascii');
     return buf;
+}
+
+function getBroadcastAddresses() {
+    const interfaces = os.networkInterfaces();
+    const addresses = ['255.255.255.255'];
+
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                // Calculate broadcast address from IP and Netmask
+                const ipParts = iface.address.split('.').map(Number);
+                const maskParts = iface.netmask.split('.').map(Number);
+                const broadcastParts = ipParts.map((ipPart, i) => ipPart | (~maskParts[i] & 255));
+                addresses.push(broadcastParts.join('.'));
+            }
+        }
+    }
+    return [...new Set(addresses)];
 }
 
 /**
@@ -58,14 +77,22 @@ function discoverMixer(timeoutMs = 4000) {
         socket.bind(() => {
             socket.setBroadcast(true);
             const ports = [10024, 10023, 2223];
+            const broadcastTargets = getBroadcastAddresses();
+            
+            console.log(`[Discovery] Broadcasting to: ${broadcastTargets.join(', ')}`);
+
             ports.forEach(port => {
-                socket.send(XINFO_PACKET, 0, XINFO_PACKET.length, port, '255.255.255.255', (err) => {
-                    if (err) {
-                        console.error(`[Discovery] Broadcast send to ${port} failed:`, err.message);
-                    } else {
-                        console.log(`[Discovery] /xinfo broadcast sent to ${port} — waiting for reply...`);
-                    }
+                broadcastTargets.forEach(targetIp => {
+                    socket.send(XINFO_PACKET, 0, XINFO_PACKET.length, port, targetIp, (err) => {
+                        if (err) {
+                            // Ignore EACCES and EADDRNOTAVAIL for invalid broadcast addresses (common on Windows)
+                            if (err.code !== 'EACCES' && err.code !== 'EADDRNOTAVAIL') {
+                                console.error(`[Discovery] Broadcast send to ${targetIp}:${port} failed:`, err.message);
+                            }
+                        }
+                    });
                 });
+                console.log(`[Discovery] /xinfo broadcast sent to ${port} — waiting for reply...`);
             });
         });
 

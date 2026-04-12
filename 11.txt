@@ -1,0 +1,76 @@
+[0] [MixerConfig] Reconfiguring to 192.168.1.3:10024 as XR18
+[0] [MixerSync] Starting keep-alive handshake (IP: 192.168.1.3)
+[0] [MixerSync] Starting deep sync for XR18...
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Dispatching 228 sync requests...      
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Reconfigured → 192.168.1.3:10024 (XR18)
+[MixerSync] Syncing: [████████████████████████████████████████] 100%
+[0] [MixerSync] Deep sync complete.
+[0] [Socket] Disconnected foh (kWEmzkb-_Ra_yDagAAAB)
+[0] [Socket] Authorized foh on socket W_yqn0fwgDQt2SINAAAD (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.3. Skipping full sync.
+[0] [Socket] Disconnected foh (W_yqn0fwgDQt2SINAAAD)
+[0] [Socket] Authorized foh on socket rcvvTdgX62EbMtL3AAAF (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.3. Skipping full sync.
+[0] [Discovery] Starting mixer discovery...
+[0] [Discovery] /xinfo broadcast sent to 10024 — waiting for reply...
+[0] [Discovery] /xinfo broadcast sent to 10023 — waiting for reply...
+[0] [Discovery] /xinfo broadcast sent to 2223 — waiting for reply...
+[0] [Discovery] No mixer found within timeout.
+[0] [MixerConfig] Reconfiguring to 192.168.1.3:10023 as XR18
+[0] [MixerSync] Starting keep-alive handshake (IP: 192.168.1.3)
+[0] [MixerSync] Starting deep sync for XR18...
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Dispatching 228 sync requests...      
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Reconfigured → 192.168.1.3:10023 (XR18)
+[MixerSync] Syncing: [████████████████████████████████████████] 100%
+[0] [MixerSync] Deep sync complete.
+[0] [Socket] Disconnected foh (rcvvTdgX62EbMtL3AAAF)
+[0] [Socket] Authorized musician on socket 9puLkm-Fe1pryPPBAAAH (Bus: 6)
+[0] [Socket] Disconnected musician (9puLkm-Fe1pryPPBAAAH)
+[0] [Socket] Authorized foh on socket _VIr2XlZNUQMejehAAAJ (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.3. Skipping full sync.
+[0] [Socket] Disconnected foh (_VIr2XlZNUQMejehAAAJ)
+[0] [Socket] Authorized foh on socket 1bSNO3s7ZUbHChoKAAAL (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.3. Skipping full sync.
+[0] [Socket] Disconnected foh (1bSNO3s7ZUbHChoKAAAL)
+[0] [Socket] Authorized foh on socket vPi8d4ACD9qHckf-AAAN (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.3. Skipping full sync.
+[0] [Discovery] Starting mixer discovery...
+[0] [Discovery] /xinfo broadcast sent to 10024 — waiting for reply...
+[0] [Discovery] /xinfo broadcast sent to 10023 — waiting for reply...
+[0] [Discovery] /xinfo broadcast sent to 2223 — waiting for reply...
+[0] [Discovery] No mixer found within timeout.
+[0] [MixerConfig] Reconfiguring to 192.168.1.2:10024 as XR18
+[0] [MixerSync] Starting keep-alive handshake (IP: 192.168.1.2)
+[0] [MixerSync] Starting deep sync for XR18...
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Dispatching 228 sync requests...      
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Reconfigured → 192.168.1.2:10024 (XR18)
+[MixerSync] Syncing: [████████████████████████████████████████] 100%
+[0] [MixerSync] Deep sync complete.
+[0] [Socket] Disconnected foh (vPi8d4ACD9qHckf-AAAN)
+[0] [Socket] Authorized foh on socket OZPgQxZ03OI8P_AWAAAP (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.2. Skipping full sync.
+[0] [Socket] Disconnected foh (OZPgQxZ03OI8P_AWAAAP)
+[0] [Socket] Authorized foh on socket BIcntnWBBKFh1qKTAAAR (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.2. Skipping full sync.
+[0] [Socket] Disconnected foh (BIcntnWBBKFh1qKTAAAR)
+[0] [Socket] Authorized foh on socket ba-jqWBta7Bjt7XwAAAT (Bus: ALL)
+[0] [MixerConfig] Reconfiguring to 192.168.1.2:2555 as XR18
+[0] [MixerSync] Starting keep-alive handshake (IP: 192.168.1.2)
+[0] [MixerSync] Starting deep sync for XR18...
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Dispatching 228 sync requests...      
+[MixerSync] Syncing: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%[MixerSync] Reconfigured → 192.168.1.2:2555 (XR18)[MixerSync] Syncing: [████████████████████████████████████████] 100%
+[0] [MixerSync] Deep sync complete.
+[0] [Socket] Disconnected foh (ba-jqWBta7Bjt7XwAAAT)
+[0] [Socket] Authorized foh on socket gsh-TxYKVsj31T1gAAAV (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.2. Skipping full sync. 
+[0] [Socket] Disconnected foh (gsh-TxYKVsj31T1gAAAV)
+[0] [Socket] Authorized foh on socket dJ8pIhNcVXB6tj6tAAAX (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.2. Skipping full sync.
+[0] [Socket] Disconnected foh (dJ8pIhNcVXB6tj6tAAAX)
+[0] [Socket] Authorized musician on socket GR9TxgPKLfieuqxLAAAZ (Bus: 5)
+[0] [Socket] Disconnected musician (GR9TxgPKLfieuqxLAAAZ)
+[0] [Socket] Authorized foh on socket 8VHOD0awaX8N6b46AAAb (Bus: ALL)
+[0] [MixerSync] Already synced with 192.168.1.2. Skipping full sync.
+
+i got this in the connection  log.
+the app did not connect to the mixer while within range (and also connected to the same Wifi network as the mixer)

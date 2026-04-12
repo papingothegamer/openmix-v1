@@ -167,11 +167,9 @@ class MixerConnection extends EventEmitter {
         }
 
         this.isSyncing = false;
-        this.hasSyncedOnce = true;
         this.emit('syncStatus', { active: false, progress: 100 });
         this.drawTerminalProgressBar(100);
-        this.emit('syncComplete', { mixerType });
-        console.log(`[MixerSync] Deep sync complete.`);
+        console.log(`[MixerSync] Dispatch complete. Awaiting responses to verify connection...`);
     }
 
     drawTerminalProgressBar(progress) {
@@ -260,6 +258,12 @@ class MixerConnection extends EventEmitter {
     }
 
     handleIncomingOsc(msg, info) {
+        if (!this.hasSyncedOnce) {
+            console.log(`[MixerSync] Received first packet from ${info.address}:${info.port}. Connection verified!`);
+            this.hasSyncedOnce = true;
+            this.emit('syncComplete', { mixerType: 'verified' }); // Frontend ignores type currently
+        }
+
         const address = msg.address;
         const args = msg.args;
 
