@@ -34,6 +34,10 @@ mixer.on('syncStatus', (data) => {
     io.emit('syncStatus', data);
 });
 
+mixer.on('syncComplete', () => {
+    io.emit('syncComplete', { hasSyncedOnce: true });
+});
+
 io.on('connection', (socket) => {
     handleConnection(socket, mixer, io);
 

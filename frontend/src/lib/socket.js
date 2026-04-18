@@ -37,6 +37,12 @@ socket.on('syncStatus', (data) => {
     syncProgress.set(data);
 });
 
+socket.on('syncComplete', (data) => {
+    if (data && data.hasSyncedOnce) {
+        mixerState.update(prev => ({ ...prev, hasSyncedOnce: true }));
+    }
+});
+
 socket.on('meterTrafficLight', (data) => {
     meterLight.set(data.status);
 });

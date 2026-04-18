@@ -284,27 +284,41 @@
 
   function startDiscovery() {
     discoveryStatus = "scanning";
-    socket.emit("discoverMixer", null, (result) => {
-      if (result) {
-        mixerConfig.ip = result.ip;
-        mixerConfig.port = result.port;
-        mixerConfig = { ...mixerConfig };
-        
-        const nameToUpper = (result.name || '').toUpperCase();
-        if (nameToUpper.includes('XR') || nameToUpper.includes('MR') || nameToUpper.includes('X18') || nameToUpper.includes('M18')) {
-          config.presetId = 'XR18';
-        } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
-          config.presetId = 'X32RACK';
-        } else if (nameToUpper.includes('WING')) {
-          config.presetId = 'WING';
-        }
-        config = { ...config };
 
-        discoveryStatus = "found";
-      } else {
-        discoveryStatus = "notfound";
-      }
-    });
+    // Ensure the backend socket is connected before emitting discovery
+    const doDiscovery = () => {
+      socket.emit("discoverMixer", null, (result) => {
+        if (result) {
+          mixerConfig.ip = result.ip;
+          mixerConfig.port = result.port;
+          mixerConfig = { ...mixerConfig };
+          
+          const nameToUpper = (result.name || '').toUpperCase();
+          if (nameToUpper.includes('XR') || nameToUpper.includes('MR') || nameToUpper.includes('X18') || nameToUpper.includes('M18')) {
+            config.presetId = 'XR18';
+          } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
+            config.presetId = 'X32RACK';
+          } else if (nameToUpper.includes('WING')) {
+            config.presetId = 'WING';
+          }
+          // Apply the hardware config from the discovered preset
+          applyPreset();
+
+          discoveryStatus = "found";
+          showToast(`Found: ${result.name} at ${result.ip}:${result.port}`, "success");
+        } else {
+          discoveryStatus = "notfound";
+          showToast("No mixer found on the network. Check Ethernet/Wi-Fi.", "error");
+        }
+      });
+    };
+
+    if (!socket.connected) {
+      socket.once("connect", doDiscovery);
+      socket.connect();
+    } else {
+      doDiscovery();
+    }
   }
 
   // Main LR cannot route to sends/FX/routing

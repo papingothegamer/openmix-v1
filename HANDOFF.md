@@ -534,3 +534,19 @@ This phase resolved critical failures in the mixer connection lifecycle, prevent
 This phase corrected fundamental UDP networking behavior on Windows hosts and prevented the UI from prematurely assuming a successful connection.
 - **Subnet-Aware Network Broadcasts**: Fixed `discovery.js` failing to find consoles when multiple network adapters (VPNs, virtual machines, Ethernet) are active. The backend now maps `os.networkInterfaces()` and dynamically calculates the explicit broadcast IP (e.g., `192.168.1.255`) for every active interface, rather than relying on the unreliable global `255.255.255.255`. 
 - **True Connection Verification**: Modified `mixerSync.js` to strictly enforce connection verification. The frontend connection status will now accurately sit in `Mixer Standby` until the very first valid return-trip OSC packet actively arrives from the console's IP. This eliminated a misleading "Mixer Online" false positive that occurred when outgoing packets dispatched without a responsive target.
+
+### 14.23 Phase 20: Connection Pipeline Hardening (2026-04-19)
+
+This phase audited the full discovery → configure → sync → verify pipeline and fixed three bugs that would have prevented a successful connection to physical hardware.
+
+- **`syncComplete` Event Relay (Critical)**: The backend `mixerSync.js` correctly set `hasSyncedOnce = true` when the first OSC return-trip packet arrived from the hardware, and emitted a `syncComplete` EventEmitter event. However, `server.js` never forwarded this event to the frontend via Socket.io. As a result, the Navbar's "Mixer Standby" → "Mixer Online" transition **never fired**, even when the mixer was actively responding. Fixed by adding `mixer.on('syncComplete', ...)` in `server.js` to relay the event, and a corresponding `socket.on('syncComplete', ...)` listener in `frontend/src/lib/socket.js` that updates `$mixerState.hasSyncedOnce`.
+- **Discovery Port Resolution (Critical)**: The `discoverMixer()` function returned `remote.port` — the mixer's **ephemeral UDP reply source port** — as the target port for subsequent OSC commands. This port is not the mixer's OSC listening port (10024 for XR18, 10023 for X32, 2223 for WING). After auto-discovery, all `sendOsc()` calls would silently target a dead port. Fixed by deriving the correct target port from the mixer's identity string in the `/xinfo` response rather than trusting the reply source port.
+- **Discovery Socket Guard**: The `startDiscovery()` function in `App.svelte` emitted a `discoverMixer` WebSocket event assuming the Socket.io connection to the Node.js backend was already established. If the user clicked "Auto-Discover" before the `onMount` socket handshake completed, the event was silently dropped. Fixed by adding a `socket.connected` guard that defers the discovery emission until after the WebSocket is ready. Also added success/failure toast notifications to provide clear user feedback.
+
+**FILES MODIFIED:**
+- `backend/server.js` — Added `syncComplete` event relay to Socket.io
+- `backend/discovery.js` — Fixed port resolution logic in `/xinfo` response handler
+- `frontend/src/lib/socket.js` — Added `syncComplete` listener to update `hasSyncedOnce` store
+- `frontend/src/App.svelte` — Added socket connection guard and toast feedback to `startDiscovery()`
+
+**ALL THREE CONNECTION-PIPELINE BUGS RESOLVED. HARDWARE TEST READY.**

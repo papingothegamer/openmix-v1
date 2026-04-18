@@ -41,3 +41,6 @@ build/
 *.zip
 *.tar.gz
 *.rar
+*.txt
+*.png
+*.jpg

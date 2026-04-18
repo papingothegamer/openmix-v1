@@ -66,13 +66,25 @@ function discoverMixer(timeoutMs = 4000) {
                 const match = str.match(/X(?:R\d+|\d{2}|AIR|18|32|M32|WING)[^\0]*/i);
                 if (match) name = match[0].replace(/\0/g, '').trim();
             } catch (_) {}
-            done({ ip: remote.address, port: remote.port, name });
+
+            // Determine the correct OSC target port based on the mixer's identity
+            // remote.port is the *source* port of the reply, NOT necessarily the listening port
+            const nameUpper = name.toUpperCase();
+            let targetPort = 10024; // Default: XR18/MR18/X-Air
+            if (nameUpper.includes('X32') || nameUpper.includes('M32')) targetPort = 10023;
+            else if (nameUpper.includes('WING')) targetPort = 2223;
+
+            console.log(`[Discovery] Reply from ${remote.address}:${remote.port} — identified as "${name}", target port: ${targetPort}`);
+            done({ ip: remote.address, port: targetPort, name });
         });
 
         socket.on('error', (err) => {
             console.error('[Discovery] UDP error:', err.message);
             done(null);
         });
+
+        // Track which port we sent to so we can return the correct target port
+        let discoveredPort = MIXER_OSC_PORT;
 
         socket.bind(() => {
             socket.setBroadcast(true);

@@ -368,6 +368,9 @@
 | 25.5 | Moving a physical fader on the hardware console corresponds with near zero-latency to the Web UI | ☐ |
 | 25.6 | Changing an EQ band on the Web UI alters the digital parametric EQ on the master bus | ☐ |
 | 25.7 | Console `/xremote` keep-alive maintains connection beyond 10 seconds without dropping packets | ☐ |
+| 25.8 | Navbar transitions from "Mixer Standby" (amber dot) to "Mixer Online" (green dot) within 3s of connecting | ☐ |
+| 25.9 | Discovery toast shows the mixer name and IP (e.g., "Found: XR18 at 192.168.1.X:10024") | ☐ |
+| 25.10| After discovery, the port field in the Setup Wizard shows **10024** (not a random ephemeral port) | ☐ |
 
 ---
 
@@ -384,6 +387,175 @@
 
 **Problem: The mixer configuration is slightly strange (P16 routing vs traditional Aux).**
 - **Failsafe Present**: The Svelte 5 frontend utilizes strict optional chaining (`?.`) when hydrating values from `$mixerState.flatOscCache`. If the XR18 returns unexpected addresses, Svelte will safely default those UI elements to undefined or "off" rather than throwing white-screen crashes.
+
+**Problem: Discovery returns wrong port after auto-discovery (Phase 20 fix).**
+- **Failsafe Added**: The `discoverMixer()` function no longer trusts `remote.port` from the UDP reply. Instead, it maps the mixer's identity string to the correct OSC listening port (XR18→10024, X32→10023, WING→2223). This prevents silent command failures where OSC packets are sent to the mixer's ephemeral reply port instead of its command port.
+
+**Problem: Navbar stuck on "Mixer Standby" even when mixer is responding (Phase 20 fix).**
+- **Failsafe Added**: The `syncComplete` event is now properly relayed from the backend EventEmitter through Socket.io to the frontend. The `hasSyncedOnce` flag in `$mixerState` is updated the moment the first valid OSC return-trip packet arrives, ensuring accurate connection status.
+
+**Problem: Auto-Discover button clicked before WebSocket is ready (Phase 20 fix).**
+- **Failsafe Added**: `startDiscovery()` now checks `socket.connected` before emitting. If the socket isn't ready, it defers the discovery request until after the handshake completes. Toast notifications inform the user of success or failure.
+
+---
+
+## 27. Field Diagnostic Code Snippets
+
+> **Purpose**: Copy-paste these snippets into a Node.js REPL or save as temporary scripts to diagnose connection issues on-site. Run from the project root.
+
+### 27.1 Verify Network Interfaces & Broadcast Addresses
+
+```js
+// Save as: diag_network.js — Run: node diag_network.js
+const os = require('os');
+const ifaces = os.networkInterfaces();
+console.log('=== Active Network Interfaces ===');
+for (const [name, addrs] of Object.entries(ifaces)) {
+  for (const a of addrs) {
+    if (a.family === 'IPv4' && !a.internal) {
+      const ip = a.address.split('.').map(Number);
+      const mask = a.netmask.split('.').map(Number);
+      const bcast = ip.map((p, i) => p | (~mask[i] & 255)).join('.');
+      console.log(`  [${name}]  IP: ${a.address}  Mask: ${a.netmask}  Broadcast: ${bcast}`);
+    }
+  }
+}
+```
+
+**What to check**: Your laptop's IPv4 address must share the first 3 octets with the XR18 (e.g., both `192.168.1.X`). If you see `169.254.X.X`, DHCP failed — wait 30s or set a static IP.
+
+---
+
+### 27.2 Direct UDP Discovery Probe
+
+```js
+// Save as: diag_discovery.js — Run: node diag_discovery.js
+const dgram = require('dgram');
+const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+
+// Build /xinfo OSC packet
+const addr = Buffer.from('/xinfo\0\0', 'ascii'); // 8 bytes
+const tag  = Buffer.from(',\0\0\0', 'ascii');     // 4 bytes
+const pkt  = Buffer.concat([addr, tag]);
+
+sock.on('message', (msg, rinfo) => {
+  console.log(`\n✅ MIXER FOUND at ${rinfo.address}:${rinfo.port}`);
+  console.log('   Raw response:', msg.toString('ascii').replace(/\0/g, ' '));
+  sock.close();
+  process.exit(0);
+});
+
+sock.bind(() => {
+  sock.setBroadcast(true);
+  // Try all three Behringer port families
+  for (const port of [10024, 10023, 2223]) {
+    sock.send(pkt, 0, pkt.length, port, '255.255.255.255');
+    console.log(`Sent /xinfo broadcast to 255.255.255.255:${port}`);
+  }
+});
+
+setTimeout(() => {
+  console.log('\n❌ No mixer responded within 5 seconds.');
+  console.log('   Checklist:');
+  console.log('   1. Is the XR18 powered on?');
+  console.log('   2. Is the Remote switch set to ETHERNET?');
+  console.log('   3. Are you on the same subnet? (run: ipconfig)');
+  console.log('   4. Is Windows Firewall blocking Node.js?');
+  sock.close();
+  process.exit(1);
+}, 5000);
+```
+
+---
+
+### 27.3 Direct /xremote Handshake Test
+
+```js
+// Save as: diag_handshake.js — Run: node diag_handshake.js <MIXER_IP>
+// Example: node diag_handshake.js 192.168.1.100
+const dgram = require('dgram');
+const MIXER_IP = process.argv[2] || '192.168.1.100';
+const MIXER_PORT = 10024;
+const sock = dgram.createSocket('udp4');
+
+const xremote = Buffer.from('/xremote\0\0\0\0,\0\0\0', 'ascii');
+const xinfo   = Buffer.from('/xinfo\0\0,\0\0\0', 'ascii');
+
+let received = false;
+
+sock.on('message', (msg, rinfo) => {
+  received = true;
+  console.log(`✅ Reply from ${rinfo.address}:${rinfo.port}`);
+  console.log('   Data:', msg.toString('ascii').replace(/\0/g, ' ').trim());
+});
+
+sock.bind(() => {
+  console.log(`Sending /xremote + /xinfo to ${MIXER_IP}:${MIXER_PORT}...`);
+  sock.send(xremote, 0, xremote.length, MIXER_PORT, MIXER_IP);
+  sock.send(xinfo,   0, xinfo.length,   MIXER_PORT, MIXER_IP);
+});
+
+setTimeout(() => {
+  if (!received) {
+    console.log(`\n❌ No response from ${MIXER_IP}:${MIXER_PORT}`);
+    console.log('   The IP may be wrong, or the mixer is unreachable.');
+    console.log('   Try pinging: ping ' + MIXER_IP);
+  }
+  sock.close();
+  process.exit(received ? 0 : 1);
+}, 3000);
+```
+
+---
+
+### 27.4 Windows Firewall Quick Check
+
+```powershell
+# Run in PowerShell (Admin):
+# Check if Node.js is allowed through the firewall
+Get-NetFirewallRule -DisplayName "*node*" | Format-Table DisplayName, Enabled, Direction, Action
+
+# If no rules exist or they're disabled, add one:
+# New-NetFirewallRule -DisplayName "Node.js (OpenMix)" -Direction Inbound -Program "C:\Program Files\nodejs\node.exe" -Action Allow -Protocol UDP
+```
+
+---
+
+### 27.5 Subnet Mismatch Detection
+
+```powershell
+# Quick subnet check — run this at church:
+ipconfig | findstr /C:"IPv4" /C:"Subnet"
+
+# Both your laptop and the XR18 must share the same first 3 octets.
+# Example GOOD:  Laptop=192.168.1.50, Mixer=192.168.1.100  (same /24 subnet)
+# Example BAD:   Laptop=192.168.0.50, Mixer=192.168.1.100  (different subnets!)
+#
+# If subnets don't match:
+#   Option A: Connect to the same router/switch as the XR18
+#   Option B: Set a static IP on your laptop in the same range:
+#             Control Panel -> Network -> Ethernet -> Properties -> IPv4 -> Use the following IP:
+#             IP: 192.168.1.50  Mask: 255.255.255.0  Gateway: 192.168.1.1
+```
+
+---
+
+### 27.6 Force Manual Connection (Bypass Discovery)
+
+```js
+// If auto-discovery fails but you know the IP, paste this in browser DevTools console:
+// (Adjust the IP to match your mixer)
+
+// 1. Get the socket instance
+const sock = document.querySelector('body').__svelte_meta?.socket 
+  || window.__openmix_socket; // May not be exposed — use Setup Wizard manual IP instead
+
+// Or simply: In the Setup Wizard, type the IP manually and click "Start Mixing".
+// The backend will connect directly without needing broadcast discovery.
+```
+
+> **Recommended approach**: If discovery fails, just type the mixer IP in the Setup Wizard manually. 
+> Find the IP via: router admin page, X-Air Edit app on a phone, or `diag_discovery.js` above.
 
 ---
 
