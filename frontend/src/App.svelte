@@ -110,15 +110,35 @@
   });
 
   function connectAsFoh() {
-    // Clear auth token so backend defaults to master_admin_token/FOH.
     setSocketAuthToken(null);
     try {
       socket.disconnect();
     } catch (_) {}
     
-    // Phase 5: Deep Sync Trigger
     socket.once("connect", () => {
-      socket.emit("requestSync", { presetId: config.presetId });
+      if (mixerConfig.ip) {
+        // Saved mixer IP exists — configure backend and sync
+        socket.emit("configureMixer", {
+          ip: mixerConfig.ip,
+          port: mixerConfig.port || 10024,
+          presetId: config.presetId
+        });
+        socket.emit("requestSync", { presetId: config.presetId });
+        console.log(`[OpenMix] FOH → ${mixerConfig.ip}:${mixerConfig.port || 10024}`);
+      } else {
+        // No IP saved — auto-discover, then auto-connect if found
+        console.log("[OpenMix] No saved mixer IP. Auto-discovering...");
+        socket.emit("discoverMixer", null, (result) => {
+          if (result) {
+            // Auto-connect: the user already chose FOH, so this is implicit consent
+            discoveredMixer = result;
+            confirmDiscovery(); // fills mixerConfig, configures backend, triggers sync
+            socket.emit("requestSync", { presetId: config.presetId });
+          } else {
+            showToast("No mixer found — open Setup to enter IP manually.", "error");
+          }
+        });
+      }
     });
     
     socket.connect();
@@ -280,32 +300,18 @@
     localStorage.getItem("openmix_mixer") || '{"ip":"","port":10024}',
   ));
 
-  let discoveryStatus = $state("idle"); // 'idle' | 'scanning' | 'found' | 'notfound'
+  let discoveryStatus = $state("idle"); // 'idle' | 'scanning' | 'found' | 'notfound' | 'connected'
+  let discoveredMixer = $state(null);   // { ip, port, name } — holds the found device until user confirms
 
   function startDiscovery() {
     discoveryStatus = "scanning";
+    discoveredMixer = null;
 
-    // Ensure the backend socket is connected before emitting discovery
     const doDiscovery = () => {
       socket.emit("discoverMixer", null, (result) => {
         if (result) {
-          mixerConfig.ip = result.ip;
-          mixerConfig.port = result.port;
-          mixerConfig = { ...mixerConfig };
-          
-          const nameToUpper = (result.name || '').toUpperCase();
-          if (nameToUpper.includes('XR') || nameToUpper.includes('MR') || nameToUpper.includes('X18') || nameToUpper.includes('M18')) {
-            config.presetId = 'XR18';
-          } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
-            config.presetId = 'X32RACK';
-          } else if (nameToUpper.includes('WING')) {
-            config.presetId = 'WING';
-          }
-          // Apply the hardware config from the discovered preset
-          applyPreset();
-
+          discoveredMixer = result;
           discoveryStatus = "found";
-          showToast(`Found: ${result.name} at ${result.ip}:${result.port}`, "success");
         } else {
           discoveryStatus = "notfound";
           showToast("No mixer found on the network. Check Ethernet/Wi-Fi.", "error");
@@ -319,6 +325,47 @@
     } else {
       doDiscovery();
     }
+  }
+
+  /** User confirmed — connect to the discovered mixer */
+  function confirmDiscovery() {
+    if (!discoveredMixer) return;
+
+    // 1. Populate the mixer config
+    mixerConfig.ip = discoveredMixer.ip;
+    mixerConfig.port = discoveredMixer.port;
+    mixerConfig = { ...mixerConfig };
+
+    // 2. Auto-detect hardware preset
+    const nameToUpper = (discoveredMixer.name || '').toUpperCase();
+    if (nameToUpper.includes('XR') || nameToUpper.includes('MR') || nameToUpper.includes('X18') || nameToUpper.includes('M18')) {
+      config.presetId = 'XR18';
+    } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
+      config.presetId = 'X32RACK';
+    } else if (nameToUpper.includes('WING')) {
+      config.presetId = 'WING';
+    }
+    applyPreset();
+
+    // 3. Persist
+    localStorage.setItem("openmix_mixer", JSON.stringify(mixerConfig));
+    localStorage.setItem("openmix_config", JSON.stringify(config));
+
+    // 4. Configure backend and trigger sync
+    socket.emit("configureMixer", {
+      ip: discoveredMixer.ip,
+      port: discoveredMixer.port,
+      presetId: config.presetId
+    });
+
+    showToast(`Connected to ${discoveredMixer.name} at ${discoveredMixer.ip}:${discoveredMixer.port}`, "success");
+    discoveryStatus = "connected";
+  }
+
+  /** Dismiss discovery result without connecting */
+  function dismissDiscovery() {
+    discoveredMixer = null;
+    discoveryStatus = "idle";
   }
 
   // Main LR cannot route to sends/FX/routing
@@ -875,13 +922,35 @@
   }
 
   onMount(() => {
-    socket.connect();
-    // Load local configuration
+    // Load local configuration before connecting
     const saved = localStorage.getItem("openmix_config");
     if (saved) config = JSON.parse(saved);
 
+    // On first socket connect, push saved mixer config to the backend
+    socket.once("connect", () => {
+      if (mixerConfig.ip) {
+        // Saved IP — configure backend immediately
+        socket.emit("configureMixer", {
+          ip: mixerConfig.ip,
+          port: mixerConfig.port || 10024,
+          presetId: config.presetId
+        });
+        console.log(`[OpenMix] Startup: backend → ${mixerConfig.ip}:${mixerConfig.port || 10024}`);
+      } else if (!requiresSetup) {
+        // No saved IP but setup done before — auto-discover and auto-connect
+        console.log("[OpenMix] Startup: auto-discovering mixer...");
+        socket.emit("discoverMixer", null, (result) => {
+          if (result) {
+            discoveredMixer = result;
+            confirmDiscovery();
+          }
+        });
+      }
+    });
+
+    socket.connect();
+
     // Ensure FX slots exist in store for current config
-    // (deferred import to avoid circular load issues)
     import("./lib/fxState.js").then((mod) => {
       if (config && typeof config.fx === "number") mod.ensureFxSlots(config.fx);
     });
@@ -1379,16 +1448,32 @@
               <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Mixer Network Connection</div>
               <div class="discover-row">
                 <button class="btn-ghost" on:click={startDiscovery} disabled={discoveryStatus === "scanning"} style="width: 100%;">
-                  {#if discoveryStatus === "scanning"} <Search size={16} style="margin-right: 8px; vertical-align: bottom;" /> Scanning... {:else} <Radio size={16} style="margin-right: 8px; vertical-align: bottom;" /> Auto-Discover {/if}
+                  {#if discoveryStatus === "scanning"} <Search size={16} style="margin-right: 8px; vertical-align: bottom;" /> Scanning network... {:else} <Radio size={16} style="margin-right: 8px; vertical-align: bottom;" /> Auto-Discover Mixer {/if}
                 </button>
-          
-                {#if discoveryStatus === "found"}
-                  <span class="discovery-badge found"><Check size={14} style="margin-right: 4px; vertical-align: bottom;" /> Found</span>
-                {:else if discoveryStatus === "notfound"}
-                  <span class="discovery-badge notfound"><X size={14} style="margin-right: 4px; vertical-align: bottom;" /> Not found</span>
-                {/if}
               </div>
-              <div class="form-row split">
+
+              {#if discoveryStatus === "found" && discoveredMixer}
+                <div class="discovery-result-card">
+                  <div class="discovery-result-info">
+                    <div class="discovery-result-name">{discoveredMixer.name || 'Behringer Mixer'}</div>
+                    <div class="discovery-result-addr">{discoveredMixer.ip}:{discoveredMixer.port}</div>
+                  </div>
+                  <div class="discovery-result-actions">
+                    <button class="btn-connect" on:click={confirmDiscovery}>
+                      <Check size={14} style="margin-right: 4px;" /> Connect
+                    </button>
+                    <button class="btn-dismiss" on:click={dismissDiscovery}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              {:else if discoveryStatus === "connected"}
+                <span class="discovery-badge found"><Check size={14} style="margin-right: 4px; vertical-align: bottom;" /> Connected — {mixerConfig.ip}</span>
+              {:else if discoveryStatus === "notfound"}
+                <span class="discovery-badge notfound"><X size={14} style="margin-right: 4px; vertical-align: bottom;" /> Not found — try again or enter IP manually</span>
+              {/if}
+
+              <div class="form-row split" style="margin-top: 0.5rem;">
                 <div class="form-group flex-2">
                   <label for="mixer-ip">IP Address</label>
                   <input id="mixer-ip" type="text" bind:value={mixerConfig.ip} placeholder="192.168.1.100" />
@@ -3275,6 +3360,86 @@
     background: rgba(239, 68, 68, 0.15);
     color: #ef4444;
     border: 1px solid #ef4444;
+  }
+
+  .discovery-result-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    animation: discovery-slide-in 0.3s ease-out;
+  }
+  @keyframes discovery-slide-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .discovery-result-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .discovery-result-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #10b981;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .discovery-result-addr {
+    font-size: 0.75rem;
+    color: #6ee7b7;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.03em;
+  }
+  .discovery-result-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .btn-connect {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #10b981;
+    color: #022c22;
+    border: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .btn-connect:hover {
+    background: #34d399;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  }
+  .btn-dismiss {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #71717a;
+    border: 1px solid #3f3f46;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.15s;
+    padding: 0;
+  }
+  .btn-dismiss:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
   }
 
   .setup-overlay { position: absolute; inset: 0; z-index: 1000;

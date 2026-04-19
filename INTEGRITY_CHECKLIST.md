@@ -369,7 +369,8 @@
 | 25.6 | Changing an EQ band on the Web UI alters the digital parametric EQ on the master bus | ☐ |
 | 25.7 | Console `/xremote` keep-alive maintains connection beyond 10 seconds without dropping packets | ☐ |
 | 25.8 | Navbar transitions from "Mixer Standby" (amber dot) to "Mixer Online" (green dot) within 3s of connecting | ☐ |
-| 25.9 | Discovery toast shows the mixer name and IP (e.g., "Found: XR18 at 192.168.1.X:10024") | ☐ |
+| 25.9 | Setup Wizard "Auto-Discover" returns a green Confirmation Card showing mixer name and IP | ☐ |
+| 25.9b| Clicking "Connect" on the Discovery Confirmation Card targets the correct IP, configures the backend, and transitions the system to "Online" | ☐ |
 | 25.10| After discovery, the port field in the Setup Wizard shows **10024** (not a random ephemeral port) | ☐ |
 
 ---
@@ -396,6 +397,9 @@
 
 **Problem: Auto-Discover button clicked before WebSocket is ready (Phase 20 fix).**
 - **Failsafe Added**: `startDiscovery()` now checks `socket.connected` before emitting. If the socket isn't ready, it defers the discovery request until after the handshake completes. Toast notifications inform the user of success or failure.
+
+**Problem: Unwanted Auto-Connections via Auto-Discovery.**
+- **Failsafe Added**: The Auto-Discovery system now employs a "Confirm-Before-Connect" flow. It will populate a confirmation UI card instead of silently assigning `mixerConfig` and initiating a sync. This prevents disrupting the current mix state or accidentally hijacking an active hardware unit without explicit operator consent.
 
 ---
 

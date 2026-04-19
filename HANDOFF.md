@@ -550,3 +550,13 @@ This phase audited the full discovery → configure → sync → verify pipeline
 - `frontend/src/App.svelte` — Added socket connection guard and toast feedback to `startDiscovery()`
 
 **ALL THREE CONNECTION-PIPELINE BUGS RESOLVED. HARDWARE TEST READY.**
+
+### 14.24 Phase 21: Discovery Confirm-Before-Connect Refactor (2026-04-19)
+
+This phase refactored the auto-discovery flow to prevent the app from automatically connecting and syncing with a discovered mixer without explicit user consent.
+
+- **Explicit Confirmation UI**: Replaced the automatic configuration and sync flow during discovery with a two-step "Confirm-Before-Connect" process. The Setup Wizard now presents a rich confirmation card displaying the discovered mixer's identity, IP, and port. The user must actively click "Connect" to configure the backend, save the IP to localStorage, and trigger the full parameter sync.
+- **Boot and Role Reconnection Logic**: Updated the `onMount` and `connectAsFoh()` pathways. If a returning user has a verified mixer IP in localStorage, the application silently configures the backend and establishes connection on startup or role selection. If no IP is saved but they successfully navigate to the Mixer view, it runs a background discovery and awaits the same explicit connection confirmation or manual entry if no mixer is found.
+
+**FILES MODIFIED:**
+- `frontend/src/App.svelte` — Implemented `discoveredMixer`, `confirmDiscovery()`, and `dismissDiscovery()` handlers. Overhauled the Setup Wizard connection UI to include the new discovery result card with a match-themed "Connect" button. Adjusted startup and role selection logic to gracefully handle reconnection vs. new discovery.
