@@ -1031,8 +1031,6 @@
       }
     });
     sendsState = updated;
-    });
-    sendsState = updated;
     }
   });
 
