@@ -560,3 +560,13 @@ This phase refactored the auto-discovery flow to prevent the app from automatica
 
 **FILES MODIFIED:**
 - `frontend/src/App.svelte` — Implemented `discoveredMixer`, `confirmDiscovery()`, and `dismissDiscovery()` handlers. Overhauled the Setup Wizard connection UI to include the new discovery result card with a match-themed "Connect" button. Adjusted startup and role selection logic to gracefully handle reconnection vs. new discovery.
+
+### 14.25 Phase 22: Deep Hardware Sync Fix (2026-04-19)
+
+Following the auto-discovery refactor, a critical bug was identified during field testing: the frontend successfully connected to the mixer but failed to hydrate the individual channel faders, sends, pans, mutes, gate, and dynamics parameters. 
+
+- **The Problem:** The `mixerSync.js` backend was utilizing generic wildcard/placeholder paths (e.g., `/ch/{N}/eq` and `/ch/{N}/mix`) in the `XR18` and `X32RACK` sync templates. Behringer OSC does not support "subtree dumping" (requesting a parent node to get all child node values). As a result, the backend dispatched only 228 requests (mostly routing, names, colors, and global config), silently skipping all active mixing parameters.
+- **The Solution:** Exploded the `XR18` and `X32RACK` sync templates in `backend/mixerSync.js` into explicit requests for every parameter tracked by the frontend. The `XR18` handshake now explicitly polls `mix/fader`, `mix/on`, `mix/pan`, `mix/lr`, `mix/01-06/level` (aux sends), `preamp/phase`, `gate/*`, and `dyn/*` parameters across all channels, buses, and FX returns.
+
+**FILES MODIFIED:**
+- `backend/mixerSync.js` — Expanded `getSyncTemplate` definitions for `XR18` and `X32RACK` to include over 500 explicit parameter paths, bypassing Behringer's lack of OSC subtree introspection.

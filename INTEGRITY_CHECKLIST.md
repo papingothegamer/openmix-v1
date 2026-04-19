@@ -401,6 +401,9 @@
 **Problem: Unwanted Auto-Connections via Auto-Discovery.**
 - **Failsafe Added**: The Auto-Discovery system now employs a "Confirm-Before-Connect" flow. It will populate a confirmation UI card instead of silently assigning `mixerConfig` and initiating a sync. This prevents disrupting the current mix state or accidentally hijacking an active hardware unit without explicit operator consent.
 
+**Problem: Mixer Connects (100% Sync) but Faders, Sends, and EQs remain at 0/default.**
+- **Failsafe Added**: Behringer OSC does not support "subtree" dumping (e.g. requesting `/ch/01/mix` does not return fader/pan/mute children). If parameters are failing to sync on connection, it means they are missing from the `getSyncTemplate()` array in `backend/mixerSync.js`. The XR18 and X32 templates have been explicitly populated with all individual `mix/*`, `gate/*`, and `dyn/*` addresses to guarantee hydration. If you add a new UI feature (like EQ bands), you MUST add explicit requests for those parameters to the sync template.
+
 ---
 
 ## 27. Field Diagnostic Code Snippets
