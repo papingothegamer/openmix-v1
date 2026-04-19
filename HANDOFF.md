@@ -570,3 +570,16 @@ Following the auto-discovery refactor, a critical bug was identified during fiel
 
 **FILES MODIFIED:**
 - `backend/mixerSync.js` — Expanded `getSyncTemplate` definitions for `XR18` and `X32RACK` to include over 500 explicit parameter paths, bypassing Behringer's lack of OSC subtree introspection.
+
+### 14.26 Phase 23: Frontend Hydration & Deep Sync Completion (2026-04-19)
+
+Following the backend sync fix in Phase 22, the app was still failing to hydrate channel names, colors, routing patches, EQ curves, and FX parameters because Svelte was natively isolated from these properties.
+
+- **The Problem:** The Node.js backend successfully fetched the 500+ deep parameters (`/ch/01/config/name`, `/fx/1/type`, `/ch/01/eq/1/g`, etc.) and loaded them into Svelte's `$mixerState.flatOscCache`. However, Svelte's `scribbles`, `routingState`, `channelEqState`, and `fxState` stores were designed as local, standalone objects that only populated when a user loaded a local JSON scene or manually adjusted them.
+- **The Solution:** Added a massive Svelte 5 `$effect` block inside `App.svelte` that acts as a hydration translation layer. It scans the incoming `flatOscCache` during the `/xinfo` sync and regex-matches OSC paths to update Svelte's internal UI arrays. 
+- **Expanded Backend Sync:** Further dynamically expanded `mixerSync.js` to ensure the X32RACK templates receive 32 channels of Gate/Dyn/EQ paths, rather than hardcoded XR18 16-channel variants. Added all FX `/par/01-16` paths to ensure all Reverb tails, delays, and ratios are pulled on load.
+
+**FILES MODIFIED:**
+- `frontend/src/App.svelte` — Added the massive `$effect` hydration block.
+- `backend/mixerSync.js` — Refactored the XR18/X32RACK template injection to dynamically loop through 4-band and 6-band EQ parameters, Gate, Dyn, and FX params to prevent bloated file sizes.
+- `frontend/src/lib/fxRegistry.js` — Added `getPresetByIndex()` helper to translate Behringer OSC numerical FX integers (e.g. `1` = Hall Reverb) into our OpenMix UI string preset identifiers.

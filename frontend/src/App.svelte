@@ -26,6 +26,7 @@
   import Toast from "./lib/components/Toast.svelte";
   import { showToast } from "./lib/notificationStore";
   import fxState, { loadFxState } from "./lib/fxState";
+  import { getPresetByIndex } from "./lib/fxRegistry.js";
   import { MixerPresets, PredefinedMixersArray } from "./lib/mixerPresets";
   import {
     ChevronLeft,
@@ -1030,6 +1031,164 @@
       }
     });
     sendsState = updated;
+    });
+    sendsState = updated;
+    }
+  });
+
+  // Hydrate Scribbles, Routing, and EQ from backend OSC cache
+  $effect(() => {
+    if ($mixerState && $mixerState.flatOscCache) {
+      const cache = $mixerState.flatOscCache || {};
+      
+      const newScribbles = { ...scribbles };
+      const newRouting = { ...routingState };
+      const newEq = { ...channelEqState };
+      let updatedScribbles = false;
+      let updatedRouting = false;
+      let updatedEq = false;
+
+      Object.entries(cache).forEach(([path, val]) => {
+        const v = extractOscValue(val, null);
+        if (v === null && typeof val !== 'string' && !Array.isArray(val)) return;
+        
+        // Use string value if available (for names/colors/icons)
+        const strVal = Array.isArray(val) ? val[0] : (typeof val === 'object' && val !== null ? val.value : val);
+
+        // --- SCRIBBLES ---
+        // Match: /ch/01/config/name
+        let m = path.match(/^\/(ch|bus|rtn|mtx)\/(\d{2}|[1-6])\/config\/(name|color|icon)$/);
+        if (m) {
+          const type = m[1];
+          const num = parseInt(m[2], 10);
+          const prop = m[3];
+          
+          let keyId = "";
+          if (type === 'ch') keyId = `in_${num}`;
+          else if (type === 'bus') keyId = `bus_${num}`;
+          else if (type === 'rtn') keyId = `fx_${num}`;
+          else if (type === 'mtx') keyId = `mtx_${num}`;
+          
+          if (!newScribbles[keyId]) newScribbles[keyId] = {};
+          
+          if (prop === 'name' && newScribbles[keyId].name !== strVal) {
+            newScribbles[keyId].name = strVal;
+            updatedScribbles = true;
+          } else if (prop === 'color') {
+            // Convert Behringer color index to Hex if needed, or if it's already Hex just assign it
+            const hexColor = isNaN(strVal) ? strVal : (['#000', '#f00', '#0f0', '#ff0', '#00f', '#f0f', '#0ff', '#fff'][parseInt(strVal)%8] || '#3f3f46');
+            if (newScribbles[keyId].color !== hexColor) {
+              newScribbles[keyId].color = hexColor;
+              updatedScribbles = true;
+            }
+          } else if (prop === 'icon') {
+            const iconStr = `icon_${String(strVal).padStart(2, '0')}`;
+            if (newScribbles[keyId].iconType !== iconStr) {
+              newScribbles[keyId].iconType = iconStr;
+              updatedScribbles = true;
+            }
+          }
+          return;
+        }
+
+        // --- ROUTING ---
+        // Match: /ch/01/config/insrc
+        m = path.match(/^\/ch\/(\d{2})\/config\/insrc$/);
+        if (m) {
+          const ch = parseInt(m[1], 10);
+          const srcIdx = parseInt(v, 10); // Behringer uses an index mapping for sources
+          // Simplified: Assume 0-15 = Analog In 1-16, 16-31 = USB 1-16
+          let mappedSrc = `sock_in_${srcIdx + 1}`; 
+          if (srcIdx >= 16) mappedSrc = `usb_in_${srcIdx - 15}`;
+          
+          if (newRouting[`in_${ch}`] !== mappedSrc) {
+            newRouting[`in_${ch}`] = mappedSrc;
+            updatedRouting = true;
+          }
+          return;
+        }
+
+        // --- EQ BANDS ---
+        // Match: /ch/01/eq/1/g
+        m = path.match(/^\/(ch|bus)\/(\d{2}|[1-6])\/eq\/(\d)\/(f|g|q|type)$/);
+        if (m) {
+          const type = m[1];
+          const num = parseInt(m[2], 10);
+          const band = parseInt(m[3], 10);
+          const param = m[4];
+          
+          let keyId = "";
+          if (type === 'ch') keyId = `in_${num}`;
+          else if (type === 'bus') keyId = `bus_${num}`;
+
+          if (!newEq[keyId]) {
+            // Initialize 4 bands for CH, 6 for BUS
+            const maxBands = type === 'ch' ? 4 : 6;
+            newEq[keyId] = Array.from({length: maxBands}, (_, i) => ({
+              id: i, enabled: true, freq: 1000, gain: 0, q: 1, type: 'peq'
+            }));
+          }
+
+          const bIdx = band - 1;
+          if (newEq[keyId][bIdx]) {
+             if (param === 'g') {
+                const gainDb = (v * 30) - 15; // Behringer norm: 0..1 to -15..+15
+                if (Math.abs(newEq[keyId][bIdx].gain - gainDb) > 0.1) {
+                  newEq[keyId][bIdx].gain = gainDb;
+                  updatedEq = true;
+                }
+             } else if (param === 'f') {
+                const freqHz = 20 * Math.pow(1000, v); // standard logarithmic frequency mapping
+                if (Math.abs(newEq[keyId][bIdx].freq - freqHz) > 5) {
+                  newEq[keyId][bIdx].freq = freqHz;
+                  updatedEq = true;
+                }
+             } else if (param === 'q') {
+                const qVal = 10 * v; // Simplified
+                if (Math.abs(newEq[keyId][bIdx].q - qVal) > 0.1) {
+                  newEq[keyId][bIdx].q = qVal;
+                  updatedEq = true;
+                }
+             } else if (param === 'type') {
+                const typeMap = ['loshelf', 'peq', 'hishelf', 'hpf12', 'lpf12', 'hpf48'];
+                const tStr = typeMap[parseInt(v, 10)] || 'peq';
+                if (newEq[keyId][bIdx].type !== tStr) {
+                  newEq[keyId][bIdx].type = tStr;
+                  updatedEq = true;
+                }
+             }
+          }
+          return;
+        }
+
+        // --- FX TYPE ---
+        // Match: /fx/1/type
+        m = path.match(/^\/fx\/([1-8])\/type$/);
+        if (m) {
+          const fxIdx = parseInt(m[1], 10) - 1; // 0-indexed for Svelte state
+          const presetName = getPresetByIndex(v);
+          
+          // Since fxState is a writable store, we don't want to blindly spam it.
+          // We read it synchronously and apply updates only if it changed.
+          // Note: App.svelte's $effect block is safe to do this as it runs in the microtask queue.
+          let currentSlots = [];
+          fxState.subscribe(s => currentSlots = s.slots)(); // synchronous read
+          
+          if (currentSlots[fxIdx] && currentSlots[fxIdx].preset !== presetName) {
+            // Modify without triggering OSC emit loop (which setSlot does).
+            // loadFxState overwrites without emitting. We can just build a new slots array.
+            const newSlots = [...currentSlots];
+            newSlots[fxIdx] = { ...newSlots[fxIdx], preset: presetName };
+            loadFxState({ slots: newSlots });
+          }
+          return;
+        }
+
+      });
+
+      if (updatedScribbles) scribbles = newScribbles;
+      if (updatedRouting) routingState = newRouting;
+      if (updatedEq) channelEqState = newEq;
     }
   });
 

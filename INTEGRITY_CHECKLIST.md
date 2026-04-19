@@ -404,6 +404,9 @@
 **Problem: Mixer Connects (100% Sync) but Faders, Sends, and EQs remain at 0/default.**
 - **Failsafe Added**: Behringer OSC does not support "subtree" dumping (e.g. requesting `/ch/01/mix` does not return fader/pan/mute children). If parameters are failing to sync on connection, it means they are missing from the `getSyncTemplate()` array in `backend/mixerSync.js`. The XR18 and X32 templates have been explicitly populated with all individual `mix/*`, `gate/*`, and `dyn/*` addresses to guarantee hydration. If you add a new UI feature (like EQ bands), you MUST add explicit requests for those parameters to the sync template.
 
+**Problem: Missing Channel Names, Missing Routing Matrix, or Default EQ Curves on Load.**
+- **Failsafe Added**: Svelte standalone stores (`scribbles`, `routingState`, `channelEqState`, `fxState`) do not natively hydrate themselves from the backend's OSC array. We implemented a massive $effect hydration loop inside `App.svelte` that regex-matches the incoming OSC paths and manually constructs the Svelte local state objects. If you add a new standalone UI array in the future, you must wire it into this Svelte $effect block to ensure it synchronizes with the console upon connection.
+
 ---
 
 ## 27. Field Diagnostic Code Snippets

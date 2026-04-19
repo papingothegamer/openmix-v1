@@ -84,21 +84,6 @@ class MixerConnection extends EventEmitter {
                 // Main LR Mix State
                 { address: '/lr/mix/fader' },
                 { address: '/lr/mix/on' },
-
-                // Gate & Dynamics
-                { address: '/ch/01-16/gate/on', pattern: '/ch/{N}/gate/on', count: 16 },
-                { address: '/ch/01-16/gate/thr', pattern: '/ch/{N}/gate/thr', count: 16 },
-                { address: '/ch/01-16/gate/range', pattern: '/ch/{N}/gate/range', count: 16 },
-                { address: '/ch/01-16/gate/att', pattern: '/ch/{N}/gate/att', count: 16 },
-                { address: '/ch/01-16/gate/hold', pattern: '/ch/{N}/gate/hold', count: 16 },
-                { address: '/ch/01-16/gate/rel', pattern: '/ch/{N}/gate/rel', count: 16 },
-                
-                { address: '/ch/01-16/dyn/on', pattern: '/ch/{N}/dyn/on', count: 16 },
-                { address: '/ch/01-16/dyn/thr', pattern: '/ch/{N}/dyn/thr', count: 16 },
-                { address: '/ch/01-16/dyn/ratio', pattern: '/ch/{N}/dyn/ratio', count: 16 },
-                { address: '/ch/01-16/dyn/att', pattern: '/ch/{N}/dyn/att', count: 16 },
-                { address: '/ch/01-16/dyn/rel', pattern: '/ch/{N}/dyn/rel', count: 16 },
-                { address: '/ch/01-16/dyn/makeup', pattern: '/ch/{N}/dyn/makeup', count: 16 },
                 
                 // EQ On/Off
                 { address: '/ch/01-16/eq/on', pattern: '/ch/{N}/eq/on', count: 16 },
@@ -160,7 +145,50 @@ class MixerConnection extends EventEmitter {
                 { address: '/fx/1-8/type', pattern: '/fx/{N}/type', count: 8, pad: 0 }
             ]
         };
-        return templates[type] || templates['XR18'];
+        const tmpl = templates[type] || templates['XR18'];
+
+        // Dynamically append EQ, Gate, Dyn, and FX parameters to avoid massive hardcoding
+        if (type === 'XR18' || type === 'X32RACK') {
+            const chCount = type === 'XR18' ? 16 : 32;
+            
+            // Gate & Dynamics
+            ['on', 'thr', 'range', 'att', 'hold', 'rel'].forEach(param => {
+                tmpl.push({ address: `/ch/01-${chCount}/gate/${param}`, pattern: `/ch/{N}/gate/${param}`, count: chCount });
+            });
+            ['on', 'mode', 'thr', 'ratio', 'knee', 'att', 'hold', 'rel'].forEach(param => {
+                tmpl.push({ address: `/ch/01-${chCount}/dyn/${param}`, pattern: `/ch/{N}/dyn/${param}`, count: chCount });
+            });
+
+            // Channel EQ (4-band)
+            for (let band = 1; band <= 4; band++) {
+                ['type', 'f', 'g', 'q'].forEach(param => {
+                    tmpl.push({ address: `/ch/01-${chCount}/eq/${band}/${param}`, pattern: `/ch/{N}/eq/${band}/${param}`, count: chCount });
+                });
+            }
+            
+            // Bus EQ (6-band)
+            for (let band = 1; band <= 6; band++) {
+                ['type', 'f', 'g', 'q'].forEach(param => {
+                    tmpl.push({ address: `/bus/01-16/eq/${band}/${param}`, pattern: `/bus/{N}/eq/${band}/${param}`, count: 16 });
+                });
+            }
+
+            // Main LR EQ (6-band)
+            for (let band = 1; band <= 6; band++) {
+                ['type', 'f', 'g', 'q'].forEach(param => {
+                    tmpl.push({ address: `/lr/eq/${band}/${param}` });
+                });
+            }
+
+            // FX Parameters (01 to 16 for safety on complex reverbs)
+            const fxCount = type === 'XR18' ? 4 : 8;
+            for (let par = 1; par <= 16; par++) {
+                const parStr = String(par).padStart(2, '0');
+                tmpl.push({ address: `/fx/1-${fxCount}/par/${parStr}`, pattern: `/fx/{N}/par/${parStr}`, count: fxCount, pad: 0 });
+            }
+        }
+
+        return tmpl;
     }
 
     async requestFullSync(mixerType = 'XR18', isForce = false) {

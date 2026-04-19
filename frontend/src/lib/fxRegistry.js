@@ -286,6 +286,14 @@ export function getPresetMeta(preset) {
   return FX_REGISTRY[preset] || FX_REGISTRY.Empty;
 }
 
+export function getPresetByIndex(index) {
+  const num = parseInt(index, 10);
+  for (const [name, meta] of Object.entries(FX_REGISTRY)) {
+    if (meta.oscTypeIndex === num) return name;
+  }
+  return 'Empty';
+}
+
 /**
  * Returns a list of unique FX families for the first-tier dropdown.
  */
