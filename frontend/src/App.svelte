@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { blur } from "svelte/transition";
   import { get } from "svelte/store";
   import {
@@ -1039,12 +1039,13 @@
     if ($mixerState && $mixerState.flatOscCache) {
       const cache = $mixerState.flatOscCache || {};
       
-      const newScribbles = { ...scribbles };
-      const newRouting = { ...routingState };
-      const newEq = { ...channelEqState };
-      let updatedScribbles = false;
-      let updatedRouting = false;
-      let updatedEq = false;
+      untrack(() => {
+        const newScribbles = { ...scribbles };
+        const newRouting = { ...routingState };
+        const newEq = { ...channelEqState };
+        let updatedScribbles = false;
+        let updatedRouting = false;
+        let updatedEq = false;
 
       Object.entries(cache).forEach(([path, val]) => {
         const v = extractOscValue(val, null);
@@ -1187,6 +1188,7 @@
       if (updatedScribbles) scribbles = newScribbles;
       if (updatedRouting) routingState = newRouting;
       if (updatedEq) channelEqState = newEq;
+      });
     }
   });
 

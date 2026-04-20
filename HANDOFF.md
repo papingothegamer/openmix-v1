@@ -583,3 +583,25 @@ Following the backend sync fix in Phase 22, the app was still failing to hydrate
 - `frontend/src/App.svelte` — Added the massive `$effect` hydration block.
 - `backend/mixerSync.js` — Refactored the XR18/X32RACK template injection to dynamically loop through 4-band and 6-band EQ parameters, Gate, Dyn, and FX params to prevent bloated file sizes.
 - `frontend/src/lib/fxRegistry.js` — Added `getPresetByIndex()` helper to translate Behringer OSC numerical FX integers (e.g. `1` = Hall Reverb) into our OpenMix UI string preset identifiers.
+
+### 14.23 Phase 20: Svelte 5 Untrack Reactivity Fix (2026-04-20)
+
+This phase resolved a critical UI crash (`Maximum update depth exceeded`) caused by synchronous state hydration upon connecting to a hardware mixer.
+- **Problem**: When the Node.js backend established a connection with the mixer, it instantly dumped a massive bulk OSC cache (routing, scribbles, and EQ) to the frontend. The `App.svelte` hydration `$effect` block read the Svelte `$state` proxy variables (`scribbles`, `routingState`, `channelEqState`) via the object spread operator (e.g. `const newScribbles = { ...scribbles };`) and then conditionally reassigned them at the end of the block. Svelte 5 automatically tracked these read dependencies, meaning the state write immediately re-triggered the `$effect`, causing an infinite synchronous loop that crashed the frontend and presented a blank screen.
+- **Solution**: Imported and utilized Svelte 5's `untrack` API. Wrapping the hydration logic inside `untrack(() => { ... })` explicitly isolates the read and write operations, preventing Svelte from adding the proxy objects to the effect's dependency graph. The `$effect` now safely runs exclusively when the upstream `$mixerState.flatOscCache` changes.
+- **Troubleshooting Code Snippet (For Future Data Pipelines)**:
+  If adding new data hydrators (e.g., Mute Groups, DCAs), always use `untrack` when applying recursive bulk state updates:
+  ```svelte
+  import { untrack } from 'svelte';
+  
+  $effect(() => {
+    if ($mixerState.flatOscCache) {
+      untrack(() => {
+        // Safe to read and write without triggering a cyclic loop
+        const newDca = { ...dcaState };
+        // ... modify newDca ...
+        dcaState = newDca;
+      });
+    }
+  });
+  ```

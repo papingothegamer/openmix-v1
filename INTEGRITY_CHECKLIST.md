@@ -377,6 +377,24 @@
 
 ## 26. Expected Problems & Failsafes
 
+**Problem: App crashes with "Maximum update depth exceeded" blank white screen upon live sync.**
+- **Failsafe Added**: Svelte 5's reactivity model rigorously tracks proxy reads. The `$effect` hydration loops in `App.svelte` are now safely wrapped in `untrack(() => { ... })`. This explicitly isolates the read and write operations on cyclic state.
+- **Troubleshooting For Future Devs**: If you add new data hydrators (e.g., Mute Groups, DCAs) to the frontend, you **MUST** use `untrack` to apply recursive bulk state updates safely.
+  ```svelte
+  import { untrack } from 'svelte';
+  
+  $effect(() => {
+    if ($mixerState.flatOscCache) {
+      untrack(() => {
+        // Safe to read and write without triggering a cyclic loop
+        const newDca = { ...dcaState };
+        // ... modify newDca ...
+        dcaState = newDca;
+      });
+    }
+  });
+  ```
+
 **Problem: Church network blocks UDP Broadcast packets (Auto-Discovery fails).**
 - **Failsafe Added**: Auto-Discovery now maps every active network interface (VPNs, Ethernet, Wi-Fi) and calculates explicit subnet broadcast IPs (e.g., `192.168.1.255`), which bypasses many Windows routing failures. If that still fails, you can find the mixer IP from the physical router or X-Touch terminal and enter it manually. The frontend forces the backend to use the correct `presetId` directly, completely avoiding fallback loops.
 
