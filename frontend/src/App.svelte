@@ -2687,7 +2687,7 @@
   </div>
 </main>
 
-{#if $isConnected && $syncProgress.active}
+{#if $isConnected && $syncProgress.active && $mixerState?.hasSyncedOnce}
   <div class="sync-overlay" transition:blur={{ duration: 300 }}>
     <div class="sync-card">
       <div class="sync-icon">

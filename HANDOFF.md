@@ -605,3 +605,12 @@ This phase resolved a critical UI crash (`Maximum update depth exceeded`) caused
     }
   });
   ```
+
+### 14.24 Phase 21: Offline Mode Resiliency & Metadata Hydration Fix (2026-04-21)
+
+This phase stabilized the application for offline usage and patched a critical UI bug regarding OSC array object evaluation during scene imports.
+- **Problem 1 (Broken Icons on Scene Import)**: When the Node.js backend operates with `osc.js` metadata enabled (`metadata: true`), the incoming OSC cache stores arguments as object arrays (e.g., `[{ type: 's', value: 'KICK' }]`). During offline scene file imports, the `$effect` hydration loop destructured these arrays poorly, resulting in `strVal` evaluating the raw object. This caused Svelte to cast the icons to string representations, injecting `<img src="/icons-bmp/icon_[object Object].bmp" />` into the DOM and breaking all ChannelStrip icons.
+- **Solution 1**: Modified `extractOscValue` implementation inside `App.svelte` to explicitly enforce `rawStr.value` destructuring when parsing array elements. It now natively resolves both hardware primitives and offline metadata wrappers flawlessly.
+- **Problem 2 (Offline Standby Modal)**: If a user opened the app at home with a saved mixer IP in `localStorage`, the frontend would optimistically dispatch a full sync loop. Because the IP wasn't locally reachable, the UI would needlessly flash a blocking "Transferring from Mixer" modal, despite the app being technically offline.
+- **Solution 2**: Implemented strict hardware-parity checks on both the `SyncOverlay` modal and the `Navbar` sync badge by wrapping them in an `&& $mixerState?.hasSyncedOnce` condition. The UI now intelligently waits for the very first UDP return packet from the physical hardware before blocking the viewport, allowing developers to use the interface offline without annoyance.
+

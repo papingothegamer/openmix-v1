@@ -425,6 +425,12 @@
 **Problem: Missing Channel Names, Missing Routing Matrix, or Default EQ Curves on Load.**
 - **Failsafe Added**: Svelte standalone stores (`scribbles`, `routingState`, `channelEqState`, `fxState`) do not natively hydrate themselves from the backend's OSC array. We implemented a massive $effect hydration loop inside `App.svelte` that regex-matches the incoming OSC paths and manually constructs the Svelte local state objects. If you add a new standalone UI array in the future, you must wire it into this Svelte $effect block to ensure it synchronizes with the console upon connection.
 
+**Problem: Broken Channel Strip Icons (`[object Object]`) after importing a scene offline (Phase 21 fix).**
+- **Failsafe Added**: When `osc.js` operates with `metadata: true`, OSC array values are packaged as objects (e.g. `[{ type: 's', value: 'KICK' }]`). The frontend `extractOscValue` utility and hydration `$effect` are explicitly fortified to drill into `rawStr.value` instead of accidentally parsing the wrapper object.
+
+**Problem: Annoying "Transferring from Mixer" modal flashes when opening the app at home (Phase 21 fix).**
+- **Failsafe Added**: The app is inherently built to allow offline scene editing and setup. Both the main `SyncOverlay` modal and the Navbar `SyncStatus` badge are securely gated behind an `&& $mixerState?.hasSyncedOnce` condition. The UI aggressively silences connection indicators until it explicitly receives a verified return UDP packet from physical hardware, keeping the viewport clean when working remotely.
+
 ---
 
 ## 27. Field Diagnostic Code Snippets

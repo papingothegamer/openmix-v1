@@ -42,7 +42,7 @@
       </span>
     </div>
 
-    {#if $syncProgress.active}
+    {#if $syncProgress.active && $mixerState?.hasSyncedOnce}
       <div class="sync-status">
         <Loader2 class="spin" size={14} />
         <span>Syncing {$syncProgress.progress}%</span>
