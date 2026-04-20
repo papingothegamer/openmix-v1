@@ -1052,7 +1052,8 @@
         if (v === null && typeof val !== 'string' && !Array.isArray(val)) return;
         
         // Use string value if available (for names/colors/icons)
-        const strVal = Array.isArray(val) ? val[0] : (typeof val === 'object' && val !== null ? val.value : val);
+        let rawStr = Array.isArray(val) ? val[0] : val;
+        const strVal = (rawStr !== null && typeof rawStr === 'object' && 'value' in rawStr) ? rawStr.value : rawStr;
 
         // --- SCRIBBLES ---
         // Match: /ch/01/config/name
