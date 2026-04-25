@@ -1110,7 +1110,7 @@
 
         // --- EQ BANDS ---
         // Match: /ch/01/eq/1/g
-        m = path.match(/^\/(ch|bus)\/(\d{2}|[1-6])\/eq\/(\d)\/(f|g|q|type)$/);
+        m = path.match(/^\/(ch|bus)\/(\d{2}|[1-6])\/eq\/(\d)\/(f|g|q|type|on)$/);
         if (m) {
           const type = m[1];
           const num = parseInt(m[2], 10);
@@ -1127,6 +1127,10 @@
             newEq[keyId] = Array.from({length: maxBands}, (_, i) => ({
               id: i, enabled: true, freq: 1000, gain: 0, q: 1, type: 'peq'
             }));
+            newEq[keyId]._cloned = true;
+          } else if (!newEq[keyId]._cloned) {
+            newEq[keyId] = newEq[keyId].map(b => ({ ...b }));
+            newEq[keyId]._cloned = true;
           }
 
           const bIdx = band - 1;
@@ -1156,7 +1160,31 @@
                   newEq[keyId][bIdx].type = tStr;
                   updatedEq = true;
                 }
+             } else if (param === 'on') {
+                const enabled = v > 0;
+                if (newEq[keyId][bIdx].enabled !== enabled) {
+                  newEq[keyId][bIdx].enabled = enabled;
+                  updatedEq = true;
+                }
              }
+          }
+          return;
+        }
+
+        // --- SENDS (Aux Levels) ---
+        // Match: /ch/01/mix/01/level
+        m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          const auxNum = parseInt(m[2], 10);
+          
+          if (auxNum <= 16) {
+            const key = `in_${num}_aux${auxNum}`;
+            if (!newSends[key]) newSends[key] = { level: 0, prePost: 0, on: true };
+            if (Math.abs((newSends[key].level || 0) - v) > 0.01) {
+              newSends[key].level = v;
+              updatedSends = true;
+            }
           }
           return;
         }
@@ -1188,7 +1216,10 @@
 
       if (updatedScribbles) scribbles = newScribbles;
       if (updatedRouting) routingState = newRouting;
-      if (updatedEq) channelEqState = newEq;
+      if (updatedEq) {
+        Object.values(newEq).forEach(bands => { delete bands._cloned; });
+        channelEqState = newEq;
+      }
       });
     }
   });
@@ -1873,55 +1904,15 @@
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
                         pan={getBentoParam($mixerState.flatOscCache, sId, 'mix/pan', 0)}
+                        level={auxSendLevelToDb(getBentoParam($mixerState.flatOscCache, sId, 'mix/fader', 0))}
+                        muted={getBentoParam($mixerState.flatOscCache, sId, 'mix/on', 1) === 0}
                         eqCurvePath={computeMiniEqPath(sId)}
-                        gateThresh={
-                          activeView === "inputs"
-                            ? readFlatOscNumber(
-                                `/ch/${String(chIndex).padStart(2, "0")}/gate/thr`,
-                                -40,
-                              )
-                            : -40
-                        }
-                        gateRange={
-                          activeView === "inputs"
-                            ? readFlatOscNumber(
-                                `/ch/${String(chIndex).padStart(2, "0")}/gate/range`,
-                                20,
-                              )
-                            : 0
-                        }
-                        gateOn={
-                          activeView === "inputs"
-                            ? readFlatOscBool(
-                                `/ch/${String(chIndex).padStart(2, "0")}/gate/on`,
-                                true,
-                              )
-                            : false
-                        }
-                        compThresh={
-                          activeView === "inputs"
-                            ? readFlatOscNumber(
-                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/thr`,
-                                -20,
-                              )
-                            : -20
-                        }
-                        compRatio={
-                          activeView === "inputs"
-                            ? readFlatOscNumber(
-                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/ratio`,
-                                4,
-                              )
-                            : 1
-                        }
-                        compOn={
-                          activeView === "inputs"
-                            ? readFlatOscBool(
-                                `/ch/${String(chIndex).padStart(2, "0")}/dyn/on`,
-                                true,
-                              )
-                            : false
-                        }
+                        gateThresh={getBentoParam($mixerState.flatOscCache, sId, 'gate/thr', -40)}
+                        gateRange={getBentoParam($mixerState.flatOscCache, sId, 'gate/range', 20)}
+                        gateOn={getBentoParam($mixerState.flatOscCache, sId, 'gate/on', 1) !== 0}
+                        compThresh={getBentoParam($mixerState.flatOscCache, sId, 'dyn/thr', -20)}
+                        compRatio={getBentoParam($mixerState.flatOscCache, sId, 'dyn/ratio', 4)}
+                        compOn={getBentoParam($mixerState.flatOscCache, sId, 'dyn/on', 1) !== 0}
                         stereoLink={activeView === "inputs"
                           ? isLinked(chIndex, stereoLinks)
                           : activeView === "outputs"
@@ -2005,6 +1996,8 @@
                         iconType={scribbles["main_LR"]?.iconType || "icon_01"}
                         color={scribbles["main_LR"]?.color || "#ef4444"}
                         peakLevel={-60}
+                        level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.['/lr/mix/fader'], 0))}
+                        muted={extractOscValue($mixerState?.flatOscCache?.['/lr/mix/on'], 1) === 0}
                         eqCurvePath={computeMiniEqPath("main_LR")}
                         on:nameClick={() => {
                           if (activeRole === "foh") {

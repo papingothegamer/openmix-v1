@@ -594,3 +594,8 @@ const sock = document.querySelector('body').__svelte_meta?.socket
 ---
 
 **SIGN-OFF**: If all checks pass ✅, the application is ready for live hardware testing.
+
+### Phase 22 Additions
+- [ ] **Svelte Reactivity**: Ensure `readFlatOscNumber` is NOT used inside markup for reactive values, as it hides the `$mixerState` proxy dependency from the compiler.
+- [ ] **Svelte 4 Component Identity**: When passing nested array `$state` to legacy Svelte 4 components like `EqEditor`, always deep clone the property array immediately before assigning back to the store so Svelte 4 `$:` blocks successfully trigger.
+- [ ] **Aux Hydration**: When syncing Musician View, ensure `sendsState` correctly parses `/ch/{N}/mix/{AUX}/level` OSC routes inside the main `App.svelte` untrack loop.

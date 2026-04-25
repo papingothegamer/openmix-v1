@@ -161,21 +161,21 @@ class MixerConnection extends EventEmitter {
 
             // Channel EQ (4-band)
             for (let band = 1; band <= 4; band++) {
-                ['type', 'f', 'g', 'q'].forEach(param => {
+                ['type', 'f', 'g', 'q', 'on'].forEach(param => {
                     tmpl.push({ address: `/ch/01-${chCount}/eq/${band}/${param}`, pattern: `/ch/{N}/eq/${band}/${param}`, count: chCount });
                 });
             }
             
             // Bus EQ (6-band)
             for (let band = 1; band <= 6; band++) {
-                ['type', 'f', 'g', 'q'].forEach(param => {
+                ['type', 'f', 'g', 'q', 'on'].forEach(param => {
                     tmpl.push({ address: `/bus/01-16/eq/${band}/${param}`, pattern: `/bus/{N}/eq/${band}/${param}`, count: 16 });
                 });
             }
 
             // Main LR EQ (6-band)
             for (let band = 1; band <= 6; band++) {
-                ['type', 'f', 'g', 'q'].forEach(param => {
+                ['type', 'f', 'g', 'q', 'on'].forEach(param => {
                     tmpl.push({ address: `/lr/eq/${band}/${param}` });
                 });
             }
