@@ -223,6 +223,37 @@
   // Reactively redraw the mini EQ line if bands change
   $: if (eqBands) eqCurvePath = generateSvgPath(eqBands);
 
+  // ── Vertical VU Meter ───────────────────────────────────────────────────────
+  // peakLevel is already in dB (-60 to 0). Map it to a 0-100% fill.
+  // Segments: green = -60..-12, yellow = -12..-3, red = -3..0
+  let peakHold = -60;       // dB value of the peak-hold indicator
+  let peakHoldTimer = null;
+
+  $: {
+    if (peakLevel > peakHold) {
+      peakHold = peakLevel;
+      clearTimeout(peakHoldTimer);
+      peakHoldTimer = setTimeout(() => { peakHold = -60; }, 1800);
+    }
+  }
+
+  // Convert dB (-60..0) to a 0-100 percentage for CSS height/bottom.
+  function dbToPct(db) {
+    const clamped = Math.max(-60, Math.min(0, db));
+    return ((clamped + 60) / 60) * 100;
+  }
+
+  $: meterFillPct  = dbToPct(peakLevel);
+  $: peakHoldPct   = dbToPct(peakHold);
+
+  // Colour zones (bottom to top: green, yellow, red)
+  // Green  fills 0-80% of the bar  => covers -60 to -12 dB
+  // Yellow fills 80-95%            => covers -12 to -3 dB
+  // Red    fills 95-100%           => covers -3 to  0 dB
+  $: meterGreenH  = Math.min(meterFillPct, 80);          // 0..80
+  $: meterYellowH = Math.max(0, Math.min(meterFillPct - 80, 15)); // 0..15
+  $: meterRedH    = Math.max(0, meterFillPct - 95);      // 0..5
+
 
   // --- Panning UI Logic ---
   let isPanning = false;
@@ -280,9 +311,7 @@
     </div>
   </div>
 
-  <div class="gain-meter">
-    <div class="gain-fill" style="width: {Math.max(0, (peakLevel + 60) / 60 * 100)}%;"></div>
-  </div>
+
 
   {#if role === 'foh' && stripType !== 'dca'}
     <div class="foh-controls">
@@ -340,19 +369,34 @@
     <button class="solo-btn" class:active={soloed} on:click={() => { soloed = !soloed; dispatchStatus('solo', soloed); }}>S</button>
   </div>
 
-  <div class="fader-container">
-    <input
-      type="range"
-      class="fader-slider"
-      min="-60"
-      max="10"
-      step="0.5"
-      bind:value={level}
-      on:dblclick={resetFader}
-      on:input={emitFaderChange}
-    />
-    <div class="fader-track">
-      <div class="fader-thumb" style="bottom: {((level + 60) / 70) * 100}%"></div>
+  <div class="fader-meter-row">
+    <!-- Vertical VU Meter -->
+    <div class="vu-meter" title="{peakLevel.toFixed(1)} dB">
+      <div class="vu-track">
+        <!-- Coloured fill segments, growing from bottom -->
+        <div class="vu-seg vu-green"  style="height: {meterGreenH}%"></div>
+        <div class="vu-seg vu-yellow" style="height: {meterYellowH}%"></div>
+        <div class="vu-seg vu-red"    style="height: {meterRedH}%"></div>
+      </div>
+      <!-- Peak-hold tick -->
+      <div class="vu-peak" style="bottom: {peakHoldPct}%"></div>
+    </div>
+
+    <!-- Fader -->
+    <div class="fader-container">
+      <input
+        type="range"
+        class="fader-slider"
+        min="-60"
+        max="10"
+        step="0.5"
+        bind:value={level}
+        on:dblclick={resetFader}
+        on:input={emitFaderChange}
+      />
+      <div class="fader-track">
+        <div class="fader-thumb" style="bottom: {((level + 60) / 70) * 100}%"></div>
+      </div>
     </div>
   </div>
 
@@ -396,9 +440,60 @@
   .channel-name { font-size: 0.65rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.8); background: rgba(0,0,0,0.5); padding: 3px 0; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s; }
   .channel-name:hover { border-color: #3b82f6; }
 
-  /* Horizontal Meter */
-  .gain-meter { width: 100%; height: 6px; background: #000; border-radius: 2px; margin-bottom: 8px; overflow: hidden; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); border: 1px solid #27272a; }
-  .gain-fill { height: 100%; background: linear-gradient(90deg, #10b981 60%, #f59e0b 85%, #ef4444 100%); transition: width 0.1s linear; }
+  /* Fader + Meter side-by-side row */
+  .fader-meter-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  /* Vertical VU Meter */
+  .vu-meter {
+    position: relative;
+    width: 8px;
+    height: 180px; /* matches .fader-container height */
+    background: #000;
+    border-radius: 3px;
+    border: 1px solid #27272a;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+    flex-shrink: 0;
+  }
+
+  .vu-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column-reverse; /* stack green at bottom, red at top */
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .vu-seg {
+    width: 100%;
+    flex-shrink: 0;
+    transition: height 0.06s linear;
+  }
+  .vu-green  { background: #10b981; box-shadow: 0 0 4px rgba(16,185,129,0.6); }
+  .vu-yellow { background: #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,0.6); }
+  .vu-red    { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.8); }
+
+  /* Peak-hold indicator tick */
+  .vu-peak {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #fff;
+    opacity: 0.85;
+    border-radius: 1px;
+    transition: bottom 0.1s ease-out;
+    pointer-events: none;
+  }
 
   /* Panning */
   .pan-container { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; width: 100%; }
@@ -447,7 +542,7 @@
   .solo-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 0 12px rgba(59, 130, 246, 0.5); }
 
   /* Custom Fader Assembly */
-  .fader-container { position: relative; width: 34px; height: 180px; display: flex; justify-content: center; margin-bottom: 12px; }
+  .fader-container { position: relative; width: 34px; height: 180px; display: flex; justify-content: center; }
   .fader-track { position: absolute; width: 6px; height: 100%; background: #000; border-radius: 3px; border-left: 1px solid #27272a; border-right: 1px solid #3f3f46; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
   
   .fader-slider { 
