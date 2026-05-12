@@ -200,17 +200,24 @@
 
   // ── Hardware Lifecycle: Meters ──────────────────────────────────────────────
   $effect(() => {
-    if (activeTab === 'fx' && $isConnected) {
-      // Start/Refresh the high-speed meter stream from mixer
-      const meterPulse = setInterval(() => {
-        setOsc('/meters', ['/meters/5', 0, 0, 1]); // Request FX meters
-      }, 7000); 
-      
-      // Immediate pulse
-      setOsc('/meters', ['/meters/5', 0, 0, 1]);
+    if (!$isConnected) return;
 
-      return () => clearInterval(meterPulse);
+    // /meters/1 = channel pre-fader input meters (all 16 ch + bus + LR)
+    // /meters/5 = FX return meters
+    // The XR18 stops sending meters after ~10s of silence, so we keep a heartbeat.
+    const METER_INTERVAL_MS = 5000;
+
+    function requestMeters() {
+      setOsc('/meters', ['/meters/1', 0, 0, 1]); // Channel input meters
+      if (activeTab === 'fx') {
+        setOsc('/meters', ['/meters/5', 0, 0, 1]); // FX meters (only needed on FX tab)
+      }
     }
+
+    requestMeters(); // Immediate first pulse
+    const meterPulse = setInterval(requestMeters, METER_INTERVAL_MS);
+
+    return () => clearInterval(meterPulse);
   });
 
   // Channel Modal State
