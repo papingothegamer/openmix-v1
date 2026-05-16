@@ -62,8 +62,8 @@
   }
 
   .modal-content {
-    background: #0f172a;
-    border: 1px solid #1e293b;
+    background: #121212;
+    border: 1px solid #252525;
     border-radius: 16px;
     width: 90%;
     max-width: 400px;
@@ -82,36 +82,36 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #1e293b;
-    background: #111827;
+    border-bottom: 1px solid #252525;
+    background: #151515;
   }
 
   .title-left { display: flex; align-items: center; gap: 0.75rem; }
-  .title-left h3 { margin: 0; font-size: 1.1rem; color: #f8fafc; font-weight: 700; }
-  .text-blue { color: #3b82f6; }
-  .close-btn { background: transparent; border: none; color: #64748b; cursor: pointer; transition: 0.2s; }
-  .close-btn:hover { color: #f8fafc; }
+  .title-left h3 { margin: 0; font-size: 1.1rem; color: #fafafa; font-weight: 700; }
+  .text-blue { color: #eab308; }
+  .close-btn { background: transparent; border: none; color: #777777; cursor: pointer; transition: 0.2s; }
+  .close-btn:hover { color: #fafafa; }
   
   .modal-body { padding: 2rem 1.5rem; }
-  .section-hint { font-size: 0.85rem; color: #94a3b8; margin-bottom: 2rem; line-height: 1.5; }
+  .section-hint { font-size: 0.85rem; color: #999999; margin-bottom: 2rem; line-height: 1.5; }
 
   .form-group { display: flex; flex-direction: column; gap: 0.75rem; }
-  .form-group label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-group label { font-size: 0.75rem; font-weight: 700; color: #777777; text-transform: uppercase; letter-spacing: 0.05em; }
 
   .select-wrapper { position: relative; }
   select {
     width: 100%;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: #252525;
+    border: 1px solid #333333;
     border-radius: 8px;
     padding: 0.85rem 1rem;
-    color: #f8fafc;
+    color: #fafafa;
     font-size: 0.95rem;
     cursor: pointer;
     appearance: none;
     transition: 0.2s;
   }
-  select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+  select:focus { outline: none; border-color: #eab308; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2); }
   
   .select-wrapper::after {
     content: "▼";
@@ -121,6 +121,6 @@
     transform: translateY(-50%);
     pointer-events: none;
     font-size: 0.7rem;
-    color: #64748b;
+    color: #777777;
   }
 </style>

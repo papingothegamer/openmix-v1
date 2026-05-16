@@ -88,31 +88,31 @@
   .preamp-visual {
     width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 2rem; padding: 2rem;
-    background: radial-gradient(circle at center, #111827 0%, #020617 100%);
+    background: radial-gradient(circle at center, #151515 0%, #0a0a0a 100%);
   }
   .stage-flow { display: flex; align-items: center; gap: 0.5rem; }
   .stage-node { 
     display: flex; flex-direction: column; align-items: center; gap: 0.5rem; 
-    padding: 0.75rem 1rem; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+    padding: 0.75rem 1rem; background: #121212; border: 1px solid #252525; border-radius: 8px;
     min-width: 80px;
   }
-  .stage-node span { font-size: 0.6rem; font-weight: 800; color: #64748b; letter-spacing: 0.1em; }
+  .stage-node span { font-size: 0.6rem; font-weight: 800; color: #777777; letter-spacing: 0.1em; }
   .stage-node.processor { border-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
-  .gain-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 800; color: #f8fafc; }
+  .gain-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 800; color: #fafafa; }
   .stage-label { font-size: 0.55rem; font-weight: 900; color: #ef4444; text-transform: uppercase; }
   
   .stage-connector { width: 40px; height: 2px; position: relative; display: flex; align-items: center; justify-content: center; }
-  .connector-line { width: 100%; height: 1px; background: #1e293b; }
+  .connector-line { width: 100%; height: 1px; background: #252525; }
   .gain-blob { position: absolute; width: 6px; height: 6px; background: #ef4444; border-radius: 50%; filter: blur(2px); transition: transform 0.2s; }
   
-  .gain-track { width: 250px; height: 4px; background: #0f172a; border-radius: 2px; overflow: hidden; border: 1px solid #1e293b; position: relative; }
+  .gain-track { width: 250px; height: 4px; background: #121212; border-radius: 2px; overflow: hidden; border: 1px solid #252525; position: relative; }
   .gain-fill { height: 100%; background: linear-gradient(to right, #ef4444, #f87171); transition: width 0.1s; }
   
   :global(.active-48v) { color: #f59e0b; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5)); }
   .link-badge { 
     position: absolute; top: 1rem; right: 1rem; 
-    padding: 0.35rem 0.6rem; background: rgba(59, 130, 246, 0.2); 
-    border: 1px solid #3b82f6; color: #3b82f6; 
+    padding: 0.35rem 0.6rem; background: rgba(234, 179, 8, 0.2); 
+    border: 1px solid #eab308; color: #eab308; 
     border-radius: 4px; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em;
   }
   .push-toggles { justify-content: center; gap: 1.5rem; margin-left: 2rem; }

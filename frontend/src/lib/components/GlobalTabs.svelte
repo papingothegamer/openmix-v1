@@ -34,14 +34,14 @@
 <style>
   .global-tabs-bar {
     display: flex; gap: 2px; background: #0b0f19; padding: 0.5rem 1rem 0 1rem;
-    border-bottom: 1px solid #1e293b; align-items: flex-end; z-index: 50;
+    border-bottom: 1px solid #252525; align-items: flex-end; z-index: 50;
   }
   .tab-btn {
-    background: transparent; border: none; padding: 0.6rem 1.5rem; color: #64748b; font-weight: 800;
+    background: transparent; border: none; padding: 0.6rem 1.5rem; color: #777777; font-weight: 800;
     font-size: 0.8rem; letter-spacing: 0.5px; border-top-left-radius: 8px; border-top-right-radius: 8px;
     cursor: pointer; transition: all 0.2s ease; border-bottom: 3px solid transparent;
   }
-  .tab-btn:hover:not(:disabled) { color: #cbd5e1; background: rgba(30,41,59,0.5); }
-  .tab-btn.active { color: #f8fafc; background: #1e293b; border-bottom-color: #3b82f6; }
+  .tab-btn:hover:not(:disabled) { color: #d4d4d4; background: rgba(30,41,59,0.5); }
+  .tab-btn.active { color: #fafafa; background: #252525; border-bottom-color: #eab308; }
   .tab-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 </style>

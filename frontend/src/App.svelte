@@ -64,6 +64,7 @@
 
   // Scribble Strip / Global Selectors
   let scribbleEditMode = $state(false);
+  let fineMode = $state(false); // Global fine fader adjustment mode
   let showMonitorModal = $state(false);
   let editingChannel = $state(null);
   let selectedChannel = $state("in_1");
@@ -191,10 +192,49 @@
   }
 
   function exitRole() {
+    const wasConnectedToHardware = $mixerState?.hasSyncedOnce;
+
+    // Always reset role-level navigation
     activeRole = null;
     musicianAux = null;
     musicianToken = null;
     musicianTokenLoading = false;
+
+    // If we were in standby (no actual mixer), wipe ALL volatile state
+    // so re-entering FOH starts completely fresh
+    if (!wasConnectedToHardware) {
+      // Navigation
+      activeTab = "mixer";
+      activeView = "inputs";
+      currentPage = 1;
+      selectedChannel = "in_1";
+      routingMode = "INPUT";
+      routingSubTab = "CH1-16";
+      routingSignalTap = "POST_FADER";
+
+      // UI modes
+      scribbleEditMode = false;
+      fineMode = false;
+      showMonitorModal = false;
+      editingChannel = null;
+
+      // Mixer data
+      scribbles = {};
+      channelEqState = {};
+      sendsState = {};
+      routingState = {};
+      mainOutAssign = {};
+
+      // FX rack
+      channelFxInsert = {};
+      perChannelFx = {};
+      rackSlotIndex = 0;
+      _lastFxChannel = null;
+
+      // Meters
+      fohMeters = new Array(16).fill(-60);
+    }
+
     connectAsFoh();
   }
 
@@ -970,74 +1010,78 @@
   $effect(() => {
     if ($mixerState && $mixerState.flatOscCache) {
       const cache = $mixerState.flatOscCache || {};
-    
-    // Completely rebuild updated state to clear any ghost elements from old sessions
-    const updated = {}; 
-    
-    Object.entries(cache).forEach(([path, val]) => {
-      // AUX level: /ch/01/mix/02/level
-      let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
-      if (m) {
-        const ch = parseInt(m[1], 10);
-        const bus = parseInt(m[2], 10);
-        const key = `in_${ch}_aux${bus}`;
-        updated[key] = {
-          ...(updated[key] || { level: 0, prePost: 0, on: true }),
-          level: parseFloat(val),
-        };
-        return;
-      }
-      // AUX on/off: /ch/01/mix/02/on
-      m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/on$/);
-      if (m) {
-        const ch = parseInt(m[1], 10);
-        const bus = parseInt(m[2], 10);
-        const key = `in_${ch}_aux${bus}`;
-       
-        updated[key] = {
-          ...(updated[key] || { level: 0, prePost: 0, on: true }),
-          on: !!parseInt(val, 10),
-        };
-        return;
-      }
-      // AUX pre/post type: /ch/01/mix/02/type
-      m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/type$/);
-      if (m) {
-        const ch = parseInt(m[1], 10);
-        const bus = parseInt(m[2], 10);
-        const key = `in_${ch}_aux${bus}`;
-        updated[key] = {
-          ...(updated[key] || { level: 0, prePost: 0, on: true }),
-          prePost: parseInt(val, 10),
-        };
-        return;
-      }
-      // FX level: /ch/01/mix/fx/1/level or /ch/01/mix/fx/1/level (some mixers use different padding)
-      m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/level$/);
-      if (m) {
-        const ch = parseInt(m[1], 10);
-        const fx = parseInt(m[2], 10);
-        const key = `in_${ch}_fx${fx}`;
-        updated[key] = {
-          ...(updated[key] || { level: 0, prePost: 0, on: true }),
-          level: parseFloat(val),
-        };
-        return;
-      }
-      // FX type: /ch/01/mix/fx/1/type
-      m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/type$/);
-      if (m) {
-        const ch = parseInt(m[1], 10);
-        const fx = parseInt(m[2], 10);
-        const key = `in_${ch}_fx${fx}`;
-        updated[key] = {
-          ...(updated[key] || { level: 0, prePost: 0, on: true }),
-          prePost: parseInt(val, 10),
-        };
-        return;
-      }
-    });
-    sendsState = updated;
+
+      untrack(() => {
+        // Completely rebuild updated state to clear any ghost elements from old sessions
+        const updated = {};
+
+        Object.entries(cache).forEach(([path, val]) => {
+          const v = extractOscValue(val, null);
+          if (v === null) return;
+
+          // AUX level: /ch/01/mix/02/level
+          let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
+          if (m) {
+            const ch = parseInt(m[1], 10);
+            const bus = parseInt(m[2], 10);
+            const key = `in_${ch}_aux${bus}`;
+            updated[key] = {
+              ...(updated[key] || { level: 0, prePost: 0, on: true }),
+              level: v,
+            };
+            return;
+          }
+          // AUX on/off: /ch/01/mix/02/on
+          m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/on$/);
+          if (m) {
+            const ch = parseInt(m[1], 10);
+            const bus = parseInt(m[2], 10);
+            const key = `in_${ch}_aux${bus}`;
+            updated[key] = {
+              ...(updated[key] || { level: 0, prePost: 0, on: true }),
+              on: v > 0,
+            };
+            return;
+          }
+          // AUX pre/post type: /ch/01/mix/02/type
+          m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/type$/);
+          if (m) {
+            const ch = parseInt(m[1], 10);
+            const bus = parseInt(m[2], 10);
+            const key = `in_${ch}_aux${bus}`;
+            updated[key] = {
+              ...(updated[key] || { level: 0, prePost: 0, on: true }),
+              prePost: Math.round(v),
+            };
+            return;
+          }
+          // FX level: /ch/01/mix/fx/1/level
+          m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/level$/);
+          if (m) {
+            const ch = parseInt(m[1], 10);
+            const fx = parseInt(m[2], 10);
+            const key = `in_${ch}_fx${fx}`;
+            updated[key] = {
+              ...(updated[key] || { level: 0, prePost: 0, on: true }),
+              level: v,
+            };
+            return;
+          }
+          // FX type: /ch/01/mix/fx/1/type
+          m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/type$/);
+          if (m) {
+            const ch = parseInt(m[1], 10);
+            const fx = parseInt(m[2], 10);
+            const key = `in_${ch}_fx${fx}`;
+            updated[key] = {
+              ...(updated[key] || { level: 0, prePost: 0, on: true }),
+              prePost: Math.round(v),
+            };
+            return;
+          }
+        });
+        sendsState = updated;
+      });
     }
   });
 
@@ -1050,11 +1094,9 @@
         const newScribbles = { ...scribbles };
         const newRouting = { ...routingState };
         const newEq = { ...channelEqState };
-        const newSends = { ...sendsState };
         let updatedScribbles = false;
         let updatedRouting = false;
         let updatedEq = false;
-        let updatedSends = false;
 
       Object.entries(cache).forEach(([path, val]) => {
         const v = extractOscValue(val, null);
@@ -1085,7 +1127,7 @@
             updatedScribbles = true;
           } else if (prop === 'color') {
             // Convert Behringer color index to Hex if needed, or if it's already Hex just assign it
-            const hexColor = isNaN(strVal) ? strVal : (['#000', '#f00', '#0f0', '#ff0', '#00f', '#f0f', '#0ff', '#fff'][parseInt(strVal)%8] || '#3f3f46');
+            const hexColor = isNaN(strVal) ? strVal : (['#000', '#f00', '#0f0', '#ff0', '#00f', '#f0f', '#0ff', '#fff'][parseInt(strVal)%8] || '#333333');
             if (newScribbles[keyId].color !== hexColor) {
               newScribbles[keyId].color = hexColor;
               updatedScribbles = true;
@@ -1180,24 +1222,6 @@
           return;
         }
 
-        // --- SENDS (Aux Levels) ---
-        // Match: /ch/01/mix/01/level
-        m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
-        if (m) {
-          const num = parseInt(m[1], 10);
-          const auxNum = parseInt(m[2], 10);
-          
-          if (auxNum <= 16) {
-            const key = `in_${num}_aux${auxNum}`;
-            if (!newSends[key]) newSends[key] = { level: 0, prePost: 0, on: true };
-            if (Math.abs((newSends[key].level || 0) - v) > 0.01) {
-              newSends[key].level = v;
-              updatedSends = true;
-            }
-          }
-          return;
-        }
-
         // --- FX TYPE ---
         // Match: /fx/1/type
         m = path.match(/^\/fx\/([1-8])\/type$/);
@@ -1229,7 +1253,6 @@
         Object.values(newEq).forEach(bands => { delete bands._cloned; });
         channelEqState = newEq;
       }
-      if (updatedSends) sendsState = newSends;
       });
     }
   });
@@ -1604,6 +1627,8 @@
     onFileLoad={handleFileUpload}
     onScribbleEdit={() => (scribbleEditMode = !scribbleEditMode)}
     onToggleMonitor={() => (showMonitorModal = !showMonitorModal)}
+    fineMode={fineMode}
+    onToggleFineMode={() => (fineMode = !fineMode)}
     onToggleOutputLink={() => {
       if (selectedChannel?.startsWith("bus_")) {
         toggleOutputLink(selectedChannel);
@@ -1646,7 +1671,7 @@
             </div>
 
             <div class="form-group mixer-connect-section" style="margin-top: 0.5rem;">
-              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Mixer Network Connection</div>
+              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a3a3a3; font-size:0.85rem;">Mixer Network Connection</div>
               <div class="discover-row">
                 <button class="btn-ghost" on:click={startDiscovery} disabled={discoveryStatus === "scanning"} style="width: 100%;">
                   {#if discoveryStatus === "scanning"} <Search size={16} style="margin-right: 8px; vertical-align: bottom;" /> Scanning network... {:else} <Radio size={16} style="margin-right: 8px; vertical-align: bottom;" /> Auto-Discover Mixer {/if}
@@ -1691,7 +1716,7 @@
           <div class="setup-col setup-col-right">
             {#if config.presetId !== "CUSTOM" || config.outputs > 0}
             <div class="form-group" style="flex: 1;">
-              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a1a1aa; font-size:0.85rem;">Visible Buses / Outputs (Sandbox Access)</div>
+              <div style="margin-bottom:0.5rem; display:block; font-weight:600; color:#a3a3a3; font-size:0.85rem;">Visible Buses / Outputs (Sandbox Access)</div>
               <div class="bus-grid">
                  {#each Array(config.outputs) as _, i}
                    <label class="bus-toggle">
@@ -1819,6 +1844,7 @@
                   <div class="musician-rack" style="flex:1;">
                     {#each musicianDisplayedChannels as chIndex}
                       <ChannelStrip
+                        fineMode={fineMode}
                         channelIndex={String(chIndex)}
                         role="musician"
                         stripType="input"
@@ -1828,7 +1854,7 @@
                           ? chIndex % 2 === 1
                             ? "#3b82f6"
                             : "#ef4444"
-                          : scribbles[`in_${chIndex}`]?.color || "#3f3f46"}
+                          : scribbles[`in_${chIndex}`]?.color || "#333333"}
                         level={auxSendLevelToDb(
                           sendsState[`in_${chIndex}_aux${musicianAux}`]?.level ?? 0,
                         )}
@@ -1840,6 +1866,7 @@
                   <button class="nav-icon-btn" style="align-self:center;" disabled={musicianPage >= musicianTotalPages - 1} on:click={() => musicianPage++}><ChevronRight size={24} /></button>
                   <div class="master-divider"></div>
                   <ChannelStrip
+                    fineMode={fineMode}
                     channelIndex={musicianAux}
                     role="musician"
                     stripType="output"
@@ -1884,6 +1911,7 @@
                       }}
                     >
                       <ChannelStrip
+                        fineMode={fineMode}
                         channelIndex={isMatrix ? String(mtxIdx) : String(chIndex)}
                         role={activeRole}
                         stripType={activeView === "outputs"
@@ -1909,7 +1937,7 @@
                           ? chIndex % 2 === 1
                             ? "#3b82f6"
                             : "#ef4444"
-                          : scribbles[sId]?.color || (activeView === "inputs" ? "#3f3f46" : (isMatrix ? "#10b981" : (isMuteGroup ? "#f43f5e" : "#3b82f6")))}
+                          : scribbles[sId]?.color || (activeView === "inputs" ? "#333333" : (isMatrix ? "#10b981" : (isMuteGroup ? "#f43f5e" : (activeView === "dcas" ? "#06b6d4" : "#8b5cf6"))))}
                         peakLevel={activeView === "inputs"
                           ? fohMeters[chIndex - 1] || -60
                           : -60}
@@ -1965,6 +1993,7 @@
                         }}
                       >
                         <ChannelStrip
+                          fineMode={fineMode}
                           channelIndex={String(fxIdx)}
                           role={activeRole}
                           stripType="fx"
@@ -1999,6 +2028,7 @@
                       }}
                     >
                       <ChannelStrip
+                        fineMode={fineMode}
                         channelIndex="LR"
                         role={activeRole}
                         stripType="main"
@@ -2110,7 +2140,7 @@
                     >
                     <span
                       class="icon-color-dot"
-                      style="background: {scribbles[selectedChannel]?.color || '#3f3f46'};"
+                      style="background: {scribbles[selectedChannel]?.color || '#333333'};"
                     ></span>
                   </div>
                 </div>
@@ -2463,8 +2493,8 @@
                   EFFECTS RACK
                 </h2>
                 <div class="header-actions" style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
-                   <div class="insert-control" style="background: #1e293b; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #334155; display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem;">
-                      <span style="color: #64748b; font-weight: 700;">INSERT TO</span>
+                   <div class="insert-control" style="background: #252525; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #333333; display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem;">
+                      <span style="color: #777777; font-weight: 700;">INSERT TO</span>
                       <div style="display: flex; gap: 0.25rem;">
                         {#each Array(config.fx || 4) as _, i}
                           <button 
@@ -2643,7 +2673,7 @@
         currentName={scribbles[editingChannel]?.name ||
           (editingChannel || "").toUpperCase()}
         currentIcon={scribbles[editingChannel]?.iconType || "icon_01"}
-        currentColor={scribbles[editingChannel]?.color || "#3f3f46"}
+        currentColor={scribbles[editingChannel]?.color || "#333333"}
         on:save={handleSaveScribble}
         on:close={() => (editingChannel = null)}
       />
@@ -2739,8 +2769,8 @@
       "Apple Color Emoji",
       "Segoe UI Emoji",
       "Segoe UI Symbol";
-    background-color: #0b0d12;
-    color: #e2e8f0;
+    background-color: #0a0a0a;
+    color: #e5e5e5;
     overflow: hidden; /* Prevent body scroll, constrain to app-container */
   }
 
@@ -2785,32 +2815,32 @@
     align-items: center;
     justify-content: flex-start;
     gap: 0.6rem;
-    color: #e2e8f0;
+    color: #e5e5e5;
     font-size: 0.8rem;
     cursor: pointer;
-    background: #1e293b;
+    background: #252525;
     padding: 0.6rem;
     border-radius: 6px;
-    border: 1px solid #334155;
+    border: 1px solid #333333;
     transition: 0.2s;
     font-family: "JetBrains Mono", monospace;
   }
   .bus-toggle:hover {
-    background: #334155;
-    border-color: #64748b;
+    background: #333333;
+    border-color: #777777;
   }
   .bus-toggle input {
     cursor: pointer;
     width: 16px;
     height: 16px;
-    accent-color: #3b82f6;
+    accent-color: #eab308;
     margin: 0;
   }
 
   .btn-text {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: #999999;
     font-size: 0.8rem;
     cursor: pointer;
     text-decoration: underline;
@@ -2821,23 +2851,23 @@
     transition: color 0.1s;
   }
   .btn-text:hover {
-    color: #e2e8f0;
+    color: #e5e5e5;
   }
 
   h2 {
     margin-top: 0;
-    color: #f8fafc;
+    color: #fafafa;
     font-size: 1.75rem;
     letter-spacing: -0.5px;
     text-align: center;
   }
   h3 {
     margin-top: 0;
-    color: #f8fafc;
+    color: #fafafa;
     font-size: 1.1rem;
   }
   p {
-    color: #94a3b8;
+    color: #999999;
     line-height: 1.5;
     font-size: 0.95rem;
     text-align: center;
@@ -2854,7 +2884,7 @@
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
-    background: #0b0d12;
+    background: #0a0a0a;
     padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
   }
@@ -2862,16 +2892,16 @@
     height: 12px;
   }
   .console-view::-webkit-scrollbar-track {
-    background: #0b0d12;
-    border-top: 1px solid #27272a;
+    background: #0a0a0a;
+    border-top: 1px solid #252525;
   }
   .console-view::-webkit-scrollbar-thumb {
-    background: #3f3f46;
+    background: #333333;
     border-radius: 6px;
-    border: 3px solid #0b0d12;
+    border: 3px solid #0a0a0a;
   }
   .console-view::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+    background: #555555;
   }
 
   .channels-track {
@@ -2905,14 +2935,14 @@
     overflow: hidden;
   }
   .view-header-inline { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
-  .title-left { font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em; color: #cbd5e1; margin: 0; }
+  .title-left { font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em; color: #d4d4d4; margin: 0; }
   .nav-group { display: flex; gap: 2px; margin-left: 0.25rem; }
   .nav-icon-btn {
-    background: #0d1a28; border: 1px solid #1a3040; color: #64748b;
+    background: #0d1a28; border: 1px solid #1a3040; color: #777777;
     border-radius: 5px; padding: 4px 6px; cursor: pointer; display: flex; align-items: center;
     transition: color .12s, border-color .12s;
   }
-  .nav-icon-btn:hover:not(:disabled) { color: #e2e8f0; border-color: #3b82f6; }
+  .nav-icon-btn:hover:not(:disabled) { color: #e5e5e5; border-color: #eab308; }
   .nav-icon-btn:disabled { opacity: .25; cursor: not-allowed; }
 
   .routing-macro-view {
@@ -2924,8 +2954,8 @@
 
   .routing-mode-bar {
     display: flex;
-    background: #111827;
-    border-bottom: 2px solid #1e293b;
+    background: #151515;
+    border-bottom: 2px solid #252525;
     padding: 0 1rem;
     gap: 0.25rem;
     flex-shrink: 0;
@@ -2939,7 +2969,7 @@
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    color: #64748b;
+    color: #777777;
     gap: 0.4rem;
     cursor: pointer;
     font-size: 0.65rem;
@@ -2949,13 +2979,13 @@
     min-width: 80px;
   }
   .mode-tab-btn:hover {
-    color: #94a3b8;
-    background: rgba(30, 41, 59, 0.5);
+    color: #999999;
+    background: rgba(37, 37, 37, 0.5);
   }
   .mode-tab-btn.active {
-    color: #22d3ee;
-    border-bottom-color: #06b6d4;
-    background: rgba(6, 182, 212, 0.1);
+    color: #fbbf24;
+    border-bottom-color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
   }
 
   .matrix-window-main {
@@ -2963,28 +2993,28 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: #0f172a;
+    background: #121212;
   }
 
   .matrix-subheader {
     display: flex;
     justify-content: flex-end;
     padding: 0.5rem 1rem;
-    background: #1e293b;
-    border-bottom: 1px solid #334155;
+    background: #252525;
+    border-bottom: 1px solid #333333;
   }
   .sub-tab-group {
     display: flex;
-    background: #0f172a;
+    background: #121212;
     border-radius: 4px;
     padding: 2px;
-    border: 1px solid #334155;
+    border: 1px solid #333333;
   }
   .sub-tab-btn {
     padding: 0.35rem 1rem;
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: #999999;
     font-size: 0.7rem;
     font-weight: 700;
     border-radius: 3px;
@@ -2992,7 +3022,7 @@
     transition: 0.2s;
   }
   .sub-tab-btn.active {
-    background: #334155;
+    background: #333333;
     color: #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
@@ -3019,12 +3049,12 @@
     position: sticky;
     top: 0;
     z-index: 20;
-    background: #111827;
-    border-bottom: 2px solid #334155;
+    background: #151515;
+    border-bottom: 2px solid #333333;
     padding: 0.75rem 0.5rem;
     font-size: 0.7rem;
     font-weight: 800;
-    color: #94a3b8;
+    color: #999999;
     text-transform: uppercase;
     white-space: nowrap;
   }
@@ -3036,19 +3066,19 @@
     position: sticky;
     left: 0;
     z-index: 10;
-    background: #0f172a;
-    border-right: 2px solid #334155;
-    border-bottom: 1px solid #1e293b;
+    background: #121212;
+    border-right: 2px solid #333333;
+    border-bottom: 1px solid #252525;
     padding: 0.6rem 1rem;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #cbd5e1;
+    color: #d4d4d4;
     white-space: nowrap;
     text-align: left;
   }
   .patch-point {
-    border-bottom: 1px solid #1e293b;
-    border-right: 1px solid #1e293b;
+    border-bottom: 1px solid #252525;
+    border-right: 1px solid #252525;
     text-align: center;
     padding: 0;
     width: 48px;
@@ -3056,7 +3086,7 @@
     transition: background 0.1s;
   }
   .patch-point.active {
-    background: rgba(34, 211, 238, 0.08);
+    background: rgba(251, 191, 36, 0.08);
   }
   
   .radio-dot-btn {
@@ -3072,25 +3102,25 @@
   .radio-circle {
     width: 12px;
     height: 12px;
-    border: 1px solid #334155;
+    border: 1px solid #333333;
     border-radius: 50%;
     transition: all 0.2s;
     background: transparent;
   }
   .patch-point.active .radio-circle {
     background: transparent;
-    border: 3px solid #22d3ee;
-    box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+    border: 3px solid #fbbf24;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
     transform: scale(1.3);
   }
   .patch-point:hover .radio-circle {
-    border-color: #94a3b8;
+    border-color: #999999;
   }
 
   .matrix-footer {
     padding: 0.75rem 1.5rem;
     background: #0b111b;
-    border-top: 1px solid #1e293b;
+    border-top: 1px solid #252525;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -3106,7 +3136,7 @@
     gap: 0.5rem;
     font-size: 0.65rem;
     font-weight: 700;
-    color: #64748b;
+    color: #777777;
     text-transform: uppercase;
   }
   .legend-item .dot {
@@ -3117,9 +3147,9 @@
   .dot.analog { background: #ef4444; border: 1px solid #fca5a5; }
   .dot.input { background: #10b981; border: 1px solid #6ee7b7; }
   .dot.pre-eq { background: #f59e0b; border: 1px solid #fcd34d; }
-  .dot.post-eq { background: #3b82f6; border: 1px solid #93c5fd; }
+  .dot.post-eq { background: #eab308; border: 1px solid #fef08a; }
   .dot.pre-fade { background: #d946ef; border: 1px solid #f5d0fe; }
-  .dot.post-fade { background: #06b6d4; border: 1px solid #67e8f9; }
+  .dot.post-fade { background: #a855f7; border: 1px solid #d8b4fe; }
 
   .tap-selector-box {
     display: flex;
@@ -3129,12 +3159,12 @@
   .tap-selector-box .label {
     font-size: 0.7rem;
     font-weight: 800;
-    color: #94a3b8;
+    color: #999999;
   }
   .tap-select {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #cbd5e1;
+    background: #252525;
+    border: 1px solid #333333;
+    color: #d4d4d4;
     font-size: 0.7rem;
     padding: 0.35rem 0.75rem;
     border-radius: 4px;
@@ -3142,9 +3172,9 @@
     cursor: pointer;
   }
   .toggle-sm {
-    background: #1e293b;
-    color: #94a3b8;
-    border: 1px solid #334155;
+    background: #252525;
+    color: #999999;
+    border: 1px solid #333333;
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
     font-size: 0.7rem;
@@ -3153,13 +3183,13 @@
     transition: 0.2s;
   }
   .toggle-sm:hover {
-    background: #334155;
+    background: #333333;
     color: #fff;
   }
   .toggle-sm.active {
-    background: #3b82f6;
+    background: #eab308;
     color: white;
-    border-color: #60a5fa;
+    border-color: #facc15;
   }
   .toggle-sm.active-yellow {
     background: #eab308;
@@ -3176,8 +3206,8 @@
     justify-items: center;
   }
   .aux-btn {
-    background: #09090b;
-    border: 1px solid #27272a;
+    background: #0a0a0a;
+    border: 1px solid #252525;
     border-radius: 10px;
     padding: 1.5rem 0.5rem;
     text-align: center;
@@ -3203,7 +3233,7 @@
   }
   .aux-btn:hover {
     border-color: #8b5cf6;
-    background: #18181b;
+    background: #141414;
     transform: translateY(-2px);
     box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.2);
   }
@@ -3225,7 +3255,7 @@
   }
   .aux-label {
     font-size: 0.75rem;
-    color: #52525b;
+    color: #555555;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3245,8 +3275,8 @@
     width: 0;
   }
   .bento-card {
-    background: #111827;
-    border: 1px solid #1e293b;
+    background: #151515;
+    border: 1px solid #252525;
     border-radius: 8px;
     padding: 1rem;
   }
@@ -3254,10 +3284,10 @@
     margin: 0 0 0.75rem 0;
     font-size: 0.65rem;
     font-weight: 800;
-    color: #475569;
+    color: #666666;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid #252525;
     padding-bottom: 0.4rem;
   }
   .bento-icon-preview {
@@ -3295,12 +3325,12 @@
     object-fit: contain;
     image-rendering: pixelated;
     border-radius: 4px;
-    border: 2px solid #334155;
+    border: 2px solid #333333;
   }
   .icon-name {
     font-size: 0.85rem;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #e5e5e5;
   }
   .bento-eq-preview {
     display: flex;
@@ -3311,7 +3341,7 @@
     height: 50px;
     background: #0b0f19;
     border-radius: 4px;
-    border: 1px solid #1e293b;
+    border: 1px solid #252525;
   }
   .bento-eq-curve path {
     fill: none;
@@ -3320,10 +3350,10 @@
   }
   .bento-hint {
     font-size: 0.75rem;
-    color: #64748b;
+    color: #777777;
     margin: 0.5rem 0 0 0;
     line-height: 1.4;
-    border-top: 1px dashed #1e293b;
+    border-top: 1px dashed #252525;
     padding-top: 0.5rem;
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -3336,16 +3366,16 @@
     position: relative;
   }
   .bento-clickable:hover {
-    background: #1f2937;
-    border-color: #475569;
+    background: #222222;
+    border-color: #666666;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 
   .bento-input {
     width: 100%;
     background: #000;
-    border: 1px solid #334155;
-    color: #f8fafc;
+    border: 1px solid #333333;
+    color: #fafafa;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem;
     padding: 2px 4px;
@@ -3355,7 +3385,7 @@
     transition: all 0.2s;
     box-sizing: border-box;
   }
-  .bento-input:focus { border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
+  .bento-input:focus { border-color: #eab308; box-shadow: 0 0 8px rgba(234, 179, 8, 0.3); }
   
   .param-row {
     display: grid;
@@ -3364,25 +3394,25 @@
     gap: 0.5rem;
     margin-bottom: 0.25rem;
   }
-  .param-row span { font-size: 0.61rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .param-row .unit { font-size: 0.55rem; color: #475569; font-weight: 800; text-align: left; }
+  .param-row span { font-size: 0.61rem; color: #999999; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .param-row .unit { font-size: 0.55rem; color: #666666; font-weight: 800; text-align: left; }
   
   .bento-toggle-btn {
     grid-column: 2 / -1; 
     width: 100%;
-    background: #1e293b; color: #475569; border: 1px solid #334155;
+    background: #252525; color: #666666; border: 1px solid #333333;
     padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.6rem; font-weight: 900;
     cursor: pointer; transition: 0.2s;
   }
-  .bento-toggle-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+  .bento-toggle-btn.active { background: #eab308; color: white; border-color: #facc15; box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
   .bento-toggle-btn.active-yellow { background: #eab308; color: #451a03; border-color: #fde047; box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
   .bento-hint {
     margin-top: 0.75rem;
     font-size: 0.65rem;
-    color: #64748b;
+    color: #777777;
     line-height: 1.4;
     font-weight: 600;
-    border-top: 1px dashed #1e293b;
+    border-top: 1px dashed #252525;
     padding-top: 0.5rem;
   }
 
@@ -3398,13 +3428,13 @@
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     background: #0b0f19;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid #252525;
     flex-shrink: 0;
   }
   .musician-header h2 {
     margin: 0;
     font-size: 1.1rem;
-    color: #f8fafc;
+    color: #fafafa;
     font-weight: 800;
     letter-spacing: -0.3px;
   }
@@ -3424,11 +3454,11 @@
     background: #0b0f19;
   }
   .musician-rack::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #333333;
     border-radius: 3px;
   }
   .musician-rack::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #666666;
   }
 
   .fade-in {
@@ -3452,8 +3482,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: #0b0d12;
-    color: #f8fafc;
+    background: #0a0a0a;
+    color: #fafafa;
     z-index: 9999;
     flex-direction: column;
     align-items: center;
@@ -3466,7 +3496,7 @@
     font-size: 1.5rem;
   }
   .portrait-warning p {
-    color: #94a3b8;
+    color: #999999;
     font-size: 0.95rem;
     line-height: 1.5;
     max-width: 300px;
@@ -3498,7 +3528,7 @@
   }
 
   .mixer-connect-section {
-    border-top: 1px solid #1e293b;
+    border-top: 1px solid #252525;
     margin-top: 1.25rem;
     padding-top: 1.25rem;
   }
@@ -3590,8 +3620,8 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    color: #71717a;
-    border: 1px solid #3f3f46;
+    color: #666666;
+    border: 1px solid #333333;
     width: 28px;
     height: 28px;
     border-radius: 6px;
@@ -3606,21 +3636,21 @@
   }
 
   .setup-overlay { position: absolute; inset: 0; z-index: 1000;
- background: #09090b; display: flex; justify-content: center; align-items: center; padding: 1rem; }
-  .setup-card { background: #18181b; border: 1px solid #27272a;
+ background: #0a0a0a; display: flex; justify-content: center; align-items: center; padding: 1rem; }
+  .setup-card { background: #141414; border: 1px solid #252525;
  border-radius: 8px; padding: 2rem 2rem; width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 1.5rem;
  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); max-height: 90vh; overflow-y: auto; }
   .setup-card::-webkit-scrollbar { width: 6px;
- } .setup-card::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+ } .setup-card::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
   .setup-logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.2em; color: #fafafa;
  text-align: center; }
   .wide-setup { max-width: 840px; flex-direction: row; align-items: stretch; gap: 2.5rem; }
   .setup-col { flex: 1; display: flex; flex-direction: column; gap: 1.25rem; }
-  .setup-col-right { border-left: 1px solid #27272a; padding-left: 2.5rem; justify-content: space-between; }
+  .setup-col-right { border-left: 1px solid #252525; padding-left: 2.5rem; justify-content: space-between; }
   .step-header { display: flex; flex-direction: column; gap: 0.25rem; text-align: center; }
   .step-title { font-size: 1.25rem; font-weight: 700;
  color: #fafafa; margin: 0; letter-spacing: -0.02em; }
-  .step-desc { color: #a1a1aa; font-size: 0.85rem; margin: 0;
+  .step-desc { color: #a3a3a3; font-size: 0.85rem; margin: 0;
  }
   .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
@@ -3641,10 +3671,10 @@
     justify-content: center;
     margin-top: 1rem;
     padding-top: 1.5rem;
-    border-top: 1px solid #27272a;
+    border-top: 1px solid #252525;
   }
   .btn-text.secondary {
-    color: #71717a;
+    color: #666666;
     background: transparent;
   }
   .btn-text.secondary:hover {
@@ -3658,7 +3688,7 @@
   }
   .role-select-subtitle {
     margin: 0;
-    color: #71717a;
+    color: #666666;
     font-size: 0.9rem;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -3670,8 +3700,8 @@
     width: 100%;
   }
   .role-card {
-    background: #09090b;
-    border: 1px solid #27272a;
+    background: #0a0a0a;
+    border: 1px solid #252525;
     border-radius: 8px;
     padding: 1.25rem 1.5rem;
     display: flex;
@@ -3684,25 +3714,25 @@
   }
   .role-card:hover {
     background: #111113;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+    border-color: #eab308;
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.2);
   }
   .role-card-icon {
     width: 48px;
     height: 48px;
     border-radius: 10px;
-    background: #18181b;
-    border: 1px solid #27272a;
+    background: #141414;
+    border: 1px solid #252525;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #3b82f6;
+    color: #eab308;
     flex-shrink: 0;
     transition: background 0.15s, color 0.15s;
   }
   .role-card:hover .role-card-icon {
-    background: rgba(59, 130, 246, 0.1);
-    color: #60a5fa;
+    background: rgba(234, 179, 8, 0.1);
+    color: #facc15;
   }
   .role-card-icon.musician-icon {
     color: #8b5cf6;
@@ -3727,25 +3757,25 @@
   }
   .role-info p {
     margin: 0;
-    color: #52525b;
+    color: #555555;
     font-size: 0.8rem;
     line-height: 1.4;
   }
   .role-arrow {
-    color: #3f3f46;
+    color: #333333;
     font-size: 1.1rem;
     font-weight: 600;
     flex-shrink: 0;
     transition: color 0.15s, transform 0.15s;
   }
   .role-card:hover .role-arrow {
-    color: #3b82f6;
+    color: #eab308;
     transform: translateX(2px);
   }
   .btn-text {
     background: transparent;
     border: none;
-    color: #52525b;
+    color: #555555;
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
@@ -3758,31 +3788,31 @@
     margin: 0 auto;
   }
   .btn-text:hover {
-    color: #a1a1aa;
+    color: #a3a3a3;
   }
   
   .form-group label { font-size: 0.7rem; font-weight: 600;
- color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
-  .form-group input, .form-group select { background: #09090b;
- border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
+ color: #a3a3a3; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+  .form-group input, .form-group select { background: #0a0a0a;
+ border: 1px solid #252525; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
  outline: none; width: 100%; box-sizing: border-box; }
-  .form-group input:focus, .form-group select:focus { border-color: #3b82f6;
+  .form-group input:focus, .form-group select:focus { border-color: #eab308;
  }
   .btn-ghost, .btn-primary { padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
  transition: background 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; flex: 1; border: none;
  }
-  .btn-ghost { background: transparent; color: #a1a1aa; border: 1px solid #27272a; }
-  .btn-ghost:hover { background: #27272a; color: #fafafa;
+  .btn-ghost { background: transparent; color: #a3a3a3; border: 1px solid #252525; }
+  .btn-ghost:hover { background: #252525; color: #fafafa;
  }
-  .btn-primary { background: #fafafa; color: #09090b; }
+  .btn-primary { background: #fafafa; color: #0a0a0a; }
   .btn-primary:hover:not(:disabled) { background: #e4e4e7; }
   .btn-primary:disabled { opacity: 0.5;
  cursor: not-allowed; }
   
   .side-filter-btn {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #94a3b8;
+    background: #252525;
+    border: 1px solid #333333;
+    color: #999999;
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-size: 0.7rem;
@@ -3792,13 +3822,13 @@
     transition: 0.2s;
   }
   .side-filter-btn:hover {
-    background: #334155;
-    color: #f8fafc;
+    background: #333333;
+    color: #fafafa;
   }
   .side-filter-btn.active {
-    background: #3b82f6;
+    background: #eab308;
     color: white;
-    border-color: #60a5fa;
+    border-color: #facc15;
   }
 
   /* Sync Overlay Styles */
@@ -3818,8 +3848,8 @@
   }
 
   .sync-card {
-    background: #0f172a;
-    border: 1px solid #1e293b;
+    background: #121212;
+    border: 1px solid #252525;
     border-radius: 24px;
     padding: 3rem;
     max-width: 500px;
@@ -3840,15 +3870,15 @@
   .sync-icon {
     width: 96px;
     height: 96px;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    background: linear-gradient(135deg, #252525 0%, #121212 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 2rem;
-    color: #3b82f6;
-    border: 1px solid #334155;
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+    color: #eab308;
+    border: 1px solid #333333;
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.2);
   }
 
   :global(.spin-heavy) {
@@ -3859,12 +3889,12 @@
     font-size: 1.75rem;
     font-weight: 800;
     margin-bottom: 0.75rem;
-    color: #f8fafc;
+    color: #fafafa;
     letter-spacing: -0.02em;
   }
 
   .sync-content p {
-    color: #94a3b8;
+    color: #999999;
     line-height: 1.6;
     margin-bottom: 2.5rem;
     font-size: 1rem;
@@ -3873,7 +3903,7 @@
   .sync-progress-bar {
     width: 100%;
     height: 8px;
-    background: #1e293b;
+    background: #252525;
     border-radius: 999px;
     overflow: hidden;
     margin-bottom: 1rem;
@@ -3881,10 +3911,10 @@
 
   .sync-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    background: linear-gradient(90deg, #eab308, #facc15);
     border-radius: 999px;
     transition: width 0.3s ease-out;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.5);
   }
 
   .sync-stats {
@@ -3896,12 +3926,12 @@
   }
 
   .sync-percent {
-    color: #3b82f6;
+    color: #eab308;
     font-family: 'JetBrains Mono', monospace;
   }
 
   .sync-label {
-    color: #475569;
+    color: #666666;
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }

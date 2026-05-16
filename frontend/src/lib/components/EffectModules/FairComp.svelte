@@ -65,7 +65,7 @@
               <path d="M 15 48 A 40 40 0 0 1 85 48" fill="none" stroke="#facc15" stroke-width="12" />
               
               <!-- Scale -->
-              <g stroke="#f8fafc" stroke-width="0.6">
+              <g stroke="#fafafa" stroke-width="0.6">
                 {#each Array(11) as _, i}
                   {@const angle = -150 + i * 12}
                   {@const r1 = 38}
@@ -132,8 +132,8 @@
 
   .rack-metal {
     flex: 1;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid #334155;
+    background: linear-gradient(135deg, #252525, #121212);
+    border: 1px solid #333333;
     border-radius: 4px;
     display: flex;
     flex-direction: column;
@@ -151,8 +151,8 @@
     border-bottom: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 1rem;
   }
-  .brand { color: #64748b; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #22d3ee; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
 
   .comp-content {
     flex: 1;
@@ -180,7 +180,7 @@
     background: #111;
     padding: 1rem;
     border-radius: 8px;
-    border: 2px solid #334155;
+    border: 2px solid #333333;
     box-shadow: inset 0 4px 12px rgba(0,0,0,0.8);
     display: flex;
     flex-direction: column;
@@ -190,7 +190,7 @@
   .vu-meter .label {
     font-size: 0.6rem;
     font-weight: 800;
-    color: #475569;
+    color: #666666;
     letter-spacing: 1px;
     text-transform: uppercase;
   }
@@ -234,20 +234,20 @@
     align-items: center;
     gap: 0.4rem;
   }
-  .micro-knob span { font-size: 0.55rem; color: #475569; font-weight: 900; }
+  .micro-knob span { font-size: 0.55rem; color: #666666; font-weight: 900; }
   .micro-knob .cap {
     width: 20px;
     height: 20px;
-    background: radial-gradient(circle at 30% 30%, #475569, #1e293b);
+    background: radial-gradient(circle at 30% 30%, #666666, #252525);
     border-radius: 50%;
-    border: 1px solid #334155;
+    border: 1px solid #333333;
     position: relative;
   }
   .micro-knob .cap::after {
     content: '';
     position: absolute;
     top: 3px; left: 50%; transform: translateX(-50%);
-    width: 2px; height: 3px; background: #22d3ee; border-radius: 1px;
+    width: 2px; height: 3px; background: #fbbf24; border-radius: 1px;
   }
 
 </style>

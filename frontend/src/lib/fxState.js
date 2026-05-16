@@ -57,7 +57,8 @@ export function setSlot(idx, patch) {
     const presetMeta = getPresetMeta(nextPreset);
     
     const rtnNum = idx + 1; 
-    const rtnNumStr = rtnNum.toString().padStart(2, '0'); // Helper for 2-digit indexing common in OSC
+    const rtnNumStr = rtnNum.toString().padStart(2, '0'); // For return channel paths (/rtn/01/...)
+    const fxNum = rtnNum; // For FX engine paths (/fx/1/...)
 
     const merged = {
       ...current,
@@ -85,12 +86,17 @@ export function setSlot(idx, patch) {
         ...cloneParams(patch?.params)
       };
       
-      setOsc(`/rtn/${rtnNumStr}/fxtype`, presetMeta.oscTypeIndex);
+      setOsc(`/fx/${fxNum}/type`, presetMeta.oscTypeIndex);
       
       Object.entries(merged.params).forEach(([key, value]) => {
         const oscSuffix = presetMeta.oscMap[key];
         if (oscSuffix && typeof value === 'number') {
-          setOsc(`/rtn/${rtnNumStr}${oscSuffix}`, value);
+          // oscMap uses /fxparam/N, translate to /fx/N/par/NN
+          const parMatch = oscSuffix.match(/\/fxparam\/(\d+)/);
+          if (parMatch) {
+            const parNum = String(parMatch[1]).padStart(2, '0');
+            setOsc(`/fx/${fxNum}/par/${parNum}`, value);
+          }
         }
       });
     } 
@@ -105,7 +111,12 @@ export function setSlot(idx, patch) {
         const oscSuffix = presetMeta.oscMap[key];
         // Safeguard: only send if key exists in map and value is a number
         if (oscSuffix && typeof value === 'number' && current.params[key] !== value) {
-          setOsc(`/rtn/${rtnNumStr}${oscSuffix}`, value);
+          // oscMap uses /fxparam/N, translate to /fx/N/par/NN
+          const parMatch = oscSuffix.match(/\/fxparam\/(\d+)/);
+          if (parMatch) {
+            const parNum = String(parMatch[1]).padStart(2, '0');
+            setOsc(`/fx/${fxNum}/par/${parNum}`, value);
+          }
         }
       });
     }

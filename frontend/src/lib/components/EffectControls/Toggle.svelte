@@ -47,7 +47,7 @@
     border: 2px solid #3a3a3a;
     border-radius: 8px;
     background: linear-gradient(180deg, #1d1d1d 0%, #151515 100%);
-    color: #00ced1;
+    color: #eab308;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -57,7 +57,7 @@
   }
 
   .toggle-button:hover {
-    border-color: rgba(0, 206, 209, 0.8);
+    border-color: rgba(234, 179, 8, 0.8);
   }
 
   .toggle-button:active {
@@ -66,14 +66,14 @@
 
   .toggle-button:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 206, 209, 0.18), 0 0 10px rgba(0, 206, 209, 0.22);
-    border-color: #00ced1;
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.18), 0 0 10px rgba(234, 179, 8, 0.22);
+    border-color: #eab308;
   }
 
   .toggle-button.active {
-    background: rgba(0, 206, 209, 0.1);
-    border-color: #00ced1;
-    box-shadow: 0 0 8px rgba(0, 206, 209, 0.28);
+    background: rgba(234, 179, 8, 0.1);
+    border-color: #eab308;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.28);
   }
 
   .toggle-indicator {

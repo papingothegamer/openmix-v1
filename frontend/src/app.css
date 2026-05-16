@@ -1,15 +1,26 @@
 :root {
-  --text: #6b7280; /* Gray 500 */
-  --text-h: #111827; /* Gray 900 */
-  --bg: #ffffff;
-  --border: #e5e7eb; /* Gray 200 */
-  --code-bg: #f3f4f6; /* Gray 100 */
-  --accent: #3b82f6; /* Blue 500 */
-  --accent-bg: rgba(59, 130, 246, 0.1);
-  --accent-border: rgba(59, 130, 246, 0.3);
-  --social-bg: rgba(243, 244, 246, 0.5);
+  --text: #a3a3a3; /* Neutral 400 */
+  --text-h: #fafafa; /* Neutral 50 */
+  --bg: #0a0a0a; /* Near-black */
+  --border: #262626; /* Neutral 800 */
+  --code-bg: #171717; /* Neutral 900 */
+  --accent: #eab308; /* Yellow 500 */
+  --accent-light: #facc15; /* Yellow 400 */
+  --accent-dark: #a16207; /* Yellow 700 */
+  --accent-bg: rgba(234, 179, 8, 0.1);
+  --accent-border: rgba(234, 179, 8, 0.35);
+  --social-bg: rgba(38, 38, 38, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.25) 0 10px 15px -3px, rgba(0, 0, 0, 0.15) 0 4px 6px -2px;
+
+  /* Gunmetal surface scale */
+  --surface-0: #0a0a0a;  /* deepest bg */
+  --surface-1: #121212;  /* panel bg */
+  --surface-2: #1a1a1a;  /* card bg */
+  --surface-3: #222222;  /* raised bg */
+  --surface-4: #2a2a2a;  /* hover bg */
+  --border-subtle: #1f1f1f;
+  --border-strong: #333333;
 
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --heading: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -17,7 +28,7 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -30,19 +41,20 @@
   }
 }
 
+/* Dark mode is now the only mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af; /* Gray 400 */
-    --text-h: #f9fafb; /* Gray 50 */
-    --bg: #0b0d12; /* Black but not too black */
-    --border: #1f2937; /* Gray 800 */
-    --code-bg: #111827; /* Gray 900 */
-    --accent: #3b82f6;
-    --accent-bg: rgba(59, 130, 246, 0.15);
-    --accent-border: rgba(59, 130, 246, 0.5);
-    --social-bg: rgba(31, 41, 55, 0.5);
+    --text: #a3a3a3;
+    --text-h: #fafafa;
+    --bg: #0a0a0a;
+    --border: #262626;
+    --code-bg: #171717;
+    --accent: #eab308;
+    --accent-bg: rgba(234, 179, 8, 0.12);
+    --accent-border: rgba(234, 179, 8, 0.4);
+    --social-bg: rgba(38, 38, 38, 0.5);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
   }
 
   #social .button-icon {

@@ -71,8 +71,8 @@
     <div class="graph-title">Compression Curve</div>
     <div class="graph-placeholder flex-center" style="padding: 0.5rem;">
       <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; overflow: visible;">
-        <line x1="0" y1="50" x2="100" y2="50" stroke="#1e293b" stroke-width="1" />
-        <line x1="50" y1="0" x2="50" y2="100" stroke="#1e293b" stroke-width="1" />
+        <line x1="0" y1="50" x2="100" y2="50" stroke="#252525" stroke-width="1" />
+        <line x1="50" y1="0" x2="50" y2="100" stroke="#252525" stroke-width="1" />
         <polyline points={compCurve} fill="none" stroke="#10b981" stroke-width="2" />
       </svg>
     </div>
@@ -83,7 +83,7 @@
     <div class="graph-placeholder flex-center">
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="envelope-svg">
         <path d={envelopePath} fill="none" stroke="#10b981" stroke-width="2.5" />
-        <path d="M0 57 L100 57" stroke="#1e293b" stroke-width="1" />
+        <path d="M0 57 L100 57" stroke="#252525" stroke-width="1" />
       </svg>
     </div>
   </div>
@@ -118,22 +118,22 @@
   .x32-graph-box {
     flex: 1;
     min-width: 0;
-    background: #0f172a;
-    border: 1px solid #1e293b;
+    background: #121212;
+    border: 1px solid #252525;
     border-radius: 6px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
   .graph-title {
-    background: #1e293b;
-    color: #cbd5e1;
+    background: #252525;
+    color: #d4d4d4;
     font-size: 0.6rem;
     font-weight: 700;
     padding: 0.2rem 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid #333333;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

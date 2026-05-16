@@ -62,8 +62,8 @@
 
   .rack-metal {
     flex: 1;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid #334155;
+    background: linear-gradient(135deg, #252525, #121212);
+    border: 1px solid #333333;
     border-radius: 4px;
     display: flex;
     flex-direction: column;
@@ -81,8 +81,8 @@
     border-bottom: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 1.5rem;
   }
-  .brand { color: #64748b; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #3b82f6; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+  .model { color: #eab308; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
 
   .pitch-content {
     flex: 1;
@@ -96,7 +96,7 @@
     width: 200px;
     height: 100px;
     background: #000;
-    border: 2px solid #334155;
+    border: 2px solid #333333;
     border-radius: 6px;
     position: relative;
     display: flex;
@@ -104,13 +104,13 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.2);
+    box-shadow: inset 0 0 20px rgba(234, 179, 8, 0.2);
   }
 
-  .lcd-label { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #3b82f6; opacity: 0.5; letter-spacing: 2px; margin-bottom: 0.5rem; }
-  .lcd-value { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; color: #3b82f6; font-weight: 800; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); line-height: 1; }
-  .lcd-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #3b82f6; opacity: 0.8; margin-top: 0.25rem; }
-  .lcd-glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%); pointer-events: none; }
+  .lcd-label { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #eab308; opacity: 0.5; letter-spacing: 2px; margin-bottom: 0.5rem; }
+  .lcd-value { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; color: #eab308; font-weight: 800; text-shadow: 0 0 10px rgba(234, 179, 8, 0.5); line-height: 1; }
+  .lcd-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #eab308; opacity: 0.8; margin-top: 0.25rem; }
+  .lcd-glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, rgba(234, 179, 8, 0.05) 0%, transparent 100%); pointer-events: none; }
 
   .knobs-row {
     flex: 1;

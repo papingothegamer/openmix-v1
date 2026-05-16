@@ -95,7 +95,7 @@
     outline: none;
     appearance: none;
     -webkit-appearance: none;
-    background: linear-gradient(to right, #00ced1 0%, #00ced1 var(--fill), #2a2a2a var(--fill), #2a2a2a 100%);
+    background: linear-gradient(to right, #eab308 0%, #eab308 var(--fill), #2a2a2a var(--fill), #2a2a2a 100%);
   }
 
   .slider-input::-webkit-slider-thumb {
@@ -104,21 +104,21 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #00ced1;
+    background: #eab308;
     cursor: pointer;
     border: none;
     margin-top: -6px;
-    box-shadow: 0 0 4px rgba(0, 206, 209, 0.4);
+    box-shadow: 0 0 4px rgba(234, 179, 8, 0.4);
   }
 
   .slider-input::-moz-range-thumb {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #00ced1;
+    background: #eab308;
     cursor: pointer;
     border: none;
-    box-shadow: 0 0 4px rgba(0, 206, 209, 0.4);
+    box-shadow: 0 0 4px rgba(234, 179, 8, 0.4);
   }
 
   .slider-input::-moz-range-track {
@@ -129,7 +129,7 @@
 
   .slider-value {
     font-size: 0.75rem;
-    color: #00ced1;
+    color: #eab308;
     font-weight: 700;
   }
 </style>

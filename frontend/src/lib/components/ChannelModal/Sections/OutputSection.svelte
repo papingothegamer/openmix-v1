@@ -70,36 +70,36 @@
 <style>
   .routing-visual {
     width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
-    background: radial-gradient(circle at center, #111827 0%, #020617 100%);
+    background: radial-gradient(circle at center, #151515 0%, #0a0a0a 100%);
   }
-  .routing-title { display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-weight: 800; letter-spacing: 0.1em; font-size: 0.85rem; }
+  .routing-title { display: flex; align-items: center; gap: 0.5rem; color: #777777; font-weight: 800; letter-spacing: 0.1em; font-size: 0.85rem; }
   
   .main-lr-toggle {
     position: relative;
-    background: #0f172a; border: 2px solid #1e293b; padding: 1.5rem 2.5rem; border-radius: 8px;
+    background: #121212; border: 2px solid #252525; padding: 1.5rem 2.5rem; border-radius: 8px;
     display: flex; flex-direction: column; align-items: center; gap: 1rem;
-    color: #94a3b8; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: 0.2s;
+    color: #999999; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: 0.2s;
   }
-  .main-lr-toggle:hover { background: #1e293b; color: #f8fafc; }
+  .main-lr-toggle:hover { background: #252525; color: #fafafa; }
   .main-lr-toggle.active { border-color: #f59e0b; color: #fcd34d; background: rgba(245, 158, 11, 0.1); box-shadow: 0 10px 25px rgba(245,158,11,0.2); }
   
-  .led-bar { width: 60px; height: 6px; background: #334155; border-radius: 3px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
+  .led-bar { width: 60px; height: 6px; background: #333333; border-radius: 3px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
   .main-lr-toggle.active .led-bar { background: #f59e0b; box-shadow: 0 0 10px #f59e0b, inset 0 1px 2px rgba(255,255,255,0.5); }
 
   .linked-badge-mini {
     position: absolute; top: -10px; right: -10px;
-    background: #3b82f6; color: white; font-size: 0.65rem; font-weight: 900;
-    padding: 3px 8px; border-radius: 4px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+    background: #eab308; color: white; font-size: 0.65rem; font-weight: 900;
+    padding: 3px 8px; border-radius: 4px; box-shadow: 0 4px 10px rgba(234, 179, 8, 0.4);
     letter-spacing: 1px;
   }
 
   .output-bottom { align-items: center; gap: 3rem; }
   
-  .pan-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; background: #0f172a; padding: 1.5rem; border-radius: 8px; border: 1px solid #1e293b; }
+  .pan-container { display: flex; flex-direction: column; align-items: center; gap: 1rem; background: #121212; padding: 1.5rem; border-radius: 8px; border: 1px solid #252525; }
   .h-slider-wrapper { display: flex; align-items: center; gap: 0.75rem; width: 180px; }
-  .pan-edge { font-size: 0.8rem; font-weight: 800; color: #64748b; }
+  .pan-edge { font-size: 0.8rem; font-weight: 800; color: #777777; }
   
-  .h-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #020617; border-radius: 4px; outline: none; border: 1px solid #1e293b; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-  .h-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 28px; border-radius: 4px; background: #b45309; border: 2px solid #0f172a; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-  .h-slider::-moz-range-thumb { width: 16px; height: 28px; border-radius: 4px; background: #b45309; border: 2px solid #0f172a; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+  .h-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #0a0a0a; border-radius: 4px; outline: none; border: 1px solid #252525; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+  .h-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 28px; border-radius: 4px; background: #b45309; border: 2px solid #121212; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+  .h-slider::-moz-range-thumb { width: 16px; height: 28px; border-radius: 4px; background: #b45309; border: 2px solid #121212; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 </style>

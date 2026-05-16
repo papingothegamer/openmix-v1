@@ -6,7 +6,7 @@
   export let level = 0; // Normalized 0.0 to 1.0
   export let isOn = true;
   export let isPre = true;
-  export let accentColor = '#3b82f6'; // Blue for Aux, Purple for FX, Emerald for MTX
+  export let accentColor = '#eab308'; // Blue for Aux, Purple for FX, Emerald for MTX
 
   function toDb(val) {
     if (val <= 0.005) return '-\u221e';
@@ -86,7 +86,7 @@
     width: 64px;
     transition: all 0.2s;
   }
-  .send-strip:hover { background: #0c0c0e; border-color: #27272a; }
+  .send-strip:hover { background: #0c0c0e; border-color: #252525; }
   .is-off { opacity: 0.6; filter: grayscale(0.5); }
 
   .strip-label {
@@ -95,7 +95,7 @@
     font-size: 0.58rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: #71717a;
+    color: #666666;
     padding-bottom: 0.2rem;
     border-bottom: 2px solid transparent;
     letter-spacing: 0.05em;
@@ -118,7 +118,7 @@
     overflow: hidden;
   }
   .fader-fill { width: 100%; position: absolute; bottom: 0; transition: height 0.05s linear; }
-  .track-center { position: absolute; left: 50%; width: 1px; height: 100%; background: #27272a; transform: translateX(-50%); }
+  .track-center { position: absolute; left: 50%; width: 1px; height: 100%; background: #252525; transform: translateX(-50%); }
 
   .v-slider {
     position: absolute;
@@ -152,14 +152,14 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.65rem;
     font-weight: 800;
-    color: #3b82f6;
+    color: #eab308;
     background: #000;
     padding: 2px 4px;
     border-radius: 3px;
     min-width: 45px;
     text-align: right;
   }
-  .unit { font-size: 0.5rem; color: #52525b; }
+  .unit { font-size: 0.5rem; color: #555555; }
 
   .strip-controls {
     display: flex;
@@ -176,10 +176,10 @@
     border-radius: 3px;
     border: 1px solid #18181b;
     background: #18181b;
-    color: #52525b;
+    color: #555555;
     cursor: pointer;
     transition: all 0.2s;
   }
   .on-btn.active { background: #052e16; color: #4ade80; border-color: #15803d; box-shadow: 0 0 8px rgba(74,222,128,0.2); }
-  .pp-btn.active { background: #0c1e3c; color: #60a5fa; border-color: #1d4ed8; }
+  .pp-btn.active { background: #0c1e3c; color: #facc15; border-color: #a16207; }
 </style>

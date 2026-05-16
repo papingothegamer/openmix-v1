@@ -2,7 +2,6 @@
   import { onDestroy } from 'svelte';
   import FxSlot from './FxSlot.svelte';
   import fxState, { ensureFxSlots } from '../fxState.js';
-  import { setOsc } from '../socket.js';
   import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 
   export let config = { fx: 4 };
@@ -30,32 +29,8 @@
     'Stereo Chorus': 'ST CHORUS'
   };
 
-  const OSC_DEBOUNCE_MS = 100;
-  let oscDebounceTimers = {};
-
-  function scheduleSlotOsc(index) {
-    if (oscDebounceTimers[index]) clearTimeout(oscDebounceTimers[index]);
-
-    oscDebounceTimers[index] = setTimeout(() => {
-      const slot = fx.slots[index];
-      if (slot) {
-        const rtnNum = index + 1;
-        setOsc(`/rtn/${rtnNum}/on`, slot.bypass ? 0 : 1);
-        if (typeof slot.level === 'number') {
-          setOsc(`/rtn/${rtnNum}/mix`, Math.max(0, Math.min(1, slot.level)));
-        }
-      }
-      delete oscDebounceTimers[index];
-    }, OSC_DEBOUNCE_MS);
-  }
-
-  $: {
-    if (fx.slots && fx.slots.length > 0) {
-      fx.slots.forEach((slot, i) => {
-        if (slot) scheduleSlotOsc(i);
-      });
-    }
-  }
+  // Note: All OSC emission for FX bypass/level/params is handled by
+  // setSlot() in fxState.js. No additional reactive OSC push needed here.
 </script>
 
 <div class="fx-container fade-in">
@@ -97,8 +72,8 @@
     width: 100%;
     min-height: 480px;
     max-height: 75vh;
-    background: #0b0d12;
-    border: 1px solid #1e293b;
+    background: #0a0a0a;
+    border: 1px solid #252525;
     border-radius: 8px;
     overflow: hidden;
     font-family: 'Inter', sans-serif;
@@ -114,7 +89,7 @@
     .fx-sidebar {
       width: 100% !important;
       border-right: none !important;
-      border-bottom: 1px solid #1e293b;
+      border-bottom: 1px solid #252525;
       height: auto !important;
     }
     .fx-slot-list {
@@ -125,13 +100,13 @@
     }
     .fx-slot-row {
       border-bottom: none !important;
-      border-right: 1px solid #1e293b;
+      border-right: 1px solid #252525;
       padding: 0.5rem 1rem !important;
       white-space: nowrap;
     }
     .fx-slot-row.active {
       border-left: none !important;
-      border-bottom: 3px solid #3b82f6;
+      border-bottom: 3px solid #eab308;
     }
   }
 
@@ -140,7 +115,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: #080a0f;
+    background: #0c0c0c;
   }
   
   .fx-workspace-inner {
@@ -158,8 +133,8 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: #12151c;
-    border-right: 1px solid #1e293b;
+    background: #141414;
+    border-right: 1px solid #252525;
   }
 
   .fx-header {
@@ -167,36 +142,36 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.25rem 1rem;
-    background: #1f2937;
-    border-bottom: 1px solid #1e293b;
+    background: #222222;
+    border-bottom: 1px solid #252525;
   }
 
-  .title-left { font-size: 1.1rem; font-weight: 800; color: #f8fafc; margin: 0; }
-  .ch-name { color: #e2e8f0; }
+  .title-left { font-size: 1.1rem; font-weight: 800; color: #fafafa; margin: 0; }
+  .ch-name { color: #e5e5e5; }
   .header-title-group { display: flex; align-items: center; }
  
   .fx-slot-list {
     display: flex; flex-direction: column; flex: 1;
-    background: #0f1115; overflow-y: auto;
+    background: #111111; overflow-y: auto;
   }
   .fx-slot-list::-webkit-scrollbar { width: 0; }
 
   .fx-slot-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 1rem 1.25rem; border: none; border-bottom: 1px solid #1e293b;
+    padding: 1rem 1.25rem; border: none; border-bottom: 1px solid #252525;
     background: transparent; cursor: pointer; transition: 0.1s; outline: none;
   }
-  .fx-slot-row:hover { background: rgba(59,130,246,0.05); }
-  .fx-slot-row.active { background: #1f2937; border-left: 3px solid #3b82f6; }
+  .fx-slot-row:hover { background: rgba(234,179,8,0.05); }
+  .fx-slot-row.active { background: #222222; border-left: 3px solid #eab308; }
 
   .fx-slot-name { display: flex; flex-direction: column; gap: 0.3rem; text-align: left; }
-  .w-id { color: #94a3b8; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 800; }
-  .w-type { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
-  .fx-slot-row.active .w-id, .fx-slot-row.active .w-type { color: #f8fafc; }
+  .w-id { color: #999999; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 800; }
+  .w-type { color: #777777; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+  .fx-slot-row.active .w-id, .fx-slot-row.active .w-type { color: #fafafa; }
 
   .empty-state {
     display: flex; align-items: center; justify-content: center;
-    width: 100%; height: 100%; color: #475569;
+    width: 100%; height: 100%; color: #666666;
     font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
   }
 

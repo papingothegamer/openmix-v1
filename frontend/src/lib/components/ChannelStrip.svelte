@@ -8,10 +8,11 @@
   export let channelIndex = '1';
   export let name = `CH ${channelIndex}`;
   export let iconType = 'icon_01'; // Native SVG fallback
-  export let color = '#3b82f6';
+  export let color = '#eab308';
   export let stripType = 'input'; // 'input', 'dca', 'output', 'main'
   export let pan = 0; // -100 to +100
   export let role = 'musician'; // 'foh' or 'musician'
+  export let fineMode = false; // Global fine-adjust mode
   
   // Requirement: Default fader value is -Infinity (-60dB in this component's scale)
   export let level = -60; 
@@ -254,7 +255,20 @@
   $: meterYellowH = Math.max(0, Math.min(meterFillPct - 80, 15)); // 0..15
   $: meterRedH    = Math.max(0, meterFillPct - 95);      // 0..5
 
+  // Fader dB tick positions (maps dB to bottom % using the fader formula)
+  const FADER_TICKS = [10, 5, 0, -10, -20, -40, -60];
+  function dbToTickPct(db) { return ((db + 60) / 70) * 100; }
 
+  // Fine mode: change step resolution
+  $: faderStep = fineMode ? 0.1 : 0.5;
+
+  function handleWheel(e) {
+    if (!fineMode) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    level = Math.max(-60, Math.min(10, level + delta));
+    emitFaderChange();
+  }
   // --- Panning UI Logic ---
   let isPanning = false;
   let startX = 0;
@@ -300,7 +314,7 @@
       {#if iconType}
         <img src="/icons-bmp/{iconType}.bmp" alt="Channel Icon" style="width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; border-radius: 2px; border: 1px solid #000;" />
       {:else}
-        <div style="width: 22px; height: 22px; border-radius: 2px; border: 1px solid #27272a; background: #18181b;"></div>
+        <div style="width: 22px; height: 22px; border-radius: 2px; border: 1px solid #252525; background: #18181b;"></div>
       {/if}
     </div>
     <div class="channel-name" on:click={() => dispatch('nameClick')}>
@@ -331,7 +345,7 @@
         <div class="chart gate-chart">
           <span class="label">GATE</span>
           <svg viewBox="0 0 100 40" class="mini-svg">
-            <line x1={gateThrX} y1="0" x2={gateThrX} y2="40" stroke="#1e293b" stroke-width="1" opacity={gateOn ? 0.9 : 0.25} />
+            <line x1={gateThrX} y1="0" x2={gateThrX} y2="40" stroke="#252525" stroke-width="1" opacity={gateOn ? 0.9 : 0.25} />
             <polyline points={gateCurvePoints} class="gate-poly" />
           </svg>
         </div>
@@ -341,7 +355,7 @@
         <div class="chart comp-chart">
           <span class="label">COMP</span>
           <svg viewBox="0 0 100 40" class="mini-svg">
-            <line x1={compThrX} y1="0" x2={compThrX} y2="40" stroke="#1e293b" stroke-width="1" opacity={compOn ? 0.9 : 0.25} />
+            <line x1={compThrX} y1="0" x2={compThrX} y2="40" stroke="#252525" stroke-width="1" opacity={compOn ? 0.9 : 0.25} />
             <polyline points={compCurvePoints} class="comp-poly" />
           </svg>
         </div>
@@ -382,6 +396,13 @@
       <div class="vu-peak" style="bottom: {peakHoldPct}%"></div>
     </div>
 
+    <!-- Fader dB Tick Marks -->
+    <div class="fader-ticks">
+      {#each FADER_TICKS as db}
+        <div class="tick" style="bottom: {dbToTickPct(db)}%" class:tick-zero={db === 0}></div>
+      {/each}
+    </div>
+
     <!-- Fader -->
     <div class="fader-container">
       <input
@@ -389,10 +410,11 @@
         class="fader-slider"
         min="-60"
         max="10"
-        step="0.5"
+        step={faderStep}
         bind:value={level}
         on:dblclick={resetFader}
         on:input={emitFaderChange}
+        on:wheel|preventDefault={handleWheel}
       />
       <div class="fader-track">
         <div class="fader-thumb" style="bottom: {((level + 60) / 70) * 100}%"></div>
@@ -415,37 +437,37 @@
 
 <style>
   .channel-strip {
-    width: 82px;
-    background: #18181b; /* Zinc 900 */
-    border: 1px solid #27272a; /* Zinc 800 */
+    width: 86px;
+    background: #141414;
+    border: 1px solid #252525;
     border-radius: 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 6px 4px;
     font-family: 'Inter', sans-serif;
-    color: #e2e8f0;
+    color: #e5e5e5;
     box-sizing: border-box;
-    flex-shrink: 0; /* Important for horizontal scrolling array */
+    flex-shrink: 0;
     transition: all 0.2s;
   }
   
   .channel-strip:hover {
-    background: #1f1f22;
+    background: #1a1a1a;
   }
 
   /* Header */
   .strip-header { width: 100%; text-align: center; margin-bottom: 6px; padding-top: 4px; border-radius: 4px; }
   .icon-slot { display: flex; justify-content: center; margin-bottom: 4px; }
   .channel-name { font-size: 0.65rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.8); background: rgba(0,0,0,0.5); padding: 3px 0; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s; }
-  .channel-name:hover { border-color: #3b82f6; }
+  .channel-name:hover { border-color: #eab308; }
 
-  /* Fader + Meter side-by-side row */
+  /* Fader + Ticks + Meter side-by-side row */
   .fader-meter-row {
     display: flex;
     flex-direction: row;
     align-items: flex-end;
-    gap: 4px;
+    gap: 2px;
     margin-bottom: 12px;
   }
 
@@ -453,10 +475,10 @@
   .vu-meter {
     position: relative;
     width: 8px;
-    height: 180px; /* matches .fader-container height */
-    background: #000;
+    height: 180px;
+    background: #0a0a0a;
     border-radius: 3px;
-    border: 1px solid #27272a;
+    border: 1px solid #252525;
     overflow: hidden;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
     flex-shrink: 0;
@@ -468,7 +490,7 @@
     left: 0;
     width: 100%;
     display: flex;
-    flex-direction: column-reverse; /* stack green at bottom, red at top */
+    flex-direction: column-reverse;
     height: 100%;
     align-items: stretch;
   }
@@ -479,7 +501,7 @@
     transition: height 0.06s linear;
   }
   .vu-green  { background: #10b981; box-shadow: 0 0 4px rgba(16,185,129,0.6); }
-  .vu-yellow { background: #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,0.6); }
+  .vu-yellow { background: #eab308; box-shadow: 0 0 4px rgba(234,179,8,0.6); }
   .vu-red    { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.8); }
 
   /* Peak-hold indicator tick */
@@ -495,23 +517,44 @@
     pointer-events: none;
   }
 
+  /* Fader dB Tick Marks */
+  .fader-ticks {
+    position: relative;
+    width: 6px;
+    height: 180px;
+    flex-shrink: 0;
+  }
+  .tick {
+    position: absolute;
+    right: 0;
+    width: 4px;
+    height: 1px;
+    background: #404040;
+    transform: translateY(0.5px);
+  }
+  .tick.tick-zero {
+    width: 6px;
+    height: 2px;
+    background: #eab308;
+  }
+
   /* Panning */
   .pan-container { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; width: 100%; }
-  .pan-label { font-size: 0.55rem; color: #a1a1aa; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-  .pan-dial { width: 24px; height: 24px; border-radius: 50%; background: #18181b; border: 2px solid #27272a; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
-  .pan-pointer { position: absolute; top: 0; left: 50%; width: 2px; height: 50%; background: #3b82f6; transform-origin: bottom center; margin-left: -1px; border-radius: 1px; }
+  .pan-label { font-size: 0.55rem; color: #a3a3a3; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .pan-dial { width: 24px; height: 24px; border-radius: 50%; background: #141414; border: 2px solid #252525; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
+  .pan-pointer { position: absolute; top: 0; left: 50%; width: 2px; height: 50%; background: #eab308; transform-origin: bottom center; margin-left: -1px; border-radius: 1px; }
 
   /* FOH Controls */
   .foh-controls { width: 100%; display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
   .switches-row { display: flex; gap: 4px; justify-content: space-between; }
-  .switch-btn { flex: 1; font-size: 0.55rem; font-weight: bold; padding: 2px 0; background: #27272a; border: 1px solid #3f3f46; color: #71717a; border-radius: 2px; cursor: pointer; transition: all 0.2s; }
-  .switch-btn:hover { background: #3f3f46; }
+  .switch-btn { flex: 1; font-size: 0.55rem; font-weight: bold; padding: 2px 0; background: #1e1e1e; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+  .switch-btn:hover { background: #2a2a2a; }
   .switch-btn.phantom.active { background: #ef4444; color: #fff; border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
-  .switch-btn.link.active { background: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+  .switch-btn.link.active { background: #eab308; color: #000; border-color: #eab308; box-shadow: 0 0 8px rgba(234, 179, 8, 0.4); }
   
-  .chart { width: 100%; height: 32px; background: #09090b; border-radius: 3px; border: 1px solid #27272a; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
-  .chart .label { position: absolute; top: 2px; left: 3px; font-size: 0.5rem; font-weight: 700; color: #52525b; z-index: 2; }
-  .curve { width: 100%; height: 100%; stroke: #3b82f6; stroke-width: 1.5; fill: none; filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.5)); }
+  .chart { width: 100%; height: 32px; background: #0a0a0a; border-radius: 3px; border: 1px solid #252525; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
+  .chart .label { position: absolute; top: 2px; left: 3px; font-size: 0.5rem; font-weight: 700; color: #555; z-index: 2; }
+  .curve { width: 100%; height: 100%; stroke: #3b82f6; stroke-width: 1.5; fill: none; filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.4)); }
   .gr-meter { width: 4px; height: 100%; background: #ef4444; position: absolute; right: 2px; transform-origin: top; transform: scaleY(0.3); opacity: 0.8; }
 
   .mini-svg {
@@ -522,7 +565,7 @@
 
   .gate-poly {
     fill: none;
-    stroke: #38bdf8;
+    stroke: #facc15;
     stroke-width: 2;
   }
 
@@ -536,14 +579,14 @@
 
   /* Routing Mute/Solo */
   .routing-switches { width: 100%; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .routing-switches button { width: 100%; height: 26px; font-size: 0.8rem; font-weight: 800; border: none; border-radius: 3px; cursor: pointer; color: #a1a1aa; background: #27272a; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transition: all 0.1s; }
+  .routing-switches button { width: 100%; height: 26px; font-size: 0.8rem; font-weight: 800; border: none; border-radius: 3px; cursor: pointer; color: #888; background: #1e1e1e; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transition: all 0.1s; }
   .routing-switches button:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-  .mute-btn.active { background: #f59e0b; color: #000; box-shadow: 0 0 12px rgba(245, 158, 11, 0.5); }
-  .solo-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 0 12px rgba(59, 130, 246, 0.5); }
+  .mute-btn.active { background: #ef4444; color: #fff; box-shadow: 0 0 12px rgba(239, 68, 68, 0.5); }
+  .solo-btn.active { background: #eab308; color: #000; box-shadow: 0 0 12px rgba(234, 179, 8, 0.5); }
 
   /* Custom Fader Assembly */
   .fader-container { position: relative; width: 34px; height: 180px; display: flex; justify-content: center; }
-  .fader-track { position: absolute; width: 6px; height: 100%; background: #000; border-radius: 3px; border-left: 1px solid #27272a; border-right: 1px solid #3f3f46; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
+  .fader-track { position: absolute; width: 6px; height: 100%; background: #0a0a0a; border-radius: 3px; border-left: 1px solid #252525; border-right: 1px solid #333; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
   
   .fader-slider { 
     writing-mode: vertical-lr; direction: rtl;
@@ -552,21 +595,21 @@
   
   /* 3D Thumb CSS rendering */
   .fader-thumb { 
-    position: absolute; width: 30px; height: 16px; background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 100%); 
+    position: absolute; width: 30px; height: 16px; background: linear-gradient(180deg, #d4d4d8 0%, #a3a3a3 100%); 
     border-radius: 2px; left: -12px; margin-bottom: -8px; pointer-events: none; 
-    border-top: 1px solid #fff; border-bottom: 2px solid #3f3f46; 
+    border-top: 1px solid #fff; border-bottom: 2px solid #555; 
     box-shadow: 0 4px 6px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.6); 
   }
   
-  /* FOH distinct fader cap */
-  .is-foh .fader-thumb { background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%); border-top: 1px solid #bfdbfe; border-bottom: 2px solid #1d4ed8; }
+  /* FOH distinct fader cap — white */
+  .is-foh .fader-thumb { background: linear-gradient(180deg, #ffffff 0%, #d4d4d8 100%); border-top: 1px solid #fff; border-bottom: 2px solid #a1a1aa; box-shadow: 0 4px 6px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.6), 0 0 8px rgba(255,255,255,0.15); }
 
   /* Db Value */
-  .fader-value { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; background: #000; border-radius: 3px; padding: 4px 2px; margin-bottom: 6px; border: 1px solid #27272a; }
-  .fader-value input { width: 100%; background: transparent; border: none; color: #60a5fa; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; outline: none; }
-  .fader-value span { font-size: 0.55rem; color: #52525b; font-weight: bold; }
+  .fader-value { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; background: #0a0a0a; border-radius: 3px; padding: 4px 2px; margin-bottom: 6px; border: 1px solid #252525; }
+  .fader-value input { width: 100%; background: transparent; border: none; color: #facc15; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; outline: none; }
+  .fader-value span { font-size: 0.55rem; color: #555; font-weight: bold; }
 
-  .st-indicator { font-size: 0.5rem; background: #3b82f6; color: white; padding: 1px 3px; border-radius: 2px; margin-left: 4px; font-weight: 900; vertical-align: middle; }
+  .st-indicator { font-size: 0.5rem; background: #eab308; color: #000; padding: 1px 3px; border-radius: 2px; margin-left: 4px; font-weight: 900; vertical-align: middle; }
 
-  .channel-number { width: 100%; text-align: center; font-size: 0.8rem; font-weight: 800; color: #52525b; padding: 4px 0; border-top: 2px solid #27272a; margin-top: auto; }
+  .channel-number { width: 100%; text-align: center; font-size: 0.8rem; font-weight: 800; color: #555; padding: 4px 0; border-top: 2px solid #252525; margin-top: auto; }
 </style>

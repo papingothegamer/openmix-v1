@@ -108,9 +108,9 @@
 </aside>
 
 <style>
-  .sidebar { width: 120px; background: #0b0f19; border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 0.75rem 0.5rem; gap: 0.75rem; color: #e2e8f0; height: 100%; box-sizing: border-box; flex-shrink: 0; overflow-y: auto; }
+  .sidebar { width: 120px; background: #0b0f19; border-left: 1px solid #252525; display: flex; flex-direction: column; padding: 0.75rem 0.5rem; gap: 0.75rem; color: #e5e5e5; height: 100%; box-sizing: border-box; flex-shrink: 0; overflow-y: auto; }
   .sidebar::-webkit-scrollbar { width: 0; }
-  h4 { margin: 0 0 0.5rem 0; font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; text-align: center; }
+  h4 { margin: 0 0 0.5rem 0; font-size: 0.65rem; color: #777777; text-transform: uppercase; letter-spacing: 0.8px; text-align: center; }
 
   @media (max-width: 1024px) {
     .sidebar { width: 100px; padding: 0.5rem 0.35rem; }
@@ -123,25 +123,25 @@
   
   .section { display: flex; flex-direction: column; gap: 0.35rem; }
   .section.compact { gap: 0.3rem; }
-  .layer-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.5rem 0.4rem; border-radius: 4px; font-weight: 700; cursor: pointer; transition: all 0.15s; font-size: 0.7rem; width: 100%; text-align: center; }
-  .layer-btn:hover { background: #334155; }
-  .layer-btn.active { background: #3b82f6; color: white; border-color: #60a5fa; }
+  .layer-btn { background: #252525; color: #d4d4d4; border: 1px solid #333333; padding: 0.5rem 0.4rem; border-radius: 4px; font-weight: 700; cursor: pointer; transition: all 0.15s; font-size: 0.7rem; width: 100%; text-align: center; }
+  .layer-btn:hover { background: #333333; }
+  .layer-btn.active { background: #eab308; color: white; border-color: #facc15; }
 
   .spacer { flex: 1; }
 
   .strips-control { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-  .strip-adj { width: 26px; height: 26px; border-radius: 4px; background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
-  .strip-adj:hover { background: #3b82f6; border-color: #60a5fa; color: #fff; }
-  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #f8fafc; min-width: 20px; text-align: center; }
+  .strip-adj { width: 26px; height: 26px; border-radius: 4px; background: #333333; color: #e5e5e5; border: 1px solid #666666; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+  .strip-adj:hover { background: #eab308; border-color: #facc15; color: #fff; }
+  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #fafafa; min-width: 20px; text-align: center; }
 
   /* Added flex alignments for perfectly centered lucide icons */
-  .page-btn { display: flex; align-items: center; justify-content: center; background: #334155; color: white; border: 1px solid #475569; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
+  .page-btn { display: flex; align-items: center; justify-content: center; background: #333333; color: white; border: 1px solid #666666; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
   .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .page-btn:not(:disabled):hover { background: #475569; }
+  .page-btn:not(:disabled):hover { background: #666666; }
   
-  .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: bold; color: #94a3b8; text-align: center; padding: 0.2rem 0; }
+  .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: bold; color: #999999; text-align: center; padding: 0.2rem 0; }
 
-  .muted { font-size: 0.65rem; color: #475569; text-align: center; margin: 0; }
+  .muted { font-size: 0.65rem; color: #666666; text-align: center; margin: 0; }
 
   .fade-in { animation: fadeIn 0.3s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }

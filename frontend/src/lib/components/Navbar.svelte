@@ -2,23 +2,22 @@
   import { isConnected, syncProgress, mixerState } from '../socket';
   import { UploadCloud, DownloadCloud, Maximize, Tag, Headphones, Link2, Loader2, RotateCcw } from 'lucide-svelte';
 
-  export let activeRole = null;
-  export let scribbleEditMode = false;
-  export let monitorMode = false;
-  export let outputLinkMode = false;
-
-  /** @type {string | null} */
-  export let selectedChannel = null;
-  
-  export let onExitRole = () => {};
-  export let onFileLoad = () => {};
-
-  export let onForceRefresh = () => {};
-  export let onExportScene = () => {};
-  export let onScribbleEdit = () => {};
-
-  export let onToggleMonitor = () => {};
-  export let onToggleOutputLink = () => {};
+  let {
+    activeRole = null,
+    scribbleEditMode = false,
+    monitorMode = false,
+    outputLinkMode = false,
+    fineMode = false,
+    selectedChannel = null,
+    onExitRole = () => {},
+    onFileLoad = () => {},
+    onForceRefresh = () => {},
+    onExportScene = () => {},
+    onScribbleEdit = () => {},
+    onToggleMonitor = () => {},
+    onToggleOutputLink = () => {},
+    onToggleFineMode = () => {}
+  } = $props();
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
@@ -63,6 +62,9 @@
       <button class="btn-sm scribble-btn" class:active={scribbleEditMode} on:click={onScribbleEdit}>
         <Tag size={14} /> Scribble Strips
       </button>
+      <button class="btn-sm" class:active={fineMode} on:click={onToggleFineMode} title="Toggle Fine Fader Control">
+        <span style="font-weight: 800;">FINE</span>
+      </button>
       <button class="btn-sm" on:click={onForceRefresh} title="Force Refresh from Hardware">
         <RotateCcw size={14} class={$syncProgress.active ? 'spin' : ''} /> Refresh
       </button>
@@ -85,29 +87,29 @@
 
 <style>
   .glass-header {
-    background: #020617;
-    border-bottom: 1px solid #1e293b;
+    background: #0e0e0e;
+    border-bottom: 1px solid #252525;
     padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 100;
   }
   .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
-  .highlight { color: #3b82f6; }
+  .highlight { color: #eab308; }
 
   .toolbar { display: flex; align-items: center; gap: 1rem; }
   .status-indicator { display: flex; align-items: center; gap: 0.5rem;
-    font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #1e293b; }
+    font-size: 0.75rem; background: rgba(0,0,0,0.4); padding: 0.4rem 0.8rem; border-radius: 999px; border: 1px solid #252525; }
   .status-indicator.connected { color: #10b981; }
-  .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #64748b; }
-  .status-indicator.connected .ping-dot { background-color: #f59e0b; }
+  .ping-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #555; }
+  .status-indicator.connected .ping-dot { background-color: #eab308; }
   .status-indicator.connected .ping-dot.online { background-color: #10b981;
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
-  .btn-sm { background: transparent; color: #cbd5e1; border: 1px solid #334155;
+  .btn-sm { background: transparent; color: #d4d4d4; border: 1px solid #333;
     padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; transition: 0.15s; font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;
   }
-  .btn-sm:hover { background: #1e293b; color: #f8fafc; }
-  .upload-btn { color: #38bdf8; border-color: #0c4a6e;
-    background: rgba(14, 165, 233, 0.1); }
-  .upload-btn:hover { background: rgba(14, 165, 233, 0.2); }
+  .btn-sm:hover { background: #1e1e1e; color: #fafafa; }
+  .upload-btn { color: #facc15; border-color: #713f12;
+    background: rgba(234, 179, 8, 0.1); }
+  .upload-btn:hover { background: rgba(234, 179, 8, 0.2); }
   .export-btn { color: #a78bfa;
     border-color: #4c1d95; background: rgba(139, 92, 246, 0.1); }
   .export-btn:hover { background: rgba(139, 92, 246, 0.2);
@@ -117,6 +119,7 @@
   .scribble-btn:hover { background: rgba(16, 185, 129, 0.2); }
   .scribble-btn.active { background: #047857; color: white;
   }
+  .btn-sm.active:not(.scribble-btn) { background: #eab308; color: #000; border-color: #facc15; box-shadow: 0 0 10px rgba(234, 179, 8, 0.4); }
   .exit-btn { border-color: #7f1d1d; color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
   .exit-btn:hover { background: #ef4444; color: white; }
 
@@ -126,18 +129,18 @@
     gap: 0.5rem;
     font-size: 0.7rem;
     font-weight: 700;
-    color: #3b82f6;
-    background: rgba(59, 130, 246, 0.1);
+    color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    animation: pulse-blue 2s infinite;
+    border: 1px solid rgba(234, 179, 8, 0.2);
+    animation: pulse-yellow 2s infinite;
   }
 
-  @keyframes pulse-blue {
-    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-    70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  @keyframes pulse-yellow {
+    0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(234, 179, 8, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
   }
 
   :global(.spin) {

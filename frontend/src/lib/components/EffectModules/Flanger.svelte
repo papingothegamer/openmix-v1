@@ -60,8 +60,8 @@
 
   .rack-metal {
     flex: 1;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid #334155;
+    background: linear-gradient(135deg, #252525, #121212);
+    border: 1px solid #333333;
     border-radius: 4px;
     display: flex;
     flex-direction: column;
@@ -79,8 +79,8 @@
     border-bottom: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 1rem;
   }
-  .brand { color: #64748b; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #22d3ee; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
 
   .knobs-row {
     display: flex;

@@ -9,7 +9,7 @@
   export let onChange = (val) => {}; 
   export let interactive = true;
   export let isLogarithmic = false;
-  export let color = "#00CED1";
+  export let color = "#eab308";
   export let size = 80;
 
   let knobElement;
@@ -198,13 +198,13 @@
   }
 
   .knob-container:hover {
-    background-color: rgba(0, 206, 209, 0.04);
+    background-color: rgba(234, 179, 8, 0.04);
   }
 
   .knob-container.dragging,
   .knob-container:active {
     cursor: grabbing;
-    background-color: rgba(0, 206, 209, 0.08);
+    background-color: rgba(234, 179, 8, 0.08);
   }
 
   .knob-svg {
@@ -224,7 +224,7 @@
 
   .knob-value {
     font-size: 0.85rem;
-    color: var(--knob-color, #00CED1);
+    color: var(--knob-color, #eab308);
     font-weight: 700;
     min-width: 2rem;
     text-align: center;
