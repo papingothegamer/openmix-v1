@@ -68,13 +68,7 @@ class MixerConnection extends EventEmitter {
                 { address: '/ch/01-16/mix/lr', pattern: '/ch/{N}/mix/lr', count: 16 },
                 { address: '/ch/01-16/preamp/phase', pattern: '/ch/{N}/preamp/phase', count: 16 },
                 
-                // Aux Sends (1-6) for Channels 1-16
-                { address: '/ch/01-16/mix/01', pattern: '/ch/{N}/mix/01/level', count: 16 },
-                { address: '/ch/01-16/mix/02', pattern: '/ch/{N}/mix/02/level', count: 16 },
-                { address: '/ch/01-16/mix/03', pattern: '/ch/{N}/mix/03/level', count: 16 },
-                { address: '/ch/01-16/mix/04', pattern: '/ch/{N}/mix/04/level', count: 16 },
-                { address: '/ch/01-16/mix/05', pattern: '/ch/{N}/mix/05/level', count: 16 },
-                { address: '/ch/01-16/mix/06', pattern: '/ch/{N}/mix/06/level', count: 16 },
+                // Aux & FX Sends are now appended dynamically at the bottom of the function
 
                 // Bus Master Mix State
                 { address: '/bus/1-6/mix/fader', pattern: '/bus/{N}/mix/fader', count: 6, pad: 0 },
@@ -112,13 +106,7 @@ class MixerConnection extends EventEmitter {
                 { address: '/ch/01-32/mix/pan', pattern: '/ch/{N}/mix/pan', count: 32 },
                 { address: '/ch/01-32/mix/lr', pattern: '/ch/{N}/mix/lr', count: 32 },
                 
-                // Aux Sends (1-16) for X32 Channels 1-32
-                { address: '/ch/01-32/mix/01', pattern: '/ch/{N}/mix/01/level', count: 32 },
-                { address: '/ch/01-32/mix/02', pattern: '/ch/{N}/mix/02/level', count: 32 },
-                { address: '/ch/01-32/mix/03', pattern: '/ch/{N}/mix/03/level', count: 32 },
-                { address: '/ch/01-32/mix/04', pattern: '/ch/{N}/mix/04/level', count: 32 },
-                { address: '/ch/01-32/mix/05', pattern: '/ch/{N}/mix/05/level', count: 32 },
-                { address: '/ch/01-32/mix/06', pattern: '/ch/{N}/mix/06/level', count: 32 },
+                // Aux & FX Sends are now appended dynamically at the bottom of the function
 
                 // Bus Mix State
                 { address: '/bus/01-16/mix/fader', pattern: '/bus/{N}/mix/fader', count: 16 },
@@ -147,10 +135,23 @@ class MixerConnection extends EventEmitter {
         };
         const tmpl = templates[type] || templates['XR18'];
 
-        // Dynamically append EQ, Gate, Dyn, and FX parameters to avoid massive hardcoding
+        // Dynamically append EQ, Gate, Dyn, Mix Sends, and FX parameters to avoid massive hardcoding
         if (type === 'XR18' || type === 'X32RACK') {
             const chCount = type === 'XR18' ? 16 : 32;
+            const busCount = type === 'XR18' ? 10 : 16; // XR18: 6 Aux + 4 FX. X32: 16 Mix Buses
             
+            // Mix Sends (Levels, Pan, Type, On)
+            for (let bus = 1; bus <= busCount; bus++) {
+                const bStr = String(bus).padStart(2, '0');
+                tmpl.push({ address: `/ch/01-${chCount}/mix/${bStr}/level`, pattern: `/ch/{N}/mix/${bStr}/level`, count: chCount });
+                tmpl.push({ address: `/ch/01-${chCount}/mix/${bStr}/on`, pattern: `/ch/{N}/mix/${bStr}/on`, count: chCount });
+                tmpl.push({ address: `/ch/01-${chCount}/mix/${bStr}/type`, pattern: `/ch/{N}/mix/${bStr}/type`, count: chCount });
+                if (type === 'X32RACK') {
+                    // X32 has pan for each send
+                    tmpl.push({ address: `/ch/01-${chCount}/mix/${bStr}/pan`, pattern: `/ch/{N}/mix/${bStr}/pan`, count: chCount });
+                }
+            }
+
             // Gate & Dynamics
             ['on', 'thr', 'range', 'att', 'hold', 'rel'].forEach(param => {
                 tmpl.push({ address: `/ch/01-${chCount}/gate/${param}`, pattern: `/ch/{N}/gate/${param}`, count: chCount });
@@ -264,6 +265,14 @@ class MixerConnection extends EventEmitter {
         this.emit('syncStatus', { active: false, progress: 100 });
         this.drawTerminalProgressBar(100);
         console.log(`[MixerSync] Dispatch complete. Awaiting responses to verify connection...`);
+        
+        // Wait briefly for in-flight OSC responses to arrive, then broadcast the fully assembled cache
+        setTimeout(() => {
+            if (this.isOnline) {
+                console.log(`[MixerSync] Broadcasting full hydrated cache (${Object.keys(this.cache).length} items) to clients.`);
+                this.emit('mixerState', { flatOscCache: this.cache, isOnline: this.isOnline });
+            }
+        }, 500);
     }
 
     drawTerminalProgressBar(progress) {

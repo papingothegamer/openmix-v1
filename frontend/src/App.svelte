@@ -26,7 +26,7 @@
   import Toast from "./lib/components/Toast.svelte";
   import { showToast } from "./lib/notificationStore";
   import fxState, { loadFxState } from "./lib/fxState";
-  import { getPresetByIndex } from "./lib/fxRegistry.js";
+  import { getPresetByIndex, getPresetMeta } from "./lib/fxRegistry.js";
   import { MixerPresets, PredefinedMixersArray } from "./lib/mixerPresets";
   import {
     ChevronLeft,
@@ -1019,64 +1019,33 @@
           const v = extractOscValue(val, null);
           if (v === null) return;
 
-          // AUX level: /ch/01/mix/02/level
-          let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/level$/);
+          // Mix send parameters (level, on, type)
+          let m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/(level|on|type|pan)$/);
           if (m) {
             const ch = parseInt(m[1], 10);
             const bus = parseInt(m[2], 10);
-            const key = `in_${ch}_aux${bus}`;
-            updated[key] = {
-              ...(updated[key] || { level: 0, prePost: 0, on: true }),
-              level: v,
-            };
-            return;
-          }
-          // AUX on/off: /ch/01/mix/02/on
-          m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/on$/);
-          if (m) {
-            const ch = parseInt(m[1], 10);
-            const bus = parseInt(m[2], 10);
-            const key = `in_${ch}_aux${bus}`;
-            updated[key] = {
-              ...(updated[key] || { level: 0, prePost: 0, on: true }),
-              on: v > 0,
-            };
-            return;
-          }
-          // AUX pre/post type: /ch/01/mix/02/type
-          m = path.match(/^\/ch\/(\d{2})\/mix\/(\d{2})\/type$/);
-          if (m) {
-            const ch = parseInt(m[1], 10);
-            const bus = parseInt(m[2], 10);
-            const key = `in_${ch}_aux${bus}`;
-            updated[key] = {
-              ...(updated[key] || { level: 0, prePost: 0, on: true }),
-              prePost: Math.round(v),
-            };
-            return;
-          }
-          // FX level: /ch/01/mix/fx/1/level
-          m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/level$/);
-          if (m) {
-            const ch = parseInt(m[1], 10);
-            const fx = parseInt(m[2], 10);
-            const key = `in_${ch}_fx${fx}`;
-            updated[key] = {
-              ...(updated[key] || { level: 0, prePost: 0, on: true }),
-              level: v,
-            };
-            return;
-          }
-          // FX type: /ch/01/mix/fx/1/type
-          m = path.match(/^\/ch\/(\d{2})\/mix\/fx\/(\d+)\/type$/);
-          if (m) {
-            const ch = parseInt(m[1], 10);
-            const fx = parseInt(m[2], 10);
-            const key = `in_${ch}_fx${fx}`;
-            updated[key] = {
-              ...(updated[key] || { level: 0, prePost: 0, on: true }),
-              prePost: Math.round(v),
-            };
+            const param = m[3];
+            
+            const isXR = config?.presetId === 'XR18';
+            let key;
+            if (isXR && bus > 6) {
+                // XR18: bus 7-10 are FX1-FX4
+                key = `in_${ch}_fx${bus - 6}`;
+            } else if (!isXR && bus > 12) {
+                // X32: bus 13-16 are FX1-FX4
+                key = `in_${ch}_fx${bus - 12}`;
+            } else {
+                key = `in_${ch}_aux${bus}`;
+            }
+            
+            if (!updated[key]) {
+                updated[key] = { level: 0, prePost: 0, on: true };
+            }
+            
+            if (param === 'level') updated[key].level = v;
+            else if (param === 'on') updated[key].on = v > 0;
+            else if (param === 'type') updated[key].prePost = Math.round(v);
+            
             return;
           }
         });
@@ -1094,9 +1063,12 @@
         const newScribbles = { ...scribbles };
         const newRouting = { ...routingState };
         const newEq = { ...channelEqState };
+        
+        let newFxSlots = null;
         let updatedScribbles = false;
         let updatedRouting = false;
         let updatedEq = false;
+        let updatedFx = false;
 
       Object.entries(cache).forEach(([path, val]) => {
         const v = extractOscValue(val, null);
@@ -1222,25 +1194,53 @@
           return;
         }
 
-        // --- FX TYPE ---
+        // --- FX STATE HYDRATION (TYPE AND PARAMS) ---
         // Match: /fx/1/type
         m = path.match(/^\/fx\/([1-8])\/type$/);
         if (m) {
           const fxIdx = parseInt(m[1], 10) - 1; // 0-indexed for Svelte state
           const presetName = getPresetByIndex(v);
           
-          // Since fxState is a writable store, we don't want to blindly spam it.
-          // We read it synchronously and apply updates only if it changed.
-          // Note: App.svelte's $effect block is safe to do this as it runs in the microtask queue.
-          let currentSlots = [];
-          fxState.subscribe(s => currentSlots = s.slots)(); // synchronous read
+          if (!newFxSlots) {
+             let currentSlots = [];
+             fxState.subscribe(s => currentSlots = s.slots)();
+             newFxSlots = [...currentSlots];
+          }
           
-          if (currentSlots[fxIdx] && currentSlots[fxIdx].preset !== presetName) {
-            // Modify without triggering OSC emit loop (which setSlot does).
-            // loadFxState overwrites without emitting. We can just build a new slots array.
-            const newSlots = [...currentSlots];
-            newSlots[fxIdx] = { ...newSlots[fxIdx], preset: presetName };
-            loadFxState({ slots: newSlots });
+          if (newFxSlots[fxIdx] && newFxSlots[fxIdx].preset !== presetName) {
+            const meta = getPresetMeta(presetName);
+            newFxSlots[fxIdx] = { 
+               ...newFxSlots[fxIdx], 
+               preset: presetName, 
+               type: meta.type || 'generic',
+               params: { ...(meta.defaultParams || {}) }
+            };
+            updatedFx = true;
+          }
+          return;
+        }
+
+        // Match: /fx/1/par/01
+        m = path.match(/^\/fx\/([1-8])\/par\/(\d{2})$/);
+        if (m) {
+          const fxIdx = parseInt(m[1], 10) - 1;
+          const parIdx = parseInt(m[2], 10);
+          
+          if (!newFxSlots) {
+             let currentSlots = [];
+             fxState.subscribe(s => currentSlots = s.slots)();
+             newFxSlots = [...currentSlots];
+          }
+          
+          if (newFxSlots[fxIdx] && newFxSlots[fxIdx].preset !== 'Empty') {
+             const meta = getPresetMeta(newFxSlots[fxIdx].preset);
+             if (meta && meta.oscMap) {
+                const mappedParamName = Object.keys(meta.oscMap).find(k => meta.oscMap[k] === parIdx);
+                if (mappedParamName && newFxSlots[fxIdx].params[mappedParamName] !== v) {
+                   newFxSlots[fxIdx].params = { ...newFxSlots[fxIdx].params, [mappedParamName]: v };
+                   updatedFx = true;
+                }
+             }
           }
           return;
         }
@@ -1252,6 +1252,9 @@
       if (updatedEq) {
         Object.values(newEq).forEach(bands => { delete bands._cloned; });
         channelEqState = newEq;
+      }
+      if (updatedFx && newFxSlots) {
+        loadFxState({ slots: newFxSlots });
       }
       });
     }
