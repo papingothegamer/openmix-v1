@@ -1050,9 +1050,11 @@
         const newScribbles = { ...scribbles };
         const newRouting = { ...routingState };
         const newEq = { ...channelEqState };
+        const newSends = { ...sendsState };
         let updatedScribbles = false;
         let updatedRouting = false;
         let updatedEq = false;
+        let updatedSends = false;
 
       Object.entries(cache).forEach(([path, val]) => {
         const v = extractOscValue(val, null);
@@ -1227,6 +1229,7 @@
         Object.values(newEq).forEach(bands => { delete bands._cloned; });
         channelEqState = newEq;
       }
+      if (updatedSends) sendsState = newSends;
       });
     }
   });
