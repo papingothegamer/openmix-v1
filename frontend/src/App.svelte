@@ -239,26 +239,9 @@
   }
 
   // ── Hardware Lifecycle: Meters ──────────────────────────────────────────────
-  $effect(() => {
-    if (!$isConnected) return;
+  // Meter polling is handled entirely by the backend (mixerSync.js polls /meters/0 at 10 FPS).
+  // The backend emits 'metersUpdate' events which are relayed to the frontend via 'oscData'.
 
-    // /meters/1 = channel pre-fader input meters (all 16 ch + bus + LR)
-    // /meters/5 = FX return meters
-    // The XR18 stops sending meters after ~10s of silence, so we keep a heartbeat.
-    const METER_INTERVAL_MS = 5000;
-
-    function requestMeters() {
-      setOsc('/meters', ['/meters/1', 0, 0, 1]); // Channel input meters
-      if (activeTab === 'fx') {
-        setOsc('/meters', ['/meters/5', 0, 0, 1]); // FX meters (only needed on FX tab)
-      }
-    }
-
-    requestMeters(); // Immediate first pulse
-    const meterPulse = setInterval(requestMeters, METER_INTERVAL_MS);
-
-    return () => clearInterval(meterPulse);
-  });
 
   // Channel Modal State
   let channelModalState = $state({ isOpen: false, channelId: "", section: "preamp" });
@@ -1609,7 +1592,8 @@
       else if (path === "preamp/phase") address = `/ch/${chStr}/preamp/phase`;
       else address = `/ch/${chStr}/${path}`;
     } else if (id.startsWith("bus_")) {
-      address = `/bus/${chStr}/${path}`;
+      // XR18 uses non-padded bus numbers: /bus/1/... not /bus/01/...
+      address = `/bus/${num}/${path}`;
     }
 
     return extractOscValue(cache?.[address], fallback);
@@ -1627,7 +1611,8 @@
       else if (path === "preamp/phase") address = `/ch/${chStr}/preamp/phase`;
       else address = `/ch/${chStr}/${path}`;
     } else if (id.startsWith("bus_")) {
-      address = `/bus/${chStr}/${path}`;
+      // XR18 uses non-padded bus numbers: /bus/1/... not /bus/01/...
+      address = `/bus/${num}/${path}`;
     }
 
     setOsc(address, parseFloat(value));
