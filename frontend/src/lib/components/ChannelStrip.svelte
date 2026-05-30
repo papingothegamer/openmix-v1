@@ -91,6 +91,38 @@
     }
   }
 
+  function handleLevelChange(e) {
+    const val = parseFloat(e.currentTarget.value);
+    level = val;
+    const idx = parseInt(channelIndex, 10);
+    const idxStr = String(idx).padStart(2, '0');
+    
+    // Official Behringer X32/XR18 piecewise fader mapping (dB to float 0.0-1.0)
+    let norm = 0.0;
+    if (val >= -10) {
+      norm = (val + 30) / 40;
+    } else if (val >= -30) {
+      norm = (val + 50) / 80;
+    } else if (val >= -60) {
+      norm = (val + 70) / 160;
+    } else if (val > -90) {
+      norm = (val + 90) / 480;
+    }
+    
+    if (stripType === 'input') {
+      setOsc(`/ch/${idxStr}/mix/fader`, norm);
+    } else if (stripType === 'output' || stripType === 'matrix') {
+      const typeStr = stripType === 'matrix' ? 'mtx' : 'bus';
+      setOsc(`/${typeStr}/${idxStr}/mix/fader`, norm);
+    } else if (stripType === 'dca' || stripType === 'mgp') {
+      setOsc(`/dca/${idx}/fader`, norm);
+    } else if (stripType === 'main') {
+      setOsc(`/lr/mix/fader`, norm);
+    }
+    
+    dispatchStatus('level', level);
+  }
+
   function handleMute() {
     muted = !muted;
     const idx = parseInt(channelIndex, 10);

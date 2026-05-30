@@ -9,10 +9,15 @@
   export let accentColor = '#eab308'; // Blue for Aux, Purple for FX, Emerald for MTX
 
   function toDb(val) {
-    if (val <= 0.005) return '-\u221e';
-    const db = 40 * Math.log10(val / 0.75);
-    if (db < -80) return '-\u221e';
-    return (db >= 0 ? '+' : '') + db.toFixed(1);
+    if (val <= 0.0) return '-\u221e';
+    let db = -90;
+    if (val >= 0.5) db = (val * 40) - 30;
+    else if (val >= 0.25) db = (val * 80) - 50;
+    else if (val >= 0.0625) db = (val * 160) - 70;
+    else db = (val * 480) - 90;
+    
+    if (db < -60) return '-\u221e'; // Mute threshold in UI
+    return (db > 0 ? '+' : '') + db.toFixed(1);
   }
 
   // Fader position calculation (matches fader track)

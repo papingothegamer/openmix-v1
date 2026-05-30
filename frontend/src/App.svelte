@@ -952,13 +952,21 @@
 
   // Convert AUX send level (normalized 0..1) to the ChannelStrip fader scale (-60dB..+10dB).
   function auxSendLevelToDb(norm) {
-    const v = Number(norm);
-    if (!Number.isFinite(v) || v <= 0) return -60;
-    const maxDb = 10;
-    const linearAtMax = Math.pow(10, maxDb / 20);
-    const linear = v * linearAtMax;
-    const db = 20 * Math.log10(linear);
-    return Math.max(-60, Math.min(maxDb, db));
+    const f = Number(norm);
+    if (!Number.isFinite(f) || f <= 0) return -60;
+    
+    let db = -60;
+    if (f >= 0.5) {
+      db = (f * 40) - 30;
+    } else if (f >= 0.25) {
+      db = (f * 80) - 50;
+    } else if (f >= 0.0625) {
+      db = (f * 160) - 70;
+    } else {
+      db = (f * 480) - 90;
+    }
+    
+    return Math.max(-60, Math.min(10, db));
   }
 
   function readFlatOscNumber(address, fallback) {
@@ -1145,39 +1153,57 @@
           else if (type === 'bus') keyId = `bus_${num}`;
 
           if (!newEq[keyId]) {
-            // Initialize 4 bands for CH, 6 for BUS
-            const maxBands = type === 'ch' ? 4 : 6;
-            newEq[keyId] = Array.from({length: maxBands}, (_, i) => ({
-              id: i, enabled: true, freq: 1000, gain: 0, q: 1, type: 'peq'
-            }));
+            // Always initialize the full 8-band array that EqEditor expects.
+            // XR18 hardware bands 1-4 map into EqEditor slots 1-4 (Low, LoMid, HiMid, High).
+            // Slots 0 (HPF), 5, 6 (HiShelf), 7 (LPF) stay at flat defaults.
+            newEq[keyId] = [
+              { id: 0, type: 'hpf12', freq: 20,    gain: 0, q: 0.71, logVal: 1.301, enabled: false },
+              { id: 1, type: 'loshelf', freq: 200,  gain: 0, q: 0.71, logVal: 2.301, enabled: true },
+              { id: 2, type: 'peq',    freq: 500,   gain: 0, q: 1.0,  logVal: 2.699, enabled: true },
+              { id: 3, type: 'peq',    freq: 1000,  gain: 0, q: 1.0,  logVal: 3.0,   enabled: true },
+              { id: 4, type: 'peq',    freq: 2000,  gain: 0, q: 1.0,  logVal: 3.301, enabled: true },
+              { id: 5, type: 'peq',    freq: 4000,  gain: 0, q: 1.0,  logVal: 3.602, enabled: true },
+              { id: 6, type: 'hishelf', freq: 8000, gain: 0, q: 0.71, logVal: 3.903, enabled: true },
+              { id: 7, type: 'lpf12',  freq: 20000, gain: 0, q: 0.71, logVal: 4.301, enabled: false }
+            ];
             newEq[keyId]._cloned = true;
           } else if (!newEq[keyId]._cloned) {
             newEq[keyId] = newEq[keyId].map(b => ({ ...b }));
             newEq[keyId]._cloned = true;
           }
 
-          const bIdx = band - 1;
+          // XR18 hardware EQ band 1 -> EqEditor slot 1 (Low), band 2 -> slot 2, etc.
+          // Hardware uses bands 1-4, we map to array indices 1-4 to skip the HPF at index 0.
+          const bIdx = band; // band is already 1-based, use directly as index into 8-band array
           if (newEq[keyId][bIdx]) {
              if (param === 'g') {
-                const gainDb = (v * 30) - 15; // Behringer norm: 0..1 to -15..+15
+                // X32/XR18: gain is linear float 0..1 mapped to -15..+15 dB
+                const gainDb = (v * 30) - 15;
                 if (Math.abs(newEq[keyId][bIdx].gain - gainDb) > 0.1) {
                   newEq[keyId][bIdx].gain = gainDb;
                   updatedEq = true;
                 }
              } else if (param === 'f') {
-                const freqHz = 20 * Math.pow(1000, v); // standard logarithmic frequency mapping
-                if (Math.abs(newEq[keyId][bIdx].freq - freqHz) > 5) {
+                // X32/XR18: frequency is logarithmic float 0..1 mapped to 20Hz..20kHz
+                // Formula: freq = 20 * (20000/20)^v = 20 * 1000^v
+                const freqHz = 20 * Math.pow(1000, v);
+                const logVal = Math.log10(freqHz);
+                if (Math.abs(newEq[keyId][bIdx].freq - freqHz) > 1) {
                   newEq[keyId][bIdx].freq = freqHz;
+                  newEq[keyId][bIdx].logVal = logVal;
                   updatedEq = true;
                 }
              } else if (param === 'q') {
-                const qVal = 10 * v; // Simplified
-                if (Math.abs(newEq[keyId][bIdx].q - qVal) > 0.1) {
+                // X32/XR18: Q is logarithmic float 0..1 mapped to 0.3..10.0
+                // Formula: Q = 0.3 * (10.0/0.3)^v = 0.3 * 33.333^v
+                const qVal = 0.3 * Math.pow(33.333, v);
+                if (Math.abs(newEq[keyId][bIdx].q - qVal) > 0.05) {
                   newEq[keyId][bIdx].q = qVal;
                   updatedEq = true;
                 }
              } else if (param === 'type') {
-                const typeMap = ['loshelf', 'peq', 'hishelf', 'hpf12', 'lpf12', 'hpf48'];
+                // X32/XR18 EQ type indices: 0=LoCut, 1=LoShelf, 2=PEQ, 3=VEQ, 4=HiShelf, 5=HiCut
+                const typeMap = ['hpf12', 'loshelf', 'peq', 'peq', 'hishelf', 'lpf12'];
                 const tStr = typeMap[parseInt(v, 10)] || 'peq';
                 if (newEq[keyId][bIdx].type !== tStr) {
                   newEq[keyId][bIdx].type = tStr;
@@ -1470,7 +1496,17 @@
   );
 
   $effect(() => {
-    fohMeters = $rawMeters['/meters/1'] || new Array(16).fill(-60);
+    const raw = $rawMeters['/meters/0'];
+    if (raw && raw.length) {
+      // X32/XR18 meter blobs are linear floats (0.0–1.0). Convert to dB for the VU strips.
+      fohMeters = raw.map(v => {
+        if (v <= 0) return -60;
+        const db = 20 * Math.log10(v);
+        return Math.max(-60, Math.min(0, db));
+      });
+    } else {
+      fohMeters = new Array(16).fill(-60);
+    }
   });
   
   // Fluid Pagination Logic

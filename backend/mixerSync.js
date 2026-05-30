@@ -298,6 +298,7 @@ class MixerConnection extends EventEmitter {
     startKeepAlive(autoSyncType = null) {
         // Behringer XR18 requires /xremote every 10 seconds to keep sending asynchronous updates (like meters/faders)
         if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+        if (this.meterPollInterval) clearInterval(this.meterPollInterval);
         
         console.log(`[MixerSync] Starting keep-alive handshake (IP: ${this.mixerIp})`);
         this.keepAliveInterval = setInterval(() => {
@@ -306,6 +307,12 @@ class MixerConnection extends EventEmitter {
         
         // Handshake
         this.sendOsc('/xremote', []);
+        
+        // Meter polling: XR18/X32 require you to request /meters/N as a direct address.
+        // Each request returns one blob response. Poll at ~10 FPS for smooth VU animation.
+        this.meterPollInterval = setInterval(() => {
+            this.sendOsc('/meters/0', []);
+        }, 100);
         
         // Auto-trigger sync if requested
         if (autoSyncType) {
@@ -351,6 +358,10 @@ class MixerConnection extends EventEmitter {
             clearInterval(this.keepAliveInterval);
             this.keepAliveInterval = null;
         }
+        if (this.meterPollInterval) {
+            clearInterval(this.meterPollInterval);
+            this.meterPollInterval = null;
+        }
         this.mixerIp = newIp;
         this.mixerPort = newPort;
         this.hasSyncedOnce = false; // Reset sync status for new target
@@ -372,20 +383,30 @@ class MixerConnection extends EventEmitter {
 
         // Intercept Binary Meter Blobs
         if (address.startsWith('/meters/')) {
-            if (args.length > 0 && args[0] instanceof Uint8Array) {
+            if (args.length > 0) {
                 try {
-                    const buffer = args[0];
-                    const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-                    const floatsCount = Math.floor(buffer.byteLength / 4);
-                    const floats = [];
-                    for(let i = 0; i < floatsCount; i++) {
-                        floats.push(dataView.getFloat32(i * 4, true)); // LE
-                    }
+                    // With metadata:true, osc lib wraps blobs as {type:'b', value:Uint8Array}
+                    let raw = args[0];
+                    if (raw && typeof raw === 'object' && raw.value) raw = raw.value;
+                    
+                    if (raw instanceof Uint8Array || Buffer.isBuffer(raw)) {
+                        const buffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength);
+                        const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+                        
+                        // X-Air meter blob format: first 4 bytes = int32 LE count of floats,
+                        // followed by count * 4 bytes of float32 LE values
+                        const offset = 4; // Skip the count header
+                        const floatsCount = Math.floor((buffer.byteLength - offset) / 4);
+                        const floats = [];
+                        for (let i = 0; i < floatsCount; i++) {
+                            floats.push(dataView.getFloat32(offset + (i * 4), true)); // LE
+                        }
 
-                    this.emit('metersUpdate', {
-                        address,
-                        values: floats
-                    });
+                        this.emit('metersUpdate', {
+                            address,
+                            values: floats
+                        });
+                    }
                 } catch(e) {
                     console.error('[Meters] Decode error', e);
                 }
