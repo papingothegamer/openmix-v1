@@ -231,8 +231,7 @@
       rackSlotIndex = 0;
       _lastFxChannel = null;
 
-      // Meters
-      fohMeters = new Array(16).fill(-60);
+      // Meters are now handled by $derived state
     }
 
     connectAsFoh();
