@@ -1,4 +1,5 @@
 const osc = require('osc');
+const dgram = require('dgram');
 const EventEmitter = require('events');
 
 class MixerConnection extends EventEmitter {
@@ -293,6 +294,88 @@ class MixerConnection extends EventEmitter {
         this.udpPort.on('ready', () => {
             console.log(`[MixerSync] OSC UDP Port ready. Passive mode enabled (waiting for client sync request).`);
         });
+
+        // Create a dedicated raw dgram socket for meter communication.
+        // The osc library with metadata:true silently drops meter blob responses,
+        // so we bypass it entirely for meters.
+        this.meterSocket = dgram.createSocket('udp4');
+        this.meterSocket.on('message', (buf, rinfo) => {
+            this._handleRawMeterPacket(buf);
+        });
+        this.meterSocket.on('error', (err) => {
+            // Suppress ENETUNREACH when not on mixer network
+            if (err.code !== 'ENETUNREACH') {
+                console.error('[Meters] Socket error:', err.message);
+            }
+        });
+        this.meterSocket.bind(0, () => {
+            console.log(`[Meters] Dedicated meter socket bound on port ${this.meterSocket.address().port}`);
+        });
+    }
+
+    /**
+     * Build a raw OSC packet for: /meters ,s "/meters/1"
+     * This avoids the osc library entirely.
+     */
+    _buildMeterSubscribePacket() {
+        // OSC address: "/meters" + null padding to 4-byte boundary
+        const addr = '/meters';
+        const addrBuf = Buffer.alloc(Math.ceil((addr.length + 1) / 4) * 4);
+        addrBuf.write(addr, 'ascii');
+
+        // Type tag: ",s" + null padding to 4-byte boundary  
+        const typeBuf = Buffer.alloc(4);
+        typeBuf.write(',s', 'ascii');
+
+        // String arg: "/meters/1" + null padding to 4-byte boundary
+        const argStr = '/meters/1';
+        const argBuf = Buffer.alloc(Math.ceil((argStr.length + 1) / 4) * 4);
+        argBuf.write(argStr, 'ascii');
+
+        return Buffer.concat([addrBuf, typeBuf, argBuf]);
+    }
+
+    /**
+     * Parse a raw UDP packet from the mixer as a meter response.
+     * XR18 meter blob: /meters/1 ,b <4-byte blob size BE> <blob data>
+     * Blob data: 4-byte int32 LE count header, then int16 LE values (2 bytes each)
+     */
+    _handleRawMeterPacket(buf) {
+        try {
+            const addrEnd = buf.indexOf(0);
+            if (addrEnd < 1) return;
+
+            const addr = buf.toString('ascii', 0, addrEnd);
+            if (!addr.startsWith('/meters/')) return;
+
+            // Skip to type tag (4-byte aligned after address)
+            const addrPadded = Math.ceil((addrEnd + 1) / 4) * 4;
+            // Type tag should be ",b\0\0" = 4 bytes
+            const typeTag = buf.toString('ascii', addrPadded, addrPadded + 2);
+            if (typeTag !== ',b') return;
+
+            // Blob: 4-byte size (BE) then blob data
+            const blobSizeOffset = addrPadded + 4;
+            const blobSize = buf.readUInt32BE(blobSizeOffset);
+            const blobStart = blobSizeOffset + 4;
+
+            if (blobStart + blobSize > buf.length) return;
+
+            // Skip 4-byte int32 LE count header, read int16 LE values
+            const dbValues = [];
+            for (let i = blobStart + 4; i + 1 < blobStart + blobSize; i += 2) {
+                dbValues.push(buf.readInt16LE(i) / 256);
+            }
+
+            if (!this._meterDebugDone && dbValues.length > 0) {
+                this._meterDebugDone = true;
+                console.log(`[Meters] ${addr}: ${dbValues.length} channels, first 6 dB: [${dbValues.slice(0, 6).map(d => d.toFixed(1)).join(', ')}]`);
+            }
+
+            this.emit('metersUpdate', { address: addr, values: dbValues });
+        } catch (e) {
+            // Silently ignore non-meter packets
+        }
     }
 
     startKeepAlive(autoSyncType = null) {
@@ -302,19 +385,25 @@ class MixerConnection extends EventEmitter {
         
         console.log(`[MixerSync] Starting keep-alive handshake (IP: ${this.mixerIp})`);
         
+        // Build the meter subscribe packet once (raw OSC, no library)
+        const meterPacket = this._buildMeterSubscribePacket();
+        
         // Combined keep-alive: /xremote for parameter changes + /meters subscription renewal.
-        // The XR18 meter subscription (via /meters with string arg) lasts ~10s before expiring.
+        // The XR18 meter subscription lasts ~10s before expiring.
         // We renew both every 9s to keep the stream alive.
         this.keepAliveInterval = setInterval(() => {
             this.sendOsc('/xremote', []);
-            // Subscribe to meter bank 1 (channel pre-fader levels)
-            // Format: address="/meters", args=[{type:"s", value:"/meters/1"}]
-            this.sendOsc('/meters', [{ type: 's', value: '/meters/1' }]);
+            // Send meter subscription via the dedicated raw socket
+            if (this.meterSocket) {
+                this.meterSocket.send(meterPacket, this.mixerPort, this.mixerIp);
+            }
         }, 9000);
         
         // Immediate handshake + initial meter subscription
         this.sendOsc('/xremote', []);
-        this.sendOsc('/meters', [{ type: 's', value: '/meters/1' }]);
+        if (this.meterSocket) {
+            this.meterSocket.send(meterPacket, this.mixerPort, this.mixerIp);
+        }
         
         // Auto-trigger sync if requested
         if (autoSyncType) {
@@ -383,38 +472,9 @@ class MixerConnection extends EventEmitter {
         const address = msg.address;
         const args = msg.args;
 
-        // XR18 Meter Blob Decode
-        // Reference: https://github.com/Jbithell/xr-meters
-        // The mixer responds to /meters subscription with /meters/1 containing a blob.
-        // Blob format: 4-byte count header, then int16 LE pairs (2 bytes each), /256 for dB.
+        // Meters are handled by the dedicated raw dgram socket (_handleRawMeterPacket).
+        // If the osc library somehow parses a meter response, just skip it.
         if (address.startsWith('/meters/')) {
-            try {
-                // With metadata:true, args[0] is {type:'b', value:Buffer}
-                // Without metadata, args[0] is the raw Buffer directly
-                let raw = args[0];
-                if (raw && typeof raw === 'object' && raw.value) raw = raw.value;
-                
-                if (raw && (Buffer.isBuffer(raw) || raw instanceof Uint8Array)) {
-                    const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
-                    
-                    // Skip 4-byte count header, then read int16 LE values
-                    const dbValues = [];
-                    for (let i = 4; i + 1 < buf.length; i += 2) {
-                        const int16val = buf.readInt16LE(i);
-                        const db = int16val / 256; // Convert to dB
-                        dbValues.push(db);
-                    }
-                    
-                    if (!this._meterDebugDone && dbValues.length > 0) {
-                        this._meterDebugDone = true;
-                        console.log(`[Meters] ${address}: ${dbValues.length} channels, first 6 dB: [${dbValues.slice(0, 6).map(d => d.toFixed(1)).join(', ')}]`);
-                    }
-                    
-                    this.emit('metersUpdate', { address, values: dbValues });
-                }
-            } catch (e) {
-                console.error('[Meters] Decode error', e);
-            }
             return;
         }
 
