@@ -146,28 +146,9 @@ const musicianMeterThrottles = {}; // targetBus -> lastSentTime
 // Broadcasts OSC data per role limitations
 function emitOscBroadcast(io, mixerData) {
     if (mixerData.type === 'meters') {
-        // 30+ FPS directly to FOH Room
-        io.to('foh').emit('oscData', mixerData);
-        
-        const now = Date.now();
-        // Downsample for musicians
-        io.sockets.adapter.rooms.forEach((_, roomName) => {
-            if (roomName.startsWith('bus_')) {
-                const targetBus = roomName.split('_')[1];
-                if (!musicianMeterThrottles[targetBus] || now - musicianMeterThrottles[targetBus] > 200) { // 5 FPS throttle
-                    musicianMeterThrottles[targetBus] = now;
-                    
-                    // Simple threshold logic for traffic light
-                    const busLevel = mixerData.values[parseInt(targetBus)] || -100;
-                    let status = 'green';
-                    if (busLevel > -3) status = 'red';
-                    else if (busLevel > -18) status = 'yellow';
-                    else if (busLevel < -60) status = 'off';
+        // High-frequency meter updates: broadcast to all views (FOH and Musicians)
+        io.emit('oscData', mixerData);
 
-                    io.to(roomName).emit('meterTrafficLight', { bus: targetBus, status });
-                }
-            }
-        });
     } else {
         // Standard State Updates
         // - FOH sees everything
