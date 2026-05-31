@@ -50,6 +50,8 @@
   } from "lucide-svelte";
 
   let fohMeters = $state(new Array(16).fill(-60));
+  let busMeters = $state(new Array(6).fill(-60));
+  let mainMeters = $state([-60, -60]);
 
   // Navigation / Focus State
   let activeRole = $state(null); // 'foh' or null
@@ -1481,12 +1483,22 @@
   $effect(() => {
     const raw = $rawMeters['/meters/1'];
     if (raw && raw.length) {
-      // Backend decodes XR18 meter blobs as dB values (int16 LE / 256).
-      // Values range roughly -128 (silence) to +10 (clipping).
-      // Clamp to -60..0 for the VU display.
-      fohMeters = raw.map(v => Math.max(-60, Math.min(0, v)));
+      // /meters/1 blob layout (XR18, from xr-meters reference):
+      //  0-15:  ch 1-16 prefader
+      // 16-17:  aux L/R prefader
+      // 18-25:  fx return 1-4 L/R prefader
+      // 26-31:  bus 1-6 prefader
+      // 32-35:  fx send 1-4 prefader
+      // 36-37:  main L/R postfader
+      // 38-39:  monitor L/R
+      const clamp = v => Math.max(-60, Math.min(0, v));
+      fohMeters = raw.slice(0, 16).map(clamp);
+      busMeters = raw.slice(26, 32).map(clamp);
+      mainMeters = raw.slice(36, 38).map(clamp);
     } else {
       fohMeters = new Array(16).fill(-60);
+      busMeters = new Array(6).fill(-60);
+      mainMeters = [-60, -60];
     }
   });
   
@@ -1576,6 +1588,43 @@
     if (v !== null && typeof v === 'object' && 'value' in v) v = v.value;
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
+  }
+
+  // ── XR18 OSC float → real-value converters ────────────────────────────
+  // Based on the XR18 firmware parameter spec (parameters.txt):
+  //   log parameter:  value = fmin * exp(log(fmax / fmin) * float)
+  //   lin parameter:  value = fmin + (fmax - fmin) * float
+
+  /** Gate threshold: [0.0,1.0] log(161) → -80..0 dB */
+  function oscToGateThreshDb(f) {
+    if (f <= 0) return -80;
+    // log mapping: value = -80 * exp(log(0 / -80) * f)
+    // Since range crosses zero, use linear: -80 + 80*f
+    // Actually XR18 gate/thr is log(161) with range -80..0
+    // log: value = fmin * exp(log(fmax/fmin) * f)
+    // But fmax/fmin = 0/-80 is undefined for log. The spec says log(161) 
+    // which means 161 steps. For negative-to-zero log ranges, the firmware
+    // uses: dB = -80 * (1 - f) in practice (linear in dB scale).
+    return -80 + (80 * f);
+  }
+
+  /** Gate range: [0.0,1.0] log(58) → 3..60 */
+  function oscToGateRange(f) {
+    if (f <= 0) return 3;
+    return 3 * Math.exp(Math.log(60 / 3) * f);
+  }
+
+  /** Compressor threshold: [0.0,1.0] log(121) → -60..0 dB */
+  function oscToCompThreshDb(f) {
+    // Same approach as gate threshold (negative dB range)
+    return -60 + (60 * f);
+  }
+
+  /** Compressor ratio: [0,11] → actual ratio value */
+  function oscToCompRatio(idx) {
+    const ratios = [1.1, 1.3, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0, 10, 20, 100];
+    const i = Math.round(Number(idx));
+    return ratios[Math.max(0, Math.min(ratios.length - 1, i))] || 4.0;
   }
 
   function getBentoParam(cache, id, path, fallback) {
@@ -1897,8 +1946,7 @@
                     color={scribbles[`bus_${musicianAux}`]?.color || "#8b5cf6"}
                     level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/fader`], 0))}
                     muted={extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/on`], 1) === 0}
-                    peakLevel={-60}
-                    on:nameClick={() => {}}
+                    peakLevel={busMeters[musicianAux - 1] || -60}
                   />
                 </div>
               </div>
@@ -1964,17 +2012,19 @@
                           : scribbles[sId]?.color || (activeView === "inputs" ? "#333333" : (isMatrix ? "#10b981" : (isMuteGroup ? "#f43f5e" : (activeView === "dcas" ? "#06b6d4" : "#8b5cf6"))))}
                         peakLevel={activeView === "inputs"
                           ? fohMeters[chIndex - 1] || -60
-                          : -60}
+                          : activeView === "outputs"
+                            ? busMeters[chIndex - 1] || -60
+                            : -60}
                         pan={getBentoParam($mixerState.flatOscCache, sId, 'mix/pan', 0)}
                         level={auxSendLevelToDb(getBentoParam($mixerState.flatOscCache, sId, 'mix/fader', 0))}
                         muted={getBentoParam($mixerState.flatOscCache, sId, 'mix/on', 1) === 0}
                         eqCurvePath={computeMiniEqPath(sId)}
-                        gateThresh={getBentoParam($mixerState.flatOscCache, sId, 'gate/thr', -40)}
-                        gateRange={getBentoParam($mixerState.flatOscCache, sId, 'gate/range', 20)}
-                        gateOn={getBentoParam($mixerState.flatOscCache, sId, 'gate/on', 1) !== 0}
-                        compThresh={getBentoParam($mixerState.flatOscCache, sId, 'dyn/thr', -20)}
-                        compRatio={getBentoParam($mixerState.flatOscCache, sId, 'dyn/ratio', 4)}
-                        compOn={getBentoParam($mixerState.flatOscCache, sId, 'dyn/on', 1) !== 0}
+                        gateThresh={oscToGateThreshDb(getBentoParam($mixerState.flatOscCache, sId, 'gate/thr', 0.5))}
+                        gateRange={oscToGateRange(getBentoParam($mixerState.flatOscCache, sId, 'gate/range', 0.5))}
+                        gateOn={getBentoParam($mixerState.flatOscCache, sId, 'gate/on', 0) !== 0}
+                        compThresh={oscToCompThreshDb(getBentoParam($mixerState.flatOscCache, sId, 'dyn/thr', 0.5))}
+                        compRatio={oscToCompRatio(getBentoParam($mixerState.flatOscCache, sId, 'dyn/ratio', 5))}
+                        compOn={getBentoParam($mixerState.flatOscCache, sId, 'dyn/on', 0) !== 0}
                         stereoLink={activeView === "inputs"
                           ? isLinked(chIndex, stereoLinks)
                           : activeView === "outputs"
@@ -2059,7 +2109,7 @@
                         name={scribbles["main_LR"]?.name || "MAIN LR"}
                         iconType={scribbles["main_LR"]?.iconType || "icon_01"}
                         color={scribbles["main_LR"]?.color || "#ef4444"}
-                        peakLevel={-60}
+                        peakLevel={Math.max(mainMeters[0], mainMeters[1]) || -60}
                         level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.['/lr/mix/fader'], 0))}
                         muted={extractOscValue($mixerState?.flatOscCache?.['/lr/mix/on'], 1) === 0}
                         eqCurvePath={computeMiniEqPath("main_LR")}
@@ -2256,7 +2306,7 @@
                       class="bento-input"
                       min="-80"
                       max="0"
-                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/thr', -40)}
+                      value={oscToGateThreshDb(getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/thr', 0.5)).toFixed(1)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/thr', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2269,7 +2319,7 @@
                       class="bento-input"
                       min="0"
                       max="60"
-                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/range', 20)}
+                      value={oscToGateRange(getBentoParam($mixerState.flatOscCache, selectedChannel, 'gate/range', 0.5)).toFixed(1)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'gate/range', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2332,7 +2382,7 @@
                       class="bento-input"
                       min="-60"
                       max="0"
-                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/thr', -20)}
+                      value={oscToCompThreshDb(getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/thr', 0.5)).toFixed(1)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/thr', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
@@ -2346,7 +2396,7 @@
                       min="1"
                       max="20"
                       step="0.1"
-                      value={getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/ratio', 4)}
+                      value={oscToCompRatio(getBentoParam($mixerState.flatOscCache, selectedChannel, 'dyn/ratio', 5)).toFixed(1)}
                       on:change={(e) => updateBentoParam(selectedChannel, 'dyn/ratio', e.currentTarget.value)}
                       on:click|stopPropagation
                     />
