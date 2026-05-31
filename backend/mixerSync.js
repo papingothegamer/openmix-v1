@@ -292,6 +292,57 @@ class MixerConnection extends EventEmitter {
         this.udpPort.open();
         this.udpPort.on('ready', () => {
             console.log(`[MixerSync] OSC UDP Port ready. Passive mode enabled (waiting for client sync request).`);
+            
+            // The osc library silently drops meter blob responses because of their
+            // non-standard encoding. Intercept raw UDP packets on the underlying
+            // dgram socket to handle meters manually.
+            const sock = this.udpPort.socket;
+            if (sock) {
+                sock.on('message', (buf, rinfo) => {
+                    // Fast check: OSC address starts at byte 0, null-terminated
+                    const addrEnd = buf.indexOf(0);
+                    if (addrEnd < 8) return; // Too short to be /meters/N
+                    
+                    const addr = buf.toString('ascii', 0, addrEnd);
+                    if (!addr.startsWith('/meters/')) return;
+                    
+                    try {
+                        // OSC format: address (null-padded to 4-byte boundary),
+                        // type tag string ",b\0\0", then 4-byte blob size (BE), then blob data
+                        const addrPadded = Math.ceil((addrEnd + 1) / 4) * 4;
+                        // Skip type tag string (usually ",b\0\0" = 4 bytes)
+                        const blobOffset = addrPadded + 4;
+                        // 4-byte blob size (big-endian)
+                        const blobSize = buf.readUInt32BE(blobOffset);
+                        const blobStart = blobOffset + 4;
+                        
+                        if (blobStart + blobSize > buf.length) return;
+                        
+                        // Blob payload: 4-byte int32 LE count, then float32 LE values
+                        const countHeader = buf.readInt32LE(blobStart);
+                        const floatsStart = blobStart + 4;
+                        const floatsCount = Math.min(countHeader, Math.floor((blobSize - 4) / 4));
+                        
+                        const floats = [];
+                        for (let i = 0; i < floatsCount; i++) {
+                            floats.push(buf.readFloatLE(floatsStart + (i * 4)));
+                        }
+                        
+                        if (!this._meterRawDebugDone && floats.length > 0) {
+                            this._meterRawDebugDone = true;
+                            console.log(`[Meters RAW] ${addr}: ${floats.length} values, first 6: [${floats.slice(0, 6).map(f => f.toFixed(4)).join(', ')}]`);
+                        }
+                        
+                        this.emit('metersUpdate', {
+                            address: addr,
+                            values: floats
+                        });
+                    } catch (e) {
+                        // Silently ignore parse failures on non-meter packets
+                    }
+                });
+                console.log(`[MixerSync] Raw UDP meter interceptor attached.`);
+            }
         });
     }
 
@@ -381,36 +432,9 @@ class MixerConnection extends EventEmitter {
         const address = msg.address;
         const args = msg.args;
 
-        // Intercept Binary Meter Blobs
+        // Meters are handled by the raw UDP interceptor in connect().
+        // If the osc library manages to parse one, just ignore it here to avoid duplicates.
         if (address.startsWith('/meters/')) {
-            if (args.length > 0) {
-                try {
-                    // With metadata:true, osc lib wraps blobs as {type:'b', value:Uint8Array}
-                    let raw = args[0];
-                    if (raw && typeof raw === 'object' && raw.value) raw = raw.value;
-                    
-                    if (raw instanceof Uint8Array || Buffer.isBuffer(raw)) {
-                        const buffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength);
-                        const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-                        
-                        // X-Air meter blob format: first 4 bytes = int32 LE count of floats,
-                        // followed by count * 4 bytes of float32 LE values
-                        const offset = 4; // Skip the count header
-                        const floatsCount = Math.floor((buffer.byteLength - offset) / 4);
-                        const floats = [];
-                        for (let i = 0; i < floatsCount; i++) {
-                            floats.push(dataView.getFloat32(offset + (i * 4), true)); // LE
-                        }
-
-                        this.emit('metersUpdate', {
-                            address,
-                            values: floats
-                        });
-                    }
-                } catch(e) {
-                    console.error('[Meters] Decode error', e);
-                }
-            }
             return;
         }
 

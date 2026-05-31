@@ -1897,6 +1897,8 @@
                     name={scribbles[`bus_${musicianAux}`]?.name || `AUX ${musicianAux}`}
                     iconType={scribbles[`bus_${musicianAux}`]?.iconType || "icon_01"}
                     color={scribbles[`bus_${musicianAux}`]?.color || "#8b5cf6"}
+                    level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/fader`], 0))}
+                    muted={extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/on`], 1) === 0}
                     peakLevel={-60}
                     on:nameClick={() => {}}
                   />
