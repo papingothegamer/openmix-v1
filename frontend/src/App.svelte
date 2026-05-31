@@ -49,9 +49,7 @@
     Speaker
   } from "lucide-svelte";
 
-  let fohMeters = $state(new Array(16).fill(-60));
-  let busMeters = $state(new Array(6).fill(-60));
-  let mainMeters = $state([-60, -60]);
+
 
   // Navigation / Focus State
   let activeRole = $state(null); // 'foh' or null
@@ -1480,27 +1478,24 @@
         : dcaChannels
   );
 
-  $effect(() => {
-    const raw = $rawMeters['/meters/1'];
-    if (raw && raw.length) {
-      // /meters/1 blob layout (XR18, from xr-meters reference):
-      //  0-15:  ch 1-16 prefader
-      // 16-17:  aux L/R prefader
-      // 18-25:  fx return 1-4 L/R prefader
-      // 26-31:  bus 1-6 prefader
-      // 32-35:  fx send 1-4 prefader
-      // 36-37:  main L/R postfader
-      // 38-39:  monitor L/R
-      const clamp = v => Math.max(-60, Math.min(0, v));
-      fohMeters = raw.slice(0, 16).map(clamp);
-      busMeters = raw.slice(26, 32).map(clamp);
-      mainMeters = raw.slice(36, 38).map(clamp);
-    } else {
-      fohMeters = new Array(16).fill(-60);
-      busMeters = new Array(6).fill(-60);
-      mainMeters = [-60, -60];
-    }
-  });
+  const clamp = v => Math.max(-60, Math.min(0, v));
+  const fohMeters = $derived(
+    $rawMeters['/meters/1'] && $rawMeters['/meters/1'].length
+      ? $rawMeters['/meters/1'].slice(0, 16).map(clamp)
+      : new Array(16).fill(-60)
+  );
+  
+  const busMeters = $derived(
+    $rawMeters['/meters/1'] && $rawMeters['/meters/1'].length
+      ? $rawMeters['/meters/1'].slice(26, 32).map(clamp)
+      : new Array(6).fill(-60)
+  );
+
+  const mainMeters = $derived(
+    $rawMeters['/meters/1'] && $rawMeters['/meters/1'].length
+      ? $rawMeters['/meters/1'].slice(36, 38).map(clamp)
+      : [-60, -60]
+  );
   
   // Fluid Pagination Logic
   let containerWidth = $state(0);
@@ -1929,7 +1924,7 @@
                         level={auxSendLevelToDb(
                           sendsState[`in_${chIndex}_aux${musicianAux}`]?.level ?? 0,
                         )}
-                        peakLevel={fohMeters[chIndex - 1] || -60}
+                        peakLevel={fohMeters[chIndex - 1] ?? -60}
                         on:nameClick={() => {}}
                       />
                     {/each}
@@ -1946,7 +1941,7 @@
                     color={scribbles[`bus_${musicianAux}`]?.color || "#8b5cf6"}
                     level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/fader`], 0))}
                     muted={extractOscValue($mixerState?.flatOscCache?.[`/bus/${musicianAux}/mix/on`], 1) === 0}
-                    peakLevel={busMeters[musicianAux - 1] || -60}
+                    peakLevel={busMeters[musicianAux - 1] ?? -60}
                   />
                 </div>
               </div>
@@ -2011,9 +2006,9 @@
                             : "#ef4444"
                           : scribbles[sId]?.color || (activeView === "inputs" ? "#333333" : (isMatrix ? "#10b981" : (isMuteGroup ? "#f43f5e" : (activeView === "dcas" ? "#06b6d4" : "#8b5cf6"))))}
                         peakLevel={activeView === "inputs"
-                          ? fohMeters[chIndex - 1] || -60
+                          ? fohMeters[chIndex - 1] ?? -60
                           : activeView === "outputs"
-                            ? busMeters[chIndex - 1] || -60
+                            ? busMeters[chIndex - 1] ?? -60
                             : -60}
                         pan={getBentoParam($mixerState.flatOscCache, sId, 'mix/pan', 0)}
                         level={auxSendLevelToDb(getBentoParam($mixerState.flatOscCache, sId, 'mix/fader', 0))}
@@ -2109,7 +2104,7 @@
                         name={scribbles["main_LR"]?.name || "MAIN LR"}
                         iconType={scribbles["main_LR"]?.iconType || "icon_01"}
                         color={scribbles["main_LR"]?.color || "#ef4444"}
-                        peakLevel={Math.max(mainMeters[0], mainMeters[1]) || -60}
+                        peakLevel={Math.max(mainMeters[0], mainMeters[1]) ?? -60}
                         level={auxSendLevelToDb(extractOscValue($mixerState?.flatOscCache?.['/lr/mix/fader'], 0))}
                         muted={extractOscValue($mixerState?.flatOscCache?.['/lr/mix/on'], 1) === 0}
                         eqCurvePath={computeMiniEqPath("main_LR")}
