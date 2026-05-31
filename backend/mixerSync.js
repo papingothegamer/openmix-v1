@@ -292,78 +292,29 @@ class MixerConnection extends EventEmitter {
         this.udpPort.open();
         this.udpPort.on('ready', () => {
             console.log(`[MixerSync] OSC UDP Port ready. Passive mode enabled (waiting for client sync request).`);
-            
-            // The osc library silently drops meter blob responses because of their
-            // non-standard encoding. Intercept raw UDP packets on the underlying
-            // dgram socket to handle meters manually.
-            const sock = this.udpPort.socket;
-            if (sock) {
-                sock.on('message', (buf, rinfo) => {
-                    // Fast check: OSC address starts at byte 0, null-terminated
-                    const addrEnd = buf.indexOf(0);
-                    if (addrEnd < 8) return; // Too short to be /meters/N
-                    
-                    const addr = buf.toString('ascii', 0, addrEnd);
-                    if (!addr.startsWith('/meters/')) return;
-                    
-                    try {
-                        // OSC format: address (null-padded to 4-byte boundary),
-                        // type tag string ",b\0\0", then 4-byte blob size (BE), then blob data
-                        const addrPadded = Math.ceil((addrEnd + 1) / 4) * 4;
-                        // Skip type tag string (usually ",b\0\0" = 4 bytes)
-                        const blobOffset = addrPadded + 4;
-                        // 4-byte blob size (big-endian)
-                        const blobSize = buf.readUInt32BE(blobOffset);
-                        const blobStart = blobOffset + 4;
-                        
-                        if (blobStart + blobSize > buf.length) return;
-                        
-                        // Blob payload: 4-byte int32 LE count, then float32 LE values
-                        const countHeader = buf.readInt32LE(blobStart);
-                        const floatsStart = blobStart + 4;
-                        const floatsCount = Math.min(countHeader, Math.floor((blobSize - 4) / 4));
-                        
-                        const floats = [];
-                        for (let i = 0; i < floatsCount; i++) {
-                            floats.push(buf.readFloatLE(floatsStart + (i * 4)));
-                        }
-                        
-                        if (!this._meterRawDebugDone && floats.length > 0) {
-                            this._meterRawDebugDone = true;
-                            console.log(`[Meters RAW] ${addr}: ${floats.length} values, first 6: [${floats.slice(0, 6).map(f => f.toFixed(4)).join(', ')}]`);
-                        }
-                        
-                        this.emit('metersUpdate', {
-                            address: addr,
-                            values: floats
-                        });
-                    } catch (e) {
-                        // Silently ignore parse failures on non-meter packets
-                    }
-                });
-                console.log(`[MixerSync] Raw UDP meter interceptor attached.`);
-            }
         });
     }
 
     startKeepAlive(autoSyncType = null) {
-        // Behringer XR18 requires /xremote every 10 seconds to keep sending asynchronous updates (like meters/faders)
+        // Behringer XR18 requires /xremote every 10 seconds to keep sending asynchronous updates
         if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
         if (this.meterPollInterval) clearInterval(this.meterPollInterval);
         
         console.log(`[MixerSync] Starting keep-alive handshake (IP: ${this.mixerIp})`);
+        
+        // Combined keep-alive: /xremote for parameter changes + /meters subscription renewal.
+        // The XR18 meter subscription (via /meters with string arg) lasts ~10s before expiring.
+        // We renew both every 9s to keep the stream alive.
         this.keepAliveInterval = setInterval(() => {
             this.sendOsc('/xremote', []);
+            // Subscribe to meter bank 1 (channel pre-fader levels)
+            // Format: address="/meters", args=[{type:"s", value:"/meters/1"}]
+            this.sendOsc('/meters', [{ type: 's', value: '/meters/1' }]);
         }, 9000);
         
-        // Handshake
+        // Immediate handshake + initial meter subscription
         this.sendOsc('/xremote', []);
-        
-        // Meter polling: XR18/X32 require you to request /meters/N as a direct address.
-        // Each request returns one blob response. Poll at ~10 FPS for smooth VU animation.
-        this.meterPollInterval = setInterval(() => {
-            this.sendOsc('/meters/0', []);
-        }, 100);
+        this.sendOsc('/meters', [{ type: 's', value: '/meters/1' }]);
         
         // Auto-trigger sync if requested
         if (autoSyncType) {
@@ -432,9 +383,38 @@ class MixerConnection extends EventEmitter {
         const address = msg.address;
         const args = msg.args;
 
-        // Meters are handled by the raw UDP interceptor in connect().
-        // If the osc library manages to parse one, just ignore it here to avoid duplicates.
+        // XR18 Meter Blob Decode
+        // Reference: https://github.com/Jbithell/xr-meters
+        // The mixer responds to /meters subscription with /meters/1 containing a blob.
+        // Blob format: 4-byte count header, then int16 LE pairs (2 bytes each), /256 for dB.
         if (address.startsWith('/meters/')) {
+            try {
+                // With metadata:true, args[0] is {type:'b', value:Buffer}
+                // Without metadata, args[0] is the raw Buffer directly
+                let raw = args[0];
+                if (raw && typeof raw === 'object' && raw.value) raw = raw.value;
+                
+                if (raw && (Buffer.isBuffer(raw) || raw instanceof Uint8Array)) {
+                    const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+                    
+                    // Skip 4-byte count header, then read int16 LE values
+                    const dbValues = [];
+                    for (let i = 4; i + 1 < buf.length; i += 2) {
+                        const int16val = buf.readInt16LE(i);
+                        const db = int16val / 256; // Convert to dB
+                        dbValues.push(db);
+                    }
+                    
+                    if (!this._meterDebugDone && dbValues.length > 0) {
+                        this._meterDebugDone = true;
+                        console.log(`[Meters] ${address}: ${dbValues.length} channels, first 6 dB: [${dbValues.slice(0, 6).map(d => d.toFixed(1)).join(', ')}]`);
+                    }
+                    
+                    this.emit('metersUpdate', { address, values: dbValues });
+                }
+            } catch (e) {
+                console.error('[Meters] Decode error', e);
+            }
             return;
         }
 

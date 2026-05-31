@@ -1479,14 +1479,12 @@
   );
 
   $effect(() => {
-    const raw = $rawMeters['/meters/0'];
+    const raw = $rawMeters['/meters/1'];
     if (raw && raw.length) {
-      // X32/XR18 meter blobs are linear floats (0.0–1.0). Convert to dB for the VU strips.
-      fohMeters = raw.map(v => {
-        if (v <= 0) return -60;
-        const db = 20 * Math.log10(v);
-        return Math.max(-60, Math.min(0, db));
-      });
+      // Backend decodes XR18 meter blobs as dB values (int16 LE / 256).
+      // Values range roughly -128 (silence) to +10 (clipping).
+      // Clamp to -60..0 for the VU display.
+      fohMeters = raw.map(v => Math.max(-60, Math.min(0, v)));
     } else {
       fohMeters = new Array(16).fill(-60);
     }
