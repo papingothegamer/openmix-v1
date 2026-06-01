@@ -766,7 +766,10 @@
         }
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
-          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
+          ...(config.presetId === "XR18" ? [
+            { id: 'in_17', name: '17' },
+            { id: 'in_18', name: '18' }
+          ] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
         ];
@@ -777,7 +780,10 @@
         dests = Array.from({ length: 16 }, (_, i) => ({ id: `p16_${i+1}`, name: `P16 ${i+1}` }));
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
-          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
+          ...(config.presetId === "XR18" ? [
+            { id: 'in_17', name: '17' },
+            { id: 'in_18', name: '18' }
+          ] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
         ];
@@ -788,7 +794,10 @@
         dests = Array.from({ length: config.outputs }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
-          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
+          ...(config.presetId === "XR18" ? [
+            { id: 'in_17', name: '17' },
+            { id: 'in_18', name: '18' }
+          ] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
         ];
@@ -810,7 +819,10 @@
         dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+aesOffset+1}`, name: `AES ${i+aesOffset+1}` }));
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` })),
-          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
+          ...(config.presetId === "XR18" ? [
+            { id: 'in_17', name: '17' },
+            { id: 'in_18', name: '18' }
+          ] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` }))
         ];
         break;
