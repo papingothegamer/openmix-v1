@@ -643,7 +643,7 @@
         break;
 
       case 'USB_RTN':
-        subTabs = ["CH1-16", "CH17-32", "AUX/FX"];
+        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i * 16 < config.inputs || i === 2);
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
           const id = i + offset + 1;
@@ -659,13 +659,13 @@
         break;
 
       case 'USB_SEND':
-        subTabs = ["USB 1-16", "USB 17-32"];
+        subTabs = ["USB 1-16", "USB 17-32"].filter((_, i) => i * 16 < config.inputs);
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "USB 1-16" ? 0 : 16;
           return { id: `usb_out_${i+offset+1}`, name: `USB ${i+offset+1}` };
         });
         srcs = [
-          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
         ];
@@ -684,10 +684,10 @@
 
       case 'AUX_OUT':
         subTabs = ["AUX 1-16"]; 
-        dests = Array.from({ length: 6 }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
+        dests = Array.from({ length: config.outputs }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
         srcs = [
-          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
-          ...Array.from({ length: 6 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' },
           { id: 'off', name: 'Off' }
         ];
@@ -698,7 +698,7 @@
         dests = [{ id: 'sock_main_l', name: 'MAIN L' }, { id: 'sock_main_r', name: 'MAIN R' }];
         srcs = [
           { id: 'main_l', name: 'MAIN L' }, { id: 'main_r', name: 'MAIN R' },
-          ...Array.from({ length: 6 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'off', name: 'Off' }
         ];
         break;
@@ -709,8 +709,8 @@
         const aesOffset = routingSubTab === "OUT 33-48" ? 32 : (routingSubTab === "OUT 17-32" ? 16 : 0);
         dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+aesOffset+1}`, name: `AES ${i+aesOffset+1}` }));
         srcs = [
-          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` })),
-          ...Array.from({ length: 12 }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
+          ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` })),
+          ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'off', name: 'Off' }
         ];
         break;

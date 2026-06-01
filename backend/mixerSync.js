@@ -335,6 +335,24 @@ class MixerConnection extends EventEmitter {
         return Buffer.concat([addrBuf, typeBuf, argBuf]);
     }
 
+    _buildMeterSubscribePacket5() {
+        // OSC address: "/meters" + null padding to 4-byte boundary
+        const addr = '/meters';
+        const addrBuf = Buffer.alloc(Math.ceil((addr.length + 1) / 4) * 4);
+        addrBuf.write(addr, 'ascii');
+
+        // Type tag: ",s" + null padding to 4-byte boundary  
+        const typeBuf = Buffer.alloc(4);
+        typeBuf.write(',s', 'ascii');
+
+        // String arg: "/meters/5" + null padding to 4-byte boundary
+        const argStr = '/meters/5';
+        const argBuf = Buffer.alloc(Math.ceil((argStr.length + 1) / 4) * 4);
+        argBuf.write(argStr, 'ascii');
+
+        return Buffer.concat([addrBuf, typeBuf, argBuf]);
+    }
+
     /**
      * Parse a raw UDP packet from the mixer as a meter response.
      * XR18 meter blob: /meters/1 ,b <4-byte blob size BE> <blob data>
@@ -387,6 +405,7 @@ class MixerConnection extends EventEmitter {
         
         // Build the meter subscribe packet once (raw OSC, no library)
         const meterPacket = this._buildMeterSubscribePacket();
+        const meterPacket5 = this._buildMeterSubscribePacket5();
         
         // Combined keep-alive: /xremote for parameter changes + /meters subscription renewal.
         // The XR18 meter subscription lasts ~10s before expiring.
@@ -396,6 +415,7 @@ class MixerConnection extends EventEmitter {
             // Send meter subscription via the dedicated raw socket
             if (this.meterSocket) {
                 this.meterSocket.send(meterPacket, this.mixerPort, this.mixerIp);
+                this.meterSocket.send(meterPacket5, this.mixerPort, this.mixerIp);
             }
         }, 9000);
         
@@ -403,6 +423,7 @@ class MixerConnection extends EventEmitter {
         this.sendOsc('/xremote', []);
         if (this.meterSocket) {
             this.meterSocket.send(meterPacket, this.mixerPort, this.mixerIp);
+            this.meterSocket.send(meterPacket5, this.mixerPort, this.mixerIp);
         }
         
         // Auto-trigger sync if requested
