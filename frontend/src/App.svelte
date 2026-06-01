@@ -624,7 +624,7 @@
 
     switch(routingMode) {
       case 'INPUT':
-        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i * 16 < config.inputs || i === 2);
+        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32) || i === 2);
         // ROWS are Destinations (Ch 1-16...)
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
@@ -643,7 +643,7 @@
         break;
 
       case 'USB_RTN':
-        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i * 16 < config.inputs || i === 2);
+        subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32) || i === 2);
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
           const id = i + offset + 1;
@@ -659,7 +659,7 @@
         break;
 
       case 'USB_SEND':
-        subTabs = ["USB 1-16", "USB 17-32"].filter((_, i) => i * 16 < config.inputs);
+        subTabs = ["USB 1-16", "USB 17-32"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32));
         dests = Array.from({ length: 16 }, (_, i) => {
           const offset = routingSubTab === "USB 1-16" ? 0 : 16;
           return { id: `usb_out_${i+offset+1}`, name: `USB ${i+offset+1}` };
