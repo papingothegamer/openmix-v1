@@ -91,7 +91,7 @@
     border-bottom: 1px solid #252525;
     padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 100;
   }
-  .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
+  .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
   .highlight { color: #eab308; }
 
   .toolbar { display: flex; align-items: center; gap: 1rem; }
