@@ -76,7 +76,7 @@
     border: 1px solid #252525;
     border-radius: 8px;
     overflow: hidden;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     box-shadow: 0 12px 48px rgba(0,0,0,0.4);
   }
 
@@ -165,14 +165,14 @@
   .fx-slot-row.active { background: #222222; border-left: 3px solid #eab308; }
 
   .fx-slot-name { display: flex; flex-direction: column; gap: 0.3rem; text-align: left; }
-  .w-id { color: #999999; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 800; }
-  .w-type { color: #777777; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+  .w-id { color: #999999; font-family: var(--sans); font-size: 0.85rem; font-weight: 800; }
+  .w-type { color: #777777; font-family: var(--mono); font-size: 0.7rem; }
   .fx-slot-row.active .w-id, .fx-slot-row.active .w-type { color: #fafafa; }
 
   .empty-state {
     display: flex; align-items: center; justify-content: center;
     width: 100%; height: 100%; color: #666666;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+    font-family: var(--mono); font-size: 0.9rem;
   }
 
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

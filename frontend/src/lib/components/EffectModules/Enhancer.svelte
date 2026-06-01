@@ -92,7 +92,7 @@
     margin-bottom: 1rem;
   }
   .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #f472b6; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .model { color: #f472b6; font-weight: 800; font-size: 1rem; font-family: var(--sans); opacity: 0.9; }
 
   .enhancer-content {
     flex: 1;
@@ -144,7 +144,7 @@
   }
 
   .status-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 0.7rem;
     font-weight: 900;
     color: #f472b6;
@@ -178,3 +178,4 @@
     letter-spacing: 2px;
   }
 </style>
+

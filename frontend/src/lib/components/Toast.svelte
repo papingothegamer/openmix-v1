@@ -54,7 +54,7 @@
         border: 1px solid #333333;
         min-width: 280px;
         max-width: 400px;
-        font-family: 'Inter', sans-serif;
+        font-family: var(--sans);
     }
 
     .toast.success { border-left: 4px solid #10b981; }
@@ -75,3 +75,4 @@
     }
     .toast-close:hover { background: #333333; color: #fafafa; }
 </style>
+

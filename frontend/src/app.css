@@ -22,11 +22,11 @@
   --border-subtle: #1f1f1f;
   --border-strong: #333333;
 
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --heading: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --sans: 'Chakra Petch', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --heading: 'Chakra Petch', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: 'Chakra Petch', ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 16px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: dark;
   color: var(--text);
@@ -306,3 +306,4 @@ code {
     border-right-color: var(--border);
   }
 }
+

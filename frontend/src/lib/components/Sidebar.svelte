@@ -132,14 +132,14 @@
   .strips-control { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
   .strip-adj { width: 26px; height: 26px; border-radius: 4px; background: #333333; color: #e5e5e5; border: 1px solid #666666; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
   .strip-adj:hover { background: #eab308; border-color: #facc15; color: #fff; }
-  .strip-count { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #fafafa; min-width: 20px; text-align: center; }
+  .strip-count { font-family: var(--mono); font-size: 1rem; font-weight: 800; color: #fafafa; min-width: 20px; text-align: center; }
 
   /* Added flex alignments for perfectly centered lucide icons */
   .page-btn { display: flex; align-items: center; justify-content: center; background: #333333; color: white; border: 1px solid #666666; padding: 0.5rem; border-radius: 4px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.15s; font-size: 0.75rem; }
   .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .page-btn:not(:disabled):hover { background: #666666; }
   
-  .page-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: bold; color: #999999; text-align: center; padding: 0.2rem 0; }
+  .page-count { font-family: var(--mono); font-size: 0.8rem; font-weight: bold; color: #999999; text-align: center; padding: 0.2rem 0; }
 
   .muted { font-size: 0.65rem; color: #666666; text-align: center; margin: 0; }
 

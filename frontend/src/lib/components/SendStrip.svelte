@@ -154,7 +154,7 @@
   .thumb-line { width: 100%; height: 1px; background: rgba(255,255,255,0.3); }
 
   .readout {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 0.65rem;
     font-weight: 800;
     color: #eab308;
@@ -188,3 +188,4 @@
   .on-btn.active { background: #052e16; color: #4ade80; border-color: #15803d; box-shadow: 0 0 8px rgba(74,222,128,0.2); }
   .pp-btn.active { background: #0c1e3c; color: #facc15; border-color: #a16207; }
 </style>
+

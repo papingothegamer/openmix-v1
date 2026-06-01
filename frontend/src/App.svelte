@@ -2825,18 +2825,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
-    font-family:
-      "Inter",
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      Helvetica,
-      Arial,
-      sans-serif,
-      "Apple Color Emoji",
-      "Segoe UI Emoji",
-      "Segoe UI Symbol";
+    font-family: var(--sans);
     background-color: #0a0a0a;
     color: #e5e5e5;
     overflow: hidden; /* Prevent body scroll, constrain to app-container */
@@ -2891,7 +2880,7 @@
     border-radius: 6px;
     border: 1px solid #333333;
     transition: 0.2s;
-    font-family: "JetBrains Mono", monospace;
+    font-family: var(--mono);
   }
   .bus-toggle:hover {
     background: #333333;
@@ -3309,7 +3298,7 @@
   .aux-btn:active { transform: translateY(0); }
   .aux-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .aux-num { 
-    font-family: 'JetBrains Mono', monospace; 
+    font-family: var(--mono); 
     font-size: 1.5rem; 
     font-weight: 800; 
     color: #fafafa;
@@ -3444,7 +3433,7 @@
     background: #000;
     border: 1px solid #333333;
     color: #fafafa;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
     font-size: 0.75rem;
     padding: 2px 4px;
     border-radius: 4px;
@@ -3656,7 +3645,7 @@
   .discovery-result-addr {
     font-size: 0.75rem;
     color: #6ee7b7;
-    font-family: 'Courier New', monospace;
+    font-family: var(--mono);
     letter-spacing: 0.03em;
   }
   .discovery-result-actions {
@@ -3862,7 +3851,7 @@
   .form-group label { font-size: 0.7rem; font-weight: 600;
  color: #a3a3a3; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
   .form-group input, .form-group select { background: #0a0a0a;
- border: 1px solid #252525; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
+ border: 1px solid #252525; color: #fafafa; padding: 0.75rem 0.85rem; border-radius: 4px; font-size: 0.9rem; font-family: var(--sans); transition: border-color 0.15s;
  outline: none; width: 100%; box-sizing: border-box; }
   .form-group input:focus, .form-group select:focus { border-color: #eab308;
  }
@@ -3995,7 +3984,7 @@
 
   .sync-percent {
     color: #eab308;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--mono);
   }
 
   .sync-label {
@@ -4004,3 +3993,4 @@
     letter-spacing: 0.1em;
   }
 </style>
+

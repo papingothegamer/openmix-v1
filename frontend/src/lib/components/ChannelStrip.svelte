@@ -477,7 +477,7 @@
     flex-direction: column;
     align-items: center;
     padding: 6px 4px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sans);
     color: #e5e5e5;
     box-sizing: border-box;
     flex-shrink: 0;
@@ -572,7 +572,7 @@
 
   /* Panning */
   .pan-container { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; width: 100%; }
-  .pan-label { font-size: 0.55rem; color: #a3a3a3; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .pan-label { font-size: 0.55rem; color: #a3a3a3; font-weight: 700; font-family: var(--mono); }
   .pan-dial { width: 24px; height: 24px; border-radius: 50%; background: #141414; border: 2px solid #252525; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
   .pan-pointer { position: absolute; top: 0; left: 50%; width: 2px; height: 50%; background: #eab308; transform-origin: bottom center; margin-left: -1px; border-radius: 1px; }
 
@@ -638,7 +638,7 @@
 
   /* Db Value */
   .fader-value { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; background: #0a0a0a; border-radius: 3px; padding: 4px 2px; margin-bottom: 6px; border: 1px solid #252525; }
-  .fader-value input { width: 100%; background: transparent; border: none; color: #facc15; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; outline: none; }
+  .fader-value input { width: 100%; background: transparent; border: none; color: #facc15; font-size: 0.7rem; font-family: var(--mono); font-weight: 600; text-align: right; outline: none; }
   .fader-value span { font-size: 0.55rem; color: #555; font-weight: bold; }
 
   .st-indicator { font-size: 0.5rem; background: #eab308; color: #000; padding: 1px 3px; border-radius: 2px; margin-left: 4px; font-weight: 900; vertical-align: middle; }

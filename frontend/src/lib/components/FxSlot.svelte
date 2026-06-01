@@ -177,7 +177,7 @@
 
   .slot-heading { display: flex; flex-direction: column; gap: 0.15rem; min-width: 100px; }
   .slot-index { color: #fafafa; font-size: 1rem; font-weight: 800; letter-spacing: 0.08em; }
-  .slot-family { color: #fbbf24; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; font-family: 'JetBrains Mono', monospace; }
+  .slot-family { color: #fbbf24; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; font-family: var(--mono); }
   
   .header-actions { display: flex; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
   .two-tier-select { display: flex; gap: 0.75rem; flex: 1; max-width: 500px; justify-content: flex-end; }

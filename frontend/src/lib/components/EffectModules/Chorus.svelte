@@ -72,7 +72,7 @@
     margin-bottom: 1rem;
   }
   .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: var(--sans); opacity: 0.9; }
 
   .knobs-row {
     display: flex;

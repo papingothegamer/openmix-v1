@@ -474,7 +474,7 @@
   .section-lbl { font-size: 0.6rem; font-weight: 900; letter-spacing: .1em; color: #555555; text-transform: uppercase; }
 
   .page-nav { display: flex; align-items: center; gap: 0.4rem; }
-  .page-nums { font-size: 0.65rem; font-weight: 800; color: #333333; font-family: 'JetBrains Mono', monospace; }
+  .page-nums { font-size: 0.65rem; font-weight: 800; color: #333333; font-family: var(--mono); }
   .page-btn { 
     background: #18181b; border: 1px solid #252525; color: #555555; cursor: pointer; padding: 2px; 
     border-radius: 4px; display: flex; align-items: center; transition: all .12s;

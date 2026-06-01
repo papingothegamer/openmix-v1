@@ -54,7 +54,7 @@
     margin-bottom: 1rem;
   }
   .brand { color: #777777; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
-  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: 'Inter', sans-serif; opacity: 0.9; }
+  .model { color: #fbbf24; font-weight: 800; font-size: 1rem; font-family: var(--sans); opacity: 0.9; }
 
   .utility-empty {
     flex: 1;
@@ -66,3 +66,4 @@
   .empty-msg h3 { color: #666666; letter-spacing: 4px; font-size: 1rem; margin-bottom: 0.5rem; }
   .empty-msg p { color: #333333; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
 </style>
+

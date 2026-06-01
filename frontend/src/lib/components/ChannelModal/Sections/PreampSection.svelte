@@ -98,7 +98,7 @@
   }
   .stage-node span { font-size: 0.6rem; font-weight: 800; color: #777777; letter-spacing: 0.1em; }
   .stage-node.processor { border-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
-  .gain-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 800; color: #fafafa; }
+  .gain-val { font-family: var(--mono); font-size: 1.1rem; font-weight: 800; color: #fafafa; }
   .stage-label { font-size: 0.55rem; font-weight: 900; color: #ef4444; text-transform: uppercase; }
   
   .stage-connector { width: 40px; height: 2px; position: relative; display: flex; align-items: center; justify-content: center; }

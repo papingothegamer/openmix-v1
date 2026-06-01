@@ -45,3 +45,4 @@
   .tab-btn.active { color: #fafafa; background: #252525; border-bottom-color: #eab308; }
   .tab-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 </style>
+

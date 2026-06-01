@@ -255,7 +255,7 @@
   :global(.x32-bottom-faders) { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; background: #151515; padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid #252525; flex-shrink: 0; }
   
   :global(.fader-group) { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 55px; }
-  :global(.v-slider-val) { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #fafafa; background: #0a0a0a; padding: 0.25rem 0.4rem; border-radius: 4px; border: 1px solid #333333; width: 100%; text-align: center; box-sizing: border-box; }
+  :global(.v-slider-val) { font-family: var(--mono); font-size: 0.7rem; color: #fafafa; background: #0a0a0a; padding: 0.25rem 0.4rem; border-radius: 4px; border: 1px solid #333333; width: 100%; text-align: center; box-sizing: border-box; }
   :global(.v-slider-lbl) { font-size: 0.65rem; font-weight: 700; color: #999999; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
   
   /* Vertical Slider Core Magic */

@@ -251,7 +251,7 @@
     margin-bottom: 0.75rem;
   }
   .brand { color: #666666; font-weight: 900; font-size: 0.65rem; letter-spacing: 2px; }
-  .model { color: #fafafa; font-weight: 800; font-size: 0.9rem; font-family: 'Inter', sans-serif; opacity: 0.8; }
+  .model { color: #fafafa; font-weight: 800; font-size: 0.9rem; font-family: var(--sans); opacity: 0.8; }
 
   .rack-tabs { display: flex; gap: 4px; margin-left: auto; }
   .rack-tabs button {
@@ -372,3 +372,4 @@
   .fader-band.master input::-webkit-slider-thumb { background: #fbbf24; }
 
 </style>
+
