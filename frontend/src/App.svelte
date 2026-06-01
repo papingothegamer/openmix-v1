@@ -665,8 +665,8 @@
         }).filter(d => d);
         srcs = [
           ...Array.from({ length: 16 }, (_, i) => ({ id: `usb_in_${i+1}`, name: `USB ${i+1}` })),
-          { id: `usb_aux_l`, name: 'USB 17' },
-          { id: `usb_aux_r`, name: 'USB 18' }
+          { id: `usb_aux_l`, name: 'AUX L' },
+          { id: `usb_aux_r`, name: 'AUX R' }
         ];
         break;
 
@@ -712,8 +712,8 @@
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
           ...(config.presetId === "XR18" ? [
-            { id: 'in_17', name: '17' },
-            { id: 'in_18', name: '18' }
+            { id: 'in_17', name: 'AUX L' },
+            { id: 'in_18', name: 'AUX R' }
           ] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
