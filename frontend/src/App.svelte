@@ -508,6 +508,68 @@
   }
 
   function handlePatchChange(dest, src) {
+    if (dest.id === 'in_17_18') {
+      const destL = { id: 'in_17', name: 'AUX L' };
+      const destR = { id: 'in_18', name: 'AUX R' };
+      
+      let srcR = src;
+      if (src.id.startsWith('usb_in_')) {
+        const srcNum = parseInt(src.id.split('_').pop());
+        if (srcNum < 18) srcR = { id: `usb_in_${srcNum + 1}`, name: `${(srcNum + 1).toString().padStart(2, '0')}` };
+      } else if (src.id.startsWith('sock_in_')) {
+        const srcNum = parseInt(src.id.split('_').pop());
+        if (srcNum < 16) srcR = { id: `sock_in_${srcNum + 1}`, name: `${(srcNum + 1).toString().padStart(2, '0')}` };
+      } else if (src.id === 'sock_aux_l') {
+        srcR = { id: 'sock_aux_r', name: '18' };
+      }
+
+      const isUnpatching = routingState['in_17_18'] === src.id;
+      if (isUnpatching) {
+        routingState['in_17_18'] = null;
+        routingState['in_17'] = null;
+        routingState['in_18'] = null;
+        showToast(`AUX unpatched (Off)`, "info");
+      } else {
+        routingState['in_17_18'] = src.id;
+        routingState['in_17'] = src.id;
+        routingState['in_18'] = srcR.id;
+        showToast(`AUX patched to ${src.name} & ${srcR.name}`, "info");
+      }
+      routingState = { ...routingState };
+
+      const pL = mapPatchToOsc(routingMode, destL, src);
+      const pR = mapPatchToOsc(routingMode, destR, srcR);
+      if (pL.path) setOsc(pL.path, [{ type: 'i', value: pL.value }]);
+      if (pR.path) setOsc(pR.path, [{ type: 'i', value: pR.value }]);
+      return;
+    }
+
+    if (src.id === 'in_17_18') {
+      const destNum = parseInt(dest.id.split('_').pop());
+      const destPrefix = dest.id.substring(0, dest.id.lastIndexOf('_'));
+      const destR = { id: `${destPrefix}_${destNum + 1}`, name: dest.name.replace(`${destNum}`, `${destNum + 1}`) };
+      const srcL = { id: 'in_17', name: 'AUX L' };
+      const srcR = { id: 'in_18', name: 'AUX R' };
+
+      const isUnpatching = routingState[dest.id] === src.id;
+      if (isUnpatching) {
+        routingState[dest.id] = null;
+        if (routingState[destR.id] === src.id) routingState[destR.id] = null;
+        showToast(`${dest.name} unpatched (Off)`, "info");
+      } else {
+        routingState[dest.id] = src.id;
+        routingState[destR.id] = src.id;
+        showToast(`${dest.name} patched to AUX`, "info");
+      }
+      routingState = { ...routingState };
+
+      const pL = mapPatchToOsc(routingMode, dest, srcL);
+      const pR = mapPatchToOsc(routingMode, destR, srcR);
+      if (pL.path) setOsc(pL.path, [{ type: 'i', value: pL.value }]);
+      if (pR.path) setOsc(pR.path, [{ type: 'i', value: pR.value }]);
+      return;
+    }
+
     // 1. Update local optimistic state
     if (routingState[dest.id] === src.id) {
        routingState[dest.id] = null;
@@ -545,6 +607,21 @@
            else if (inputVal === 16) srcId = 'sock_aux_l';
            else if (inputVal === 17) srcId = 'sock_aux_r';
            routingState[`in_${i}`] = srcId;
+           
+           if (i === 17) {
+             let srcIdR = 'off';
+             const rVal = cache[isXR ? `/ch/18/config/insrc` : `/config/routing/i/18`]?.[0]?.value;
+             if (rVal !== undefined) {
+                if (rVal < 16) srcIdR = `sock_in_${rVal + 1}`;
+                else if (rVal === 16) srcIdR = 'sock_aux_l';
+                else if (rVal === 17) srcIdR = 'sock_aux_r';
+             }
+             if (srcId === 'sock_aux_l' && srcIdR === 'sock_aux_r') {
+               routingState['in_17_18'] = 'sock_aux_l';
+             } else {
+               routingState['in_17_18'] = srcId;
+             }
+           }
         }
 
         // Hydrate USB RTN Mode (If separate in UI)
@@ -556,6 +633,18 @@
           // Only apply if we are currently in USB_RTN mode or it won't conflict
           if (routingMode === 'USB_RTN') {
             routingState[`in_${i}`] = srcId;
+            if (i === 17) {
+              const rVal = cache[isXR ? `/ch/18/config/rtnsrc` : `/config/routing/card/18`]?.[0]?.value;
+              let srcIdR = (rVal !== undefined && rVal < 18) ? `usb_in_${rVal + 1}` : 'off';
+              if (srcId.startsWith('usb_in_') && srcIdR.startsWith('usb_in_')) {
+                const s1 = parseInt(srcId.split('_').pop());
+                const s2 = parseInt(srcIdR.split('_').pop());
+                if (s2 === s1 + 1) routingState['in_17_18'] = srcId;
+                else routingState['in_17_18'] = srcId;
+              } else {
+                routingState['in_17_18'] = srcId;
+              }
+            }
           }
         }
       }
@@ -627,6 +716,10 @@
         subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32) || i === 2);
         // ROWS are Destinations (Ch 1-16...)
         dests = Array.from({ length: 16 }, (_, i) => {
+          if (routingSubTab === "AUX/FX" && config.presetId === "XR18") {
+            if (i === 0) return { id: "in_17_18", name: "AUX" };
+            return null;
+          }
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
           const id = i + offset + 1;
           if (id > config.inputs) return null;
@@ -645,6 +738,10 @@
       case 'USB_RTN':
         subTabs = ["CH1-16", "CH17-32", "AUX/FX"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32) || i === 2);
         dests = Array.from({ length: 16 }, (_, i) => {
+          if (routingSubTab === "AUX/FX" && config.presetId === "XR18") {
+            if (i === 0) return { id: "in_17_18", name: "AUX" };
+            return null;
+          }
           const offset = routingSubTab === "CH1-16" ? 0 : (routingSubTab === "CH17-32" ? 16 : 32);
           const id = i + offset + 1;
           if (id > config.inputs) return null;
@@ -659,13 +756,19 @@
         break;
 
       case 'USB_SEND':
-        subTabs = ["USB 1-16", "USB 17-32"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32));
-        dests = Array.from({ length: 16 }, (_, i) => {
-          const offset = routingSubTab === "USB 1-16" ? 0 : 16;
-          return { id: `usb_out_${i+offset+1}`, name: `USB ${i+offset+1}` };
-        });
+        if (config.presetId === "XR18") {
+          subTabs = ["USB 1-18"];
+          dests = Array.from({ length: 18 }, (_, i) => ({ id: `usb_out_${i+1}`, name: `USB ${i+1}` }));
+        } else {
+          subTabs = ["USB 1-16", "USB 17-32"].filter((_, i) => i === 0 || (i === 1 && config.inputs >= 32));
+          dests = Array.from({ length: 16 }, (_, i) => {
+            const offset = routingSubTab === "USB 1-16" ? 0 : 16;
+            return { id: `usb_out_${i+offset+1}`, name: `USB ${i+offset+1}` };
+          });
+        }
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' }
         ];
@@ -675,7 +778,8 @@
         subTabs = ["P16 1-16"];
         dests = Array.from({ length: 16 }, (_, i) => ({ id: `p16_${i+1}`, name: `P16 ${i+1}` }));
         srcs = [
-          ...Array.from({ length: 16 }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' },
           { id: 'off', name: 'Off' }
@@ -687,6 +791,7 @@
         dests = Array.from({ length: config.outputs }, (_, i) => ({ id: `sock_out_${i+1}`, name: `AUX ${i+1}` }));
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `${(i+1).toString().padStart(2, '0')}` })),
+          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'main_l', name: 'L' }, { id: 'main_r', name: 'R' },
           { id: 'off', name: 'Off' }
@@ -710,6 +815,7 @@
         dests = Array.from({ length: 16 }, (_, i) => ({ id: `aes_out_${i+aesOffset+1}`, name: `AES ${i+aesOffset+1}` }));
         srcs = [
           ...Array.from({ length: Math.min(config.inputs, 16) }, (_, i) => ({ id: `in_${i+1}`, name: `CH ${i+1}` })),
+          ...(config.presetId === "XR18" ? [{ id: 'in_17_18', name: 'AUX' }] : []),
           ...Array.from({ length: config.outputs }, (_, i) => ({ id: `bus_${i+1}`, name: `B${i+1}` })),
           { id: 'off', name: 'Off' }
         ];
