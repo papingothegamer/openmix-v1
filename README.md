@@ -1,6 +1,6 @@
 # OpenMix
 
-OpenMix is a high-performance, browser-accessible digital mixer controller designed exclusively for **Behringer** and **Midas** ecosystem consoles (X32, M32, X-Air, M-Air, and WING). It provides a responsive, professional-grade interface for FOH, monitor mixing, and personal monitor control.
+OpenMix is a high-performance, browser-accessible digital mixer controller designed exclusively for **Behringer** and **Midas** ecosystem consoles (X32, M32, X-Air, and M-Air). It provides a responsive, professional-grade interface for FOH, monitor mixing, and personal monitor control.
 
 ## Supported Hardware
 
@@ -8,7 +8,6 @@ OpenMix is a high-performance, browser-accessible digital mixer controller desig
 - **Midas M32 Family**: M32, M32R, M32C
 - **Behringer X-Air Family**: XR18, XR16, XR12
 - **Midas M-Air Family**: MR18, MR12
-- **Behringer WING**
 
 ## Core Features
 
@@ -71,7 +70,7 @@ Ensure you have [Node.js](https://nodejs.org/) (≥ 18 LTS) installed along with
 
 ## 🛠️ On-Site Live Testing Guide
 
-When you arrive on-site and physically couple the network to the Behringer/WING mixer hardware, follow this guide to verify robust bi-directional interaction:
+When you arrive on-site and physically couple the network to the Behringer/Midas mixer hardware, follow this guide to verify robust bi-directional interaction:
 
 ### Phase 1: Setup & Auto-Discovery
 1. **Network Sync**: Ensure the mixer and the host PC are on the same subnet.

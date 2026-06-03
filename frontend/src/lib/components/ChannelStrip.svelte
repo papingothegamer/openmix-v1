@@ -84,7 +84,7 @@
     if (stripType === 'dca') {
       if (role !== 'foh') return;
       if (!Number.isFinite(idx) || idx < 1) return;
-      // Note: WING uses /ae_data/dca/N/fdr, X32/XR18 uses /dca/N/fader
+      // Note: X32/XR18 uses /dca/N/fader
       // The backend OSC bridge usually aliases these, but we'll try standard path first.
       setOsc(`/dca/${idx}/fader`, dbToFader(level));
       return;

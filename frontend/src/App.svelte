@@ -372,8 +372,6 @@
       config.presetId = 'XR18';
     } else if (nameToUpper.includes('X32') || nameToUpper.includes('M32')) {
       config.presetId = 'X32RACK';
-    } else if (nameToUpper.includes('WING')) {
-      config.presetId = 'WING';
     }
     applyPreset();
 
@@ -2017,14 +2015,14 @@
                         isStereo={activeView === "inputs" 
                           ? isLinked(chIndex, stereoLinks) 
                           : (activeView === "outputs" 
-                              ? (isMatrix ? false : (config.presetId === 'WING' || isLinked(chIndex, outputLinks)))
+                              ? (isMatrix ? false : isLinked(chIndex, outputLinks))
                               : false)}
                         name={scribbles[sId]?.name ||
                           (activeView === "inputs"
                             ? presetHardLinks[chIndex]?.defaultName ||
                               `CH ${chIndex}`
                             : activeView === "outputs"
-                              ? (isMatrix ? `MTX ${mtxIdx}` : `AUX ${chIndex}${config.presetId === 'WING' ? ' (St)' : ''}`)
+                              ? (isMatrix ? `MTX ${mtxIdx}` : `AUX ${chIndex}`)
                               : (isMuteGroup ? `MGP ${chIndex}` : (config.presetId === 'MACKIE_DL32S' ? `VCA ${chIndex}` : `DCA ${chIndex}`)))}
                         iconType={scribbles[sId]?.iconType || "icon_01"}
                         color={activeView === "inputs" &&

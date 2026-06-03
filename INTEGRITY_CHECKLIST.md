@@ -408,7 +408,7 @@
 - **Failsafe Present**: The Svelte 5 frontend utilizes strict optional chaining (`?.`) when hydrating values from `$mixerState.flatOscCache`. If the XR18 returns unexpected addresses, Svelte will safely default those UI elements to undefined or "off" rather than throwing white-screen crashes.
 
 **Problem: Discovery returns wrong port after auto-discovery (Phase 20 fix).**
-- **Failsafe Added**: The `discoverMixer()` function no longer trusts `remote.port` from the UDP reply. Instead, it maps the mixer's identity string to the correct OSC listening port (XR18→10024, X32→10023, WING→2223). This prevents silent command failures where OSC packets are sent to the mixer's ephemeral reply port instead of its command port.
+- **Failsafe Added**: The `discoverMixer()` function no longer trusts `remote.port` from the UDP reply. Instead, it maps the mixer's identity string to the correct OSC listening port (XR18→10024, X32→10023). This prevents silent command failures where OSC packets are sent to the mixer's ephemeral reply port instead of its command port.
 
 **Problem: Navbar stuck on "Mixer Standby" even when mixer is responding (Phase 20 fix).**
 - **Failsafe Added**: The `syncComplete` event is now properly relayed from the backend EventEmitter through Socket.io to the frontend. The `hasSyncedOnce` flag in `$mixerState` is updated the moment the first valid OSC return-trip packet arrives, ensuring accurate connection status.

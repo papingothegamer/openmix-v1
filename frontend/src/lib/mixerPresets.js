@@ -63,26 +63,6 @@ export const MixerPresets = {
       { id: 'LR+C', name: 'Main LR + Center' }
     ],
     hardLinks: { inputs: {} } 
-  },
-
-  WING: {
-    id: 'WING',
-    name: 'Behringer WING',
-    inputs: 48, // Configurable mono/stereo channels
-    outputs: 16, // Stereo mix buses
-    matrices: 6, // Matrix buses
-    dcas: 8, // 8 DCA groups
-    muteGroups: 8, // 8 Mute groups
-    fx: 8, // FX engines (stereo)
-    hasAES50: true,
-    hasUltranet: true,
-    hasUSB: true,
-    monitorSources: [
-      { id: 'LR', name: 'Main LR' },
-      { id: 'PFL', name: 'Inputs PFL' },
-      { id: 'AFL', name: 'Inputs AFL' }
-    ],
-    hardLinks: { inputs: {} }
   }
 };
 

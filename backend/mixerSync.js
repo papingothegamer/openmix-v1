@@ -123,15 +123,6 @@ class MixerConnection extends EventEmitter {
                 
                 // FX
                 { address: '/fx/1-8/type', pattern: '/fx/{N}/type', count: 8, pad: 0 }
-            ],
-            'WING': [
-                { address: '/xinfo' },
-                // WING uses different paths usually, but keeping compatible pattern for now
-                { address: '/ch/01-48/config/name', pattern: '/ch/{N}/config/name', count: 48 },
-                { address: '/bus/01-16/config/name', pattern: '/bus/{N}/config/name', count: 16 },
-                { address: '/mtx/01-06/config/name', pattern: '/mtx/{N}/config/name', count: 6 },
-                { address: '/ch/01-48/mix/fader', pattern: '/ch/{N}/mix/fader', count: 48 },
-                { address: '/fx/1-8/type', pattern: '/fx/{N}/type', count: 8, pad: 0 }
             ]
         };
         const tmpl = templates[type] || templates['XR18'];

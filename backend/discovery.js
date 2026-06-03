@@ -63,7 +63,7 @@ function discoverMixer(timeoutMs = 4000) {
             let name = 'Unknown Mixer';
             try {
                 const str = msg.toString('ascii');
-                const match = str.match(/X(?:R\d+|\d{2}|AIR|18|32|M32|WING)[^\0]*/i);
+                const match = str.match(/X(?:R\d+|\d{2}|AIR|18|32|M32)[^\0]*/i);
                 if (match) name = match[0].replace(/\0/g, '').trim();
             } catch (_) {}
 
@@ -72,7 +72,6 @@ function discoverMixer(timeoutMs = 4000) {
             const nameUpper = name.toUpperCase();
             let targetPort = 10024; // Default: XR18/MR18/X-Air
             if (nameUpper.includes('X32') || nameUpper.includes('M32')) targetPort = 10023;
-            else if (nameUpper.includes('WING')) targetPort = 2223;
 
             console.log(`[Discovery] Reply from ${remote.address}:${remote.port} — identified as "${name}", target port: ${targetPort}`);
             done({ ip: remote.address, port: targetPort, name });
@@ -88,7 +87,7 @@ function discoverMixer(timeoutMs = 4000) {
 
         socket.bind(() => {
             socket.setBroadcast(true);
-            const ports = [10024, 10023, 2223];
+            const ports = [10024, 10023];
             const broadcastTargets = getBroadcastAddresses();
             
             console.log(`[Discovery] Broadcasting to: ${broadcastTargets.join(', ')}`);
