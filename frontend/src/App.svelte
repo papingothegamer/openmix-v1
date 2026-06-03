@@ -989,7 +989,18 @@
   onMount(() => {
     // Load local configuration before connecting
     const saved = localStorage.getItem("openmix_config");
-    if (saved) config = JSON.parse(saved);
+    if (saved) {
+      config = JSON.parse(saved);
+      if (!MixerPresets[config.presetId]) {
+        config.presetId = 'CUSTOM';
+        config.inputs = MixerPresets.CUSTOM.inputs;
+        config.outputs = MixerPresets.CUSTOM.outputs;
+        config.matrices = MixerPresets.CUSTOM.matrices;
+        config.dcas = MixerPresets.CUSTOM.dcas;
+        config.fx = MixerPresets.CUSTOM.fx;
+        config.visibleBuses = Array.from({ length: config.outputs }, (_, i) => i + 1);
+      }
+    }
 
     // On first socket connect, push saved mixer config to the backend
     socket.once("connect", () => {
